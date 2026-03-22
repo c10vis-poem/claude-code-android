@@ -24,12 +24,12 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/Android-14%2B-brightgreen.svg" alt="Android 14+">
-  <img src="https://img.shields.io/badge/Version-2.1.0-blue.svg" alt="Version 2.1.0">
+  <img src="https://img.shields.io/badge/Version-2.2.0-blue.svg" alt="Version 2.2.0">
   <img src="https://img.shields.io/badge/Last%20Verified-March%202026-lightgrey.svg" alt="Last Verified March 2026">
 </p>
 
 <p align="center">
-  <a href="INSTALL.md">Install Guide</a> · <a href="TROUBLESHOOTING.md">Troubleshooting</a> · <a href="ADB-WIRELESS.md">ADB Wireless</a> · <a href="CONSTITUTION-TEMPLATE.md">CLAUDE.md Template</a> · <a href="AGENTS.md">Meet the Crew</a> · <a href="STORY.md">Our Story</a>
+  <a href="docs/install.md">Install Guide</a> · <a href="docs/troubleshooting.md">Troubleshooting</a> · <a href="docs/adb-wireless.md">ADB Wireless</a> · <a href="docs/constitution-template.md">CLAUDE.md Template</a> · <a href="docs/agents.md">Meet the Crew</a> · <a href="docs/story.md">Our Story</a>
 </p>
 
 ---
@@ -42,7 +42,7 @@
 >
 > **Best practice:** Enable wireless debugging only when you need it. Disable it when you're done. On public WiFi, it must be off. The connection from Termux is localhost-only (`127.0.0.1`), so the ADB server itself does not listen on external interfaces from the Termux side — but the Android wireless debugging daemon does.
 >
-> This is the same risk every Android developer accepts when using wireless debugging. It is documented here because many users of this guide may be encountering ADB for the first time. See [ADB-WIRELESS.md](ADB-WIRELESS.md) for full security details.
+> This is the same risk every Android developer accepts when using wireless debugging. It is documented here because many users of this guide may be encountering ADB for the first time. See [ADB-WIRELESS.md](docs/adb-wireless.md) for full security details.
 
 ---
 
@@ -50,7 +50,7 @@
 
 You need **Termux** installed from **F-Droid** (not the Play Store — the Play Store version hasn't been updated since 2020 and will not work).
 
-> **Architecture check first.** Open any terminal and run `uname -m`. You need `aarch64` (64-bit ARM). If you see `armv7l` or `armv8l`, your device runs a 32-bit OS and Claude Code cannot work — no workaround exists. Some budget phones (Galaxy A13, A02S, M13) ship 32-bit Android on 64-bit hardware. See [Troubleshooting](TROUBLESHOOTING.md#unsupported-architecture-armhf).
+> **Architecture check first.** Open any terminal and run `uname -m`. You need `aarch64` (64-bit ARM). If you see `armv7l` or `armv8l`, your device runs a 32-bit OS and Claude Code cannot work — no workaround exists. Some budget phones (Galaxy A13, A02S, M13) ship 32-bit Android on 64-bit hardware. See [Troubleshooting](docs/troubleshooting.md#unsupported-architecture-armhf).
 
 ### Install Termux
 
@@ -233,7 +233,7 @@ adb connect 127.0.0.1:<connection-port>
 adb devices   # Should show your device
 ```
 
-ADB works from inside the Ubuntu guest too. Setup takes about 5 minutes. See **[ADB-WIRELESS.md](ADB-WIRELESS.md)** for the complete guide, security details, and persistence notes.
+ADB works from inside the Ubuntu guest too. Setup takes about 5 minutes. See **[ADB-WIRELESS.md](docs/adb-wireless.md)** for the complete guide, security details, and persistence notes.
 
 > **Requires WiFi.** Android checks for a WiFi association (not internet access). ADB wireless disables automatically on mobile data.
 
@@ -254,10 +254,10 @@ If you have a desktop or laptop running Claude Code, [Remote Control](https://do
 
 | Document | What It Covers |
 |----------|---------------|
-| **[INSTALL.md](INSTALL.md)** | Full step-by-step setup for both paths, verification, maintenance |
-| **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** | 17+ common failures with symptoms, causes, and fixes |
-| **[ADB-WIRELESS.md](ADB-WIRELESS.md)** | ADB self-connect setup, security model, capability table |
-| **[CONSTITUTION-TEMPLATE.md](CONSTITUTION-TEMPLATE.md)** | CLAUDE.md template with Android/Termux constraints baked in |
+| **[INSTALL.md](docs/install.md)** | Full step-by-step setup for both paths, verification, maintenance |
+| **[TROUBLESHOOTING.md](docs/troubleshooting.md)** | 17+ common failures with symptoms, causes, and fixes |
+| **[ADB-WIRELESS.md](docs/adb-wireless.md)** | ADB self-connect setup, security model, capability table |
+| **[CONSTITUTION-TEMPLATE.md](docs/constitution-template.md)** | CLAUDE.md template with Android/Termux constraints baked in |
 
 ### Tools & Config
 
@@ -271,10 +271,10 @@ If you have a desktop or laptop running Claude Code, [Remote Control](https://do
 
 | Document | What It Covers |
 |----------|---------------|
-| **[CHANGELOG.md](CHANGELOG.md)** | Version history from 0.1.0 to 2.1.0 |
-| **[CONTRIBUTING.md](CONTRIBUTING.md)** | How to contribute, report bugs, submit device reports |
-| **[AGENTS.md](AGENTS.md)** | The 6 AI agents that build and maintain this repo |
-| **[STORY.md](STORY.md)** | How this project came together |
+| **[CHANGELOG.md](CHANGELOG.md)** | Version history from 0.1.0 to 2.2.0 |
+| **[CONTRIBUTING.md](.github/CONTRIBUTING.md)** | How to contribute, report bugs, submit device reports |
+| **[AGENTS.md](docs/agents.md)** | The 6 AI agents that build and maintain this repo |
+| **[STORY.md](docs/story.md)** | How this project came together |
 
 ---
 
@@ -301,7 +301,7 @@ If you have a desktop or laptop running Claude Code, [Remote Control](https://do
 
 Claude Code's PDF reader checks for `pdftoppm` using `which`, but Termux doesn't ship a `which` binary.
 
-See [Troubleshooting: PDF reading](TROUBLESHOOTING.md#pdf-reading-fails-pdftoppm-is-not-installed) for the fix.
+See [Troubleshooting: PDF reading](docs/troubleshooting.md#pdf-reading-fails-pdftoppm-is-not-installed) for the fix.
 
 ---
 
@@ -319,7 +319,7 @@ Running on a phone means real limits. Path B (Ubuntu) resolves some of them.
 | /tmp is volatile (Path A) | proot crash = mount gone | Path B avoids this. Don't store persistent state in /tmp |
 | WiFi required for ADB | ADB wireless disables on mobile data | Re-connect when back on WiFi |
 
-See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for detailed fixes.
+See [TROUBLESHOOTING.md](docs/troubleshooting.md) for detailed fixes.
 
 ---
 
@@ -362,7 +362,7 @@ rm -rf claude-code-android   # Clean up — phone storage is finite
 
 ## The CLAUDE.md Template
 
-Claude Code reads a CLAUDE.md file from your project root for persistent rules. The [template](CONSTITUTION-TEMPLATE.md) in this repo is designed for Android and Termux — it includes platform constraints, safety rules, and agent configuration for up to 6 concurrent agents.
+Claude Code reads a CLAUDE.md file from your project root for persistent rules. The [template](docs/constitution-template.md) in this repo is designed for Android and Termux — it includes platform constraints, safety rules, and agent configuration for up to 6 concurrent agents.
 
 ---
 
@@ -380,7 +380,7 @@ This repo is built and maintained by 6 AI agents — Claude Code instances with 
 | **Curator** | Repo hygiene. Config, links, file organization, missing standards. |
 | **Herald** | Audience-facing content. Community posts, announcements, descriptions. |
 
-See [AGENTS.md](AGENTS.md) for the full breakdown.
+See [AGENTS.md](docs/agents.md) for the full breakdown.
 
 ---
 
@@ -390,7 +390,7 @@ Found a bug? Got it working on a new device? Know a better workaround?
 
 - **Bug reports:** [Open an issue](https://github.com/ferrumclaudepilgrim/claude-code-android/issues/new?template=bug_report.md)
 - **Device reports:** [Submit compatibility data](https://github.com/ferrumclaudepilgrim/claude-code-android/issues/new?template=device_report.md)
-- **Improvements:** PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
+- **Improvements:** PRs welcome. See [CONTRIBUTING.md](.github/CONTRIBUTING.md).
 
 ---
 
@@ -409,5 +409,5 @@ MIT. See [LICENSE](LICENSE).
 <p align="center">
   <em>Built on a phone, in Termux, through proot, on ARM64, on Android.</em><br>
   <em>By a human and an AI, working together.</em><br>
-  <em>v2.1.0</em>
+  <em>v2.2.0</em>
 </p>

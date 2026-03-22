@@ -19,4 +19,4 @@ assignees: ''
 
 ## Have you checked existing resources?
 - [ ] Searched [existing issues](https://github.com/ferrumclaudepilgrim/claude-code-android/issues)
-- [ ] Checked [TROUBLESHOOTING.md](https://github.com/ferrumclaudepilgrim/claude-code-android/blob/main/TROUBLESHOOTING.md)
+- [ ] Checked [TROUBLESHOOTING.md](https://github.com/ferrumclaudepilgrim/claude-code-android/blob/main/docs/troubleshooting.md)

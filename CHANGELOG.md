@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.2.0] - 2026-03-22
+
+### Changed
+
+- **Repo restructured** -- docs moved from root to `docs/` directory (install, troubleshooting, adb-wireless, agents, constitution-template, story). Community files (CONTRIBUTING, CODE_OF_CONDUCT, SECURITY) moved to `.github/`. Root now contains only README, CHANGELOG, LICENSE, VERSION, and install.sh.
+- All internal links updated throughout.
+
+### Added
+
+- **Cron-triggered headless sessions** -- `claude -p` runs successfully from crond on Android. Enables scheduled, autonomous Claude Code sessions without a terminal open. Verified with CLAUDE.md loading correctly from the working directory.
+- **Session resume** -- `claude --resume <session-id>` restores prior sessions. Session IDs visible in JSON output.
+- **/compact autocompaction** -- context compaction works as expected inside running sessions.
+- **Structured output** -- `--output-format json` and `stream-json` verified working on Android. Useful for scripting Claude Code into pipelines.
+- **MCP server support** -- `claude mcp list` confirmed working on Android. Test device showed 5 remote servers (Cloudflare connected; Google Calendar, Gmail, Canva, Cloudinary require OAuth). Your server list depends on your Claude account integrations.
+
+---
+
+
 ## [2.1.0] - 2026-03-22
 
 ### Added
@@ -48,7 +66,7 @@
   `settings get/put` (including DND zen_mode), `content query` (calendar, contacts),
   `pm list packages`, `dumpsys`, `input tap/swipe/text`, `am start/force-stop`,
   `ps -A`, and `getprop`. No root required. No third-party automation app required.
-  See [ADB-WIRELESS.md](ADB-WIRELESS.md) for the full setup guide.
+  See [ADB-WIRELESS.md](docs/adb-wireless.md) for the full setup guide.
 
 - **Agent concurrency limit raised to 6** — Stress testing with 6 simultaneous
   Claude Opus agents on mid-range Android hardware (8-core Snapdragon, 11 GB RAM)

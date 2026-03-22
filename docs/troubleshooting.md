@@ -2,7 +2,7 @@
 
 This guide covers problems specific to running Claude Code on **Android 14+ with Termux** (aarch64/ARM64). Each entry starts with the error you see, then the fix, then the explanation.
 
-If you haven't installed yet, see [INSTALL.md](INSTALL.md) first.
+If you haven't installed yet, see [INSTALL.md](install.md) first.
 
 ---
 
@@ -186,7 +186,7 @@ pkg upgrade proot proot-distro -y
 
 **The warning `can't sanitize binding "/proc/self/fd/1"`** appears during proot-distro login and is harmless. stdout works correctly despite this message.
 
-**Note:** proot-distro is a valid alternative to the native Termux approach. See [INSTALL.md — Path B](INSTALL.md#path-b-proot-distro-ubuntu) for the full setup guide. However, for Claude Code alone, the native Termux approach (Path A) is lighter and faster.
+**Note:** proot-distro is a valid alternative to the native Termux approach. See [INSTALL.md — Path B](install.md#path-b-proot-distro-ubuntu) for the full setup guide. However, for Claude Code alone, the native Termux approach (Path A) is lighter and faster.
 
 ---
 

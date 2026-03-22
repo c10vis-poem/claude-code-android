@@ -44,7 +44,7 @@ This guide has two installation paths. Pick one before you start.
 
 ## Why This Is Hard
 
-Running Claude Code on Android means solving problems that don't exist on desktop Linux. The full explanation is in the [README](README.md#why-this-is-hard). The key points:
+Running Claude Code on Android means solving problems that don't exist on desktop Linux. The full explanation is in the [README](../README.md#why-this-is-hard). The key points:
 
 1. **`/tmp` isn't writable** — Claude Code needs it, Android doesn't provide it. Path A fixes this with a proot bind mount. Path B avoids it entirely (Ubuntu has native `/tmp`).
 2. **Node.js v24 may hang on ARM64** — use v25+ (Termux ships this by default). The hang is likely related to TMPDIR write permissions rather than a fundamental v24 incompatibility. If you encounter it, try setting `CLAUDE_CODE_TMPDIR` (see Step 4) or use Path B, where this constraint does not apply.
@@ -133,7 +133,7 @@ This single invocation binds Termux's writable tmp directory to `/tmp`, allowing
 >
 > This tells Claude Code to use that directory for temporary files instead of the default `/tmp`. No proot required. Add this before the `claude` launch command in your startup alias. Note: this only redirects Claude's own temp files — other tools that hardcode `/tmp` may still fail. The proot approach above is more comprehensive.
 
-On first launch, Claude Code will prompt you to authenticate. A URL will appear in your terminal — open it in your phone's browser to complete OAuth. If authentication fails, see the [OAuth troubleshooting entry](TROUBLESHOOTING.md#oauth--authentication-fails-on-first-launch).
+On first launch, Claude Code will prompt you to authenticate. A URL will appear in your terminal — open it in your phone's browser to complete OAuth. If authentication fails, see the [OAuth troubleshooting entry](troubleshooting.md#oauth--authentication-fails-on-first-launch).
 
 ---
 
@@ -377,3 +377,54 @@ but because the runtime identity did.
 ---
 
 *Last verified: March 19, 2026*
+
+---
+
+## Advanced Usage
+
+These features have been verified working on Android. They go beyond basic setup.
+
+### Cron-triggered headless sessions
+
+Claude Code can run autonomously via cron -- no terminal, no user interaction.
+
+```bash
+pkg install cronie
+crond -s  # Start the cron daemon (no systemd, must start manually)
+
+# Example: run a daily code review at 9am
+echo "0 9 * * * cd ~/repos/your-project && claude -p 'review recent changes and summarize' >> ~/cron-output.log 2>&1" | crontab -
+```
+
+Your cron script must set environment variables explicitly:
+```bash
+export HOME=/data/data/com.termux/files/home
+export PREFIX=/data/data/com.termux/files/usr
+export TMPDIR=$PREFIX/tmp
+export PATH=$PREFIX/bin:$PATH
+cd ~/repos/your-project  # CLAUDE.md loads from the working directory
+claude -p "your prompt here"
+```
+
+To persist crond across reboots, add `crond -s` to `~/.bashrc` or use Termux:Boot.
+
+### Session resume
+
+Resume a previous conversation:
+```bash
+claude --resume <session-id>
+```
+
+Session IDs are shown in `--output-format json` output and stored in `~/.claude/projects/`.
+
+### Structured output
+
+For scripting and automation:
+```bash
+claude -p "your prompt" --output-format json     # Full JSON with cost, tokens, session ID
+claude -p "your prompt" --output-format stream-json --verbose  # Streaming JSON events
+```
+
+### Context management
+
+Inside a running session, use `/compact` to compress the conversation context. This is useful during long sessions to stay within the context window.
