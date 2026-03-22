@@ -24,7 +24,7 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/Android-14%2B-brightgreen.svg" alt="Android 14+">
-  <img src="https://img.shields.io/badge/Version-2.0.1-blue.svg" alt="Version 2.0.1">
+  <img src="https://img.shields.io/badge/Version-2.1.0-blue.svg" alt="Version 2.1.0">
   <img src="https://img.shields.io/badge/Last%20Verified-March%202026-lightgrey.svg" alt="Last Verified March 2026">
 </p>
 
@@ -179,6 +179,27 @@ Inside proot-distro Ubuntu, Claude Code identifies itself as running on Linux. I
 
 ---
 
+
+## MCP (Model Context Protocol)
+
+Both MCP transport types work on Android:
+
+- **Remote HTTP servers** (e.g., Cloudflare) -- connect over HTTPS, zero local install. Best option for mobile.
+- **Local stdio servers** (e.g., `npx -y @modelcontextprotocol/server-memory`) -- spawns child processes via npx. Tested with Node.js v25.8.1.
+- **OAuth-based MCP servers** -- expected to fail. Termux has no browser redirect mechanism (`xdg-open` does not exist). Use token-based auth instead.
+
+To add a remote MCP server:
+```
+claude mcp add --transport http <name> <url>
+```
+
+To add a local stdio server:
+```
+claude mcp add <name> -- npx -y <package>
+```
+
+---
+
 ## ADB Wireless Self-Connect
 
 By connecting your phone to itself over ADB wireless debugging, Claude Code gains access to system capabilities that Android normally blocks from Termux. No root required. No computer needed.
@@ -250,7 +271,7 @@ If you have a desktop or laptop running Claude Code, [Remote Control](https://do
 
 | Document | What It Covers |
 |----------|---------------|
-| **[CHANGELOG.md](CHANGELOG.md)** | Version history from 0.1.0 to 2.0.1 |
+| **[CHANGELOG.md](CHANGELOG.md)** | Version history from 0.1.0 to 2.1.0 |
 | **[CONTRIBUTING.md](CONTRIBUTING.md)** | How to contribute, report bugs, submit device reports |
 | **[AGENTS.md](AGENTS.md)** | The 6 AI agents that build and maintain this repo |
 | **[STORY.md](STORY.md)** | How this project came together |
@@ -271,6 +292,16 @@ If you have a desktop or laptop running Claude Code, [Remote Control](https://do
 **Verified** means install, authentication, and basic operations tested end-to-end on real hardware. Test results: [tests/results/](tests/results/)
 
 **Tested on your device?** [Submit a device report](https://github.com/ferrumclaudepilgrim/claude-code-android/issues/new?template=device_report.md) to help fill in the gaps.
+
+---
+
+## PDF Reading
+
+### PDF reading requires `which` shim
+
+Claude Code's PDF reader checks for `pdftoppm` using `which`, but Termux doesn't ship a `which` binary.
+
+See [Troubleshooting: PDF reading](TROUBLESHOOTING.md#pdf-reading-fails-pdftoppm-is-not-installed) for the fix.
 
 ---
 
@@ -378,5 +409,5 @@ MIT. See [LICENSE](LICENSE).
 <p align="center">
   <em>Built on a phone, in Termux, through proot, on ARM64, on Android.</em><br>
   <em>By a human and an AI, working together.</em><br>
-  <em>v2.0.1</em>
+  <em>v2.1.0</em>
 </p>

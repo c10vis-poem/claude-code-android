@@ -34,7 +34,7 @@ These produce silent failures, not errors. Every decision must account for them.
 2. **No root exists.** No `sudo`, `systemctl`, `chown`, or ports below 1024. Suggest none of these.
 3. **No systemd.** Persistence options: `~/.bashrc`, `crond`, or the repo itself.
 4. **proot-distro works but is unnecessary for Claude Code.** A TCGETS2 ioctl bug that broke proot-distro on kernel 6.12 was fixed in proot 5.1.107-66 (October 2025). Guest distros install and run correctly with current proot versions. However, Claude Code only needs a writable `/tmp` — which a single proot bind mount provides without the overhead of a full guest OS. Native Termux packages remain the simpler, lighter approach.
-5. **Require Node.js v25+.** v24 hangs on ARM64 under Termux.
+5. **Require Node.js v25+.** v24 had a startup hang on ARM64 under native Termux (resolved in v25). If stuck on v24, set CLAUDE_CODE_TMPDIR or use Path B.
 6. **Set TMPDIR before npm operations.** `export TMPDIR=$PREFIX/tmp` — without it, npm fails silently.
 7. **Termux paths are non-standard.** Home is `/data/data/com.termux/files/home`, prefix is `/data/data/com.termux/files/usr`. Upstream defaults and Stack Overflow paths will be wrong. Verify before using.
 8. **Storage is finite.** This is a phone. Generate no unnecessary artifacts, dependencies, or files.

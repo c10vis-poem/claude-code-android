@@ -16,7 +16,7 @@ Run every check below. Report results as a table: component, status (PASS/FAIL/W
 ```bash
 node -v
 ```
-PASS if v25+. FAIL if v24 or below (hangs on ARM64). WARN if not installed.
+PASS if v25+. WARN if v24 (startup hang reported on ARM64, resolved in v25). FAIL if below v24 or not installed.
 
 **2. Claude Code installed:**
 ```bash

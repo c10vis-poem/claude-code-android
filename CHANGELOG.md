@@ -1,5 +1,27 @@
 # Changelog
 
+## [2.1.0] - 2026-03-22
+
+### Added
+
+- MCP remote HTTP server support verified on Android -- Cloudflare Workers tested; no local install required, works immediately after `claude mcp add`
+- MCP local stdio server support verified on ARM64 -- `npx`-based servers spawn and respond correctly (tested with `@modelcontextprotocol/server-memory`)
+- PDF reading support -- requires `pkg install poppler` and a `which` shim; Termux does not ship the `which` binary, which Claude Code uses to detect `pdftoppm`
+- Image reading verified working -- PNG and JPG files readable via the Read tool with no additional setup
+- Expanded feature test matrix -- verified on this release: MCP (both transports), PDF reading, image reading, plugins (claude-hud), hooks (all 4 types), custom skills, custom agents (6 concurrent on Opus), StatusLine API, git worktrees
+- Known issues documented -- `claude doctor` crashes due to Ink raw mode stdin requirement in Termux; `process.platform === "android"` breaks code that expects `"linux"` (workaround: run inside proot-distro Ubuntu)
+- Known MCP limitation documented -- OAuth flows fail in Termux terminal (no browser redirect available via `xdg-open`); remote and stdio transports are unaffected
+
+### Fixed
+
+- Node.js version language corrected in 3 files (CONSTITUTION-TEMPLATE.md, termux-safe skill, doctor skill) -- v25+ is confirmed working; v24 hang is historical context, not a current blocker
+
+### Changed
+
+- Version badge updated to 2.1.0
+
+---
+
 ## [2.0.1] — 2026-03-21
 
 ### Security

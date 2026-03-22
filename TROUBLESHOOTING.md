@@ -22,6 +22,8 @@ If you haven't installed yet, see [INSTALL.md](INSTALL.md) first.
 - [Hooks not firing (platform detection issue)](#hooks-not-firing-platform-detection-issue)
 - [/tmp data lost](#tmp-data-lost)
 - [Play Store Termux doesn't work](#play-store-termux-doesnt-work)
+- [PDF reading fails ("pdftoppm is not installed")](#pdf-reading-fails-pdftoppm-is-not-installed)
+- [`claude doctor` crashes](#claude-doctor-crashes)
 - [Upstream Issues](#upstream-issues)
 - [ADB Wireless Debugging](#adb-wireless-debugging)
 
@@ -412,6 +414,62 @@ pkg update && pkg upgrade -y
 ```
 
 **Cause:** The Play Store version of Termux has not been updated since 2020. It does not support current package repositories, and its bundled tools are too old to run Claude Code.
+
+---
+
+### PDF reading fails ("pdftoppm is not installed")
+
+**You see:**
+
+```
+pdftoppm is not installed
+```
+
+The `Read` tool returns this error when you try to read a `.pdf` file, even after running `pkg install poppler`.
+
+**Fix:** Create a `which` shim -- Termux doesn't ship a `which` binary, and Claude Code's PDF reader uses `which pdftoppm` to detect the tool:
+
+```bash
+pkg install poppler
+cat > $PREFIX/bin/which << 'SCRIPT'
+#!/usr/bin/env bash
+for arg in "$@"; do
+  command -v "$arg"
+done
+SCRIPT
+chmod +x $PREFIX/bin/which
+```
+
+After this, `Read` on PDF files works correctly.
+
+Alternatively, `pdftotext` (included with poppler) works without the shim if you only need text extraction: `pdftotext file.pdf -`
+
+**Cause:** Termux uses `command -v` rather than `which` for command detection, but Claude Code's PDF reader calls `which pdftoppm` directly. Without a `which` binary on PATH, the check fails and the reader refuses to proceed, even if `pdftoppm` is installed.
+
+---
+
+### `claude doctor` crashes
+
+**You see:**
+
+```
+Raw mode is not supported on the current process.stdin
+```
+
+`claude doctor` outputs this error and exits without completing any checks.
+
+**Fix (not yet confirmed on all devices):** Run `claude doctor` in a direct interactive Termux session -- not backgrounded, not piped, not launched from within Claude Code itself:
+
+```bash
+# Open a fresh Termux terminal session and run:
+claude doctor
+```
+
+If you are running it from inside a Claude Code session via the Bash tool, that won't work -- the Bash tool does not provide a raw-mode terminal.
+
+**Cause:** The `claude doctor` command uses the Ink library to render its output. Ink requires raw mode stdin. Termux provides raw mode in interactive sessions but not in piped or backgrounded contexts.
+
+**Status:** Cosmetic -- `doctor` is a diagnostic tool, not required for normal Claude Code operation. All the checks it runs can also be done manually (see the `/doctor` skill).
 
 ---
 
