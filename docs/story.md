@@ -172,20 +172,20 @@ Rear or front. It captures a photo through the Termux API, analyzes the image, d
 
 ```mermaid
 flowchart LR
-    subgraph Skills["Skills (user-invoked)"]
-        S1[/camera]
-        S2[/notify]
-        S3[/battery]
+    subgraph Skills["Skills -- user-invoked"]
+        S1["camera"]
+        S2["notify"]
+        S3["battery"]
     end
-    subgraph Hooks["Hooks (event-triggered)"]
-        H1[git-safety.sh]
-        H2[config-validator]
-        H3[scope-check]
+    subgraph Hooks["Hooks -- event-triggered"]
+        H1["git-safety.sh"]
+        H2["config-validator"]
+        H3["scope-check"]
     end
-    subgraph Integration["Integration (timer-triggered)"]
-        I1[wake-lock]
-        I2[sensor-polling]
-        I3[clipboard-bridge]
+    subgraph Integration["Integration -- timer-triggered"]
+        I1["wake-lock"]
+        I2["sensor-polling"]
+        I3["clipboard-bridge"]
     end
     Skills ~~~ Hooks ~~~ Integration
 ```
