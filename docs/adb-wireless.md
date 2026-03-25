@@ -49,7 +49,7 @@ ADB wireless debugging bypasses this. The phone connects to itself via `127.0.0.
 | Wifi info | `termux-wifi-connectioninfo` | Both work |
 | Sensors | `termux-sensor` | Both work |
 
-The bottom 13 rows work without ADB via Termux API. The top 8 require ADB.
+The bottom 12 rows work without ADB via Termux API. The top 9 require ADB.
 
 ---
 
@@ -272,7 +272,7 @@ pkg install android-tools
 ```
 
 **`error: protocol fault (couldn't read status message): Success`**
-Run the `adb pair` command again. Known bug in ADB 35.x, usually resolves on retry.
+Run the `adb pair` command again. Known bug in ADB 35.x (reports as version 1.0.41 in `adb version` output), usually resolves on retry.
 
 **`failed to connect to 127.0.0.1:<port>: Connection refused`**
 Wireless debugging may have toggled off (happens on some devices after screen lock). Go back to Developer options, toggle it back on, get the new port, reconnect.

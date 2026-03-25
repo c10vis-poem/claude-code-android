@@ -4,7 +4,7 @@
 
 <table>
 <tr><td><strong>Device</strong></td><td>Samsung Galaxy S26 Ultra — Android 16, ARM64</td></tr>
-<tr><td><strong>Runtime</strong></td><td>Termux + proot bind mount, no VM, no server</td></tr>
+<tr><td><strong>Runtime</strong></td><td>Termux (native or proot-distro Ubuntu), no VM, no server</td></tr>
 <tr><td><strong>Commits</strong></td><td>50+</td></tr>
 <tr><td><strong>Agents</strong></td><td>6 specialists (Architect, Librarian, Smith, Chronicler, Curator, Herald)</td></tr>
 <tr><td><strong>Termux APIs mapped</strong></td><td>57 total, 24 confirmed working</td></tr>

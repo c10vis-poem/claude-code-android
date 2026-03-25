@@ -24,7 +24,7 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/Android-14%2B-brightgreen.svg" alt="Android 14+">
-  <img src="https://img.shields.io/badge/Version-2.2.0-blue.svg" alt="Version 2.2.0">
+  <img src="https://img.shields.io/badge/Version-2.3.0-blue.svg" alt="Version 2.3.0">
   <img src="https://img.shields.io/badge/Last%20Verified-March%202026-lightgrey.svg" alt="Last Verified March 2026">
 </p>
 
@@ -108,7 +108,7 @@ Storage requirement: approximately 2 GB for the Ubuntu environment plus Claude C
 
 > **Why `pkg upgrade` and `apt upgrade` first?** Without updated SSL libraries, the Claude Code installer returns 403. Both upgrades are required.
 
-### Path A — Lightweight Alternative
+### Path A -- Fully Viable with Node v25+
 
 Faster setup (~2 min), less disk space, but requires workarounds that break on every Claude Code update.
 
@@ -167,7 +167,7 @@ Claude Code expects a writable `/tmp` for sockets and internal communication. An
 
 ### Node.js v24 may hang
 
-Node.js v24 can hang on startup under native Termux on 64-bit ARM (aarch64) devices. This appears related to TMPDIR write permissions. Upgrading to v25+ or using Path B (which uses the native binary installer instead of Node.js) avoids the issue. Inside proot-distro Ubuntu, Node v24+ works fine.
+Node.js v24 can hang on startup under native Termux on 64-bit ARM (aarch64) devices. This is specific to v24, not Termux generally. v25 resolves it. Upgrading to v25+ or using Path B (which uses the native binary installer instead of Node.js) avoids the issue. Inside proot-distro Ubuntu, Node v24+ works fine.
 
 ### Missing ripgrep binary
 
@@ -258,6 +258,9 @@ If you have a desktop or laptop running Claude Code, [Remote Control](https://do
 | **[TROUBLESHOOTING.md](docs/troubleshooting.md)** | 17+ common failures with symptoms, causes, and fixes |
 | **[ADB-WIRELESS.md](docs/adb-wireless.md)** | ADB self-connect setup, security model, capability table |
 | **[CONSTITUTION-TEMPLATE.md](docs/constitution-template.md)** | CLAUDE.md template with Android/Termux constraints baked in |
+| **[SENSORS.md](docs/sensors.md)** | NDK sensor access from Termux -- 9 of 11 standard types confirmed working |
+| **[SSRF-GUARD.md](docs/ssrf-guard.md)** | WebFetch safety hook blocking private/reserved IP ranges |
+| **[AGENT-PERMISSIONS.md](docs/agent-permissions.md)** | Permission separation guide -- no agent gets both web and write access |
 
 ### Tools & Config
 
@@ -271,7 +274,7 @@ If you have a desktop or laptop running Claude Code, [Remote Control](https://do
 
 | Document | What It Covers |
 |----------|---------------|
-| **[CHANGELOG.md](CHANGELOG.md)** | Version history from 0.1.0 to 2.2.0 |
+| **[CHANGELOG.md](CHANGELOG.md)** | Version history from 0.1.0 to 2.3.0 |
 | **[CONTRIBUTING.md](.github/CONTRIBUTING.md)** | How to contribute, report bugs, submit device reports |
 | **[AGENTS.md](docs/agents.md)** | The 6 AI agents that build and maintain this repo |
 | **[STORY.md](docs/story.md)** | How this project came together |
@@ -407,7 +410,7 @@ MIT. See [LICENSE](LICENSE).
 ---
 
 <p align="center">
-  <em>Built on a phone, in Termux, through proot, on ARM64, on Android.</em><br>
+  <em>Built on a phone, in Termux, on ARM64, on Android.</em><br>
   <em>By a human and an AI, working together.</em><br>
-  <em>v2.2.0</em>
+  <em>v2.3.0</em>
 </p>

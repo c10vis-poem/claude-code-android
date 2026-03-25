@@ -1,5 +1,35 @@
 # Changelog
 
+## [2.3.0] - 2026-03-25
+
+### Added
+
+- **Cron session safety flags** -- headless `claude -p` sessions can now be locked to local-only tools using `--tools` and `--disallowedTools`. Blocks web access and network commands entirely, making scheduled autonomous sessions safe by default.
+- **Custom agent loading fix documented** -- custom agents fail to load due to the same ENOENT root cause as ripgrep. Permanent fix: set `CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1` in your shell profile. Also added to the existing ENOENT entry as an alternative to the symlink.
+- **Sensor API documentation** -- 9 of 11 standard Android sensor types confirmed working via NDK ASensorManager from Termux (compiled C binary, not the `termux-sensor` Java API). Accelerometer, gyroscope, magnetometer, barometer, and 5 others respond correctly. Light and proximity vary by device.
+- **PulseAudio AAudio source module status** -- [PR #29074](https://github.com/termux/termux-packages/pull/29074) submitted to termux-packages for Android 16 microphone input. Replaces the broken `module-sles-source` with an AAudio-based module. Validated on all 4 architectures (aarch64, arm, i686, x86_64). Voice output via `termux-tts-speak` is unaffected.
+- **SSRF guard hook** -- new `docs/ssrf-guard.md` documents a PreToolUse hook that blocks WebFetch requests to private IP ranges (127.x, 10.x, 192.168.x, etc.) and all non-HTTP/HTTPS schemes (`content://`, `file://`, `ftp://`, etc. are blocked implicitly). Prevents server-side request forgery from MCP servers or tools.
+- **Agent permission matrix** -- new `docs/agent-permissions.md` documents the principle that no single agent should hold both web access and file-write permissions simultaneously (OWASP LLM06). Includes a generic permission matrix and implementation guidance.
+- **Constitution template refreshed** -- three new constraints added: cron sandboxing, Termux API availability, and ADB self-connect. Native Termux documented as a viable primary environment alongside proot-distro Ubuntu.
+
+### Changed
+
+- **Node v25 hang resolution** -- removed hedging ("appears related to TMPDIR write permissions") from README, install.md, and troubleshooting.md. The v24 hang was specific to v24, not Termux generally. v25 resolves it.
+- **Path A upgraded** -- reclassified from "Lightweight Alternative" to "Fully Viable with Node v25+." Path B (proot-distro Ubuntu) remains recommended for maximum compatibility, but Path A is no longer second-class.
+- **Constitution template modernized** -- native Termux presented as a viable primary option (not just proot), `CLAUDE_CODE_TMPDIR` documented as `/tmp` alternative.
+- **agents.md and story.md** -- removed "proot bind mount" references; native Termux is the actual runtime.
+
+### Fixed
+
+- **Claude Code version reference** -- removed pinned version `2.1.79` from verified config table in install.md. The native installer always fetches current; pinning a stale version is misleading.
+- **Capability table row count** -- "bottom 13 rows" corrected to 12 in adb-wireless.md (was a miscount, not a duplicate row).
+- **ADB version label** -- clarified that ADB 35.x reports as version `1.0.41` in actual output.
+- **Mermaid flowchart rendering** -- fixed node labels with slashes being parsed as shape syntax, which caused the decision flowchart to fail on GitHub.
+- **agents.md link** -- corrected broken internal link.
+- **EXIF metadata stripped** -- removed EXIF metadata from screenshot images.
+
+---
+
 ## [2.2.0] - 2026-03-22
 
 ### Changed

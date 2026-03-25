@@ -47,7 +47,7 @@ This guide has two installation paths. Pick one before you start.
 Running Claude Code on Android means solving problems that don't exist on desktop Linux. The full explanation is in the [README](../README.md#why-this-is-hard). The key points:
 
 1. **`/tmp` isn't writable** — Claude Code needs it, Android doesn't provide it. Path A fixes this with a proot bind mount. Path B avoids it entirely (Ubuntu has native `/tmp`).
-2. **Node.js v24 may hang on ARM64** — use v25+ (Termux ships this by default). The hang is likely related to TMPDIR write permissions rather than a fundamental v24 incompatibility. If you encounter it, try setting `CLAUDE_CODE_TMPDIR` (see Step 4) or use Path B, where this constraint does not apply.
+2. **Node.js v24 may hang on ARM64** — use v25+ (Termux ships this by default). The hang is specific to v24, not Termux generally. v25 resolves it. If you encounter it, try setting `CLAUDE_CODE_TMPDIR` (see Step 4) or use Path B, where this constraint does not apply.
 3. **ripgrep binary missing for ARM64 Android** — Path A needs a symlink fix. Path B doesn't need it.
 
 ---
@@ -328,7 +328,7 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
 claude --version
 ```
 
-Should show the installed version (e.g., `2.1.79 (Claude Code)`).
+Should print the installed version number. The native installer always fetches the latest release.
 
 **Step 9 — Launch:**
 
@@ -371,12 +371,12 @@ but because the runtime identity did.
 |-----------|---------|
 | proot-distro | 4.38.0 |
 | Guest OS | Ubuntu 25.10 (Questing Quokka) |
-| Claude Code | 2.1.79 (native installer) |
+| Claude Code | Current version (native installer fetches latest) |
 | Kernel | 6.12.30 (Android 16) |
 
 ---
 
-*Last verified: March 19, 2026*
+*Last verified: March 25, 2026*
 
 ---
 
@@ -405,6 +405,16 @@ export PATH=$PREFIX/bin:$PATH
 cd ~/repos/your-project  # CLAUDE.md loads from the working directory
 claude -p "your prompt here"
 ```
+
+**Sandboxing cron sessions:** Headless sessions should not have web access. Use `--tools` and `--disallowedTools` to lock a cron job to local-only operations:
+
+```bash
+claude -p "your prompt here" \
+  --tools "Read,Write,Edit,Bash,Glob,Grep" \
+  --disallowedTools "WebFetch,WebSearch,Bash(curl:*),Bash(wget:*)"
+```
+
+Both flags are needed because `--tools` controls which Claude Code tools are available, but an agent with Bash access can still run `curl` or `wget` as shell commands. The `--disallowedTools` flag with `Bash(curl:*)` and `Bash(wget:*)` closes that gap. The result: full local file and shell capability, zero network access.
 
 To persist crond across reboots, add `crond -s` to `~/.bashrc` or use Termux:Boot.
 

@@ -18,6 +18,7 @@ If you haven't installed yet, see [INSTALL.md](install.md) first.
 - [EMFILE errors](#emfile-errors)
 - [npm install fails silently](#npm-install-fails-silently)
 - [Grep/Glob/slash commands fail with ENOENT](#grepglobslash-commands-fail-with-enoent)
+- [Custom agents fail to load (same root cause)](#custom-agents-also-affected)
 - [Voice mode not functional](#voice-mode-not-functional)
 - [Hooks not firing (platform detection issue)](#hooks-not-firing-platform-detection-issue)
 - [/tmp data lost](#tmp-data-lost)
@@ -203,7 +204,7 @@ $ claude
 
 There is no error message. You will see the same hanging behavior as the TMPDIR issue, but `TMPDIR` is already set and proot is in use.
 
-**Fix:** This is likely related to TMPDIR write permissions rather than a fundamental v24 incompatibility.
+**Fix:** The v24 hang is specific to v24. v25 resolves it.
 
 1. Try setting `export CLAUDE_CODE_TMPDIR=$HOME/tmp` in your `~/.bashrc` before
    launching (create the directory first: `mkdir -p ~/tmp`).
@@ -218,7 +219,7 @@ node -v  # should show v25.x.x or higher
 
 If `pkg upgrade` doesn't move you to v25, check that your Termux package repositories are current. The F-Droid version of Termux ships v25+ in its default repo.
 
-**Cause:** The hang is likely related to TMPDIR write permissions. Node.js v24+ inside proot-distro Ubuntu does not exhibit this behavior in testing.
+**Cause:** The hang is specific to v24, not Termux generally. Node.js v24+ inside proot-distro Ubuntu does not exhibit this behavior in testing. v25 resolves it.
 
 ---
 
@@ -323,6 +324,17 @@ ln -sf "$(command -v rg)" "$VENDOR_DIR/arm64-android/rg"
 
 **Cause:** Claude Code bundles platform-specific ripgrep binaries but does not include an `arm64-android` build. The binary path it expects simply doesn't exist.
 
+**Custom agents also affected:** If custom agents defined in `.claude/agents/` fail to load, it is the same root cause -- Claude Code's file search cannot find the agent definition files on `arm64-android`. The symlink fix above resolves agent loading as well.
+
+**Permanent fix:** Instead of (or in addition to) the symlink, set this environment variable in your `~/.bashrc`:
+
+```bash
+export CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1
+echo 'export CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1' >> ~/.bashrc
+```
+
+This tells Claude Code to use the system-installed ripgrep and file search tools instead of its bundled binaries. It fixes Grep, Glob, slash commands, and custom agent loading in one setting. The symlink approach still works but must be re-applied after every Claude Code update; this environment variable persists.
+
 ---
 
 ### Voice mode not functional
@@ -346,6 +358,8 @@ Then grant microphone permission to Termux when Android prompts you (or manually
 **Note:** Voice mode functionality may still be limited on Android even after installing SoX and granting permissions. Audio routing on Android does not always cooperate with command-line tools.
 
 **Cause:** SoX is available in Termux (`pkg install sox`) but voice mode also needs microphone access, which requires the Termux:API addon app and Android microphone permissions granted to Termux.
+
+**Android 16 microphone input:** [PR #29074](https://github.com/termux/termux-packages/pull/29074) has been submitted to termux-packages to add an AAudio-based PulseAudio source module for Android 16. The current `module-sles-source` is broken on Android 16. If merged, this will enable microphone input for voice mode and other audio recording tools. Voice output via `termux-tts-speak` is unaffected and works without this fix.
 
 ---
 
