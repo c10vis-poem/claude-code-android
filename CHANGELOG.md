@@ -17,15 +17,15 @@
 - **Node v25 hang resolution** -- removed hedging ("appears related to TMPDIR write permissions") from README, install.md, and troubleshooting.md. The v24 hang was specific to v24, not Termux generally. v25 resolves it.
 - **Path A upgraded** -- reclassified from "Lightweight Alternative" to "Fully Viable with Node v25+." Path B (proot-distro Ubuntu) remains recommended for maximum compatibility, but Path A is no longer second-class.
 - **Constitution template modernized** -- native Termux presented as a viable primary option (not just proot), `CLAUDE_CODE_TMPDIR` documented as `/tmp` alternative.
-- **agents.md and story.md** -- removed "proot bind mount" references; native Termux is the actual runtime.
+- **agents.md and story.md** -- updated runtime references to acknowledge both native Termux and proot-distro Ubuntu.
 
 ### Fixed
 
 - **Claude Code version reference** -- removed pinned version `2.1.79` from verified config table in install.md. The native installer always fetches current; pinning a stale version is misleading.
-- **Capability table row count** -- "bottom 13 rows" corrected to 12 in adb-wireless.md (was a miscount, not a duplicate row).
+- **Capability table row count** -- "bottom 13 rows" corrected to 12 and "top 8" corrected to 9 in adb-wireless.md (was a miscount, not a duplicate row).
 - **ADB version label** -- clarified that ADB 35.x reports as version `1.0.41` in actual output.
 - **Mermaid flowchart rendering** -- fixed node labels with slashes being parsed as shape syntax, which caused the decision flowchart to fail on GitHub.
-- **agents.md link** -- corrected broken internal link.
+- **agents.md link** -- corrected broken link.
 - **EXIF metadata stripped** -- removed EXIF metadata from screenshot images.
 
 ---

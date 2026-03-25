@@ -108,7 +108,7 @@ Storage requirement: approximately 2 GB for the Ubuntu environment plus Claude C
 
 > **Why `pkg upgrade` and `apt upgrade` first?** Without updated SSL libraries, the Claude Code installer returns 403. Both upgrades are required.
 
-### Path A -- Fully Viable with Node v25+
+### Path A — Fully Viable with Node v25+
 
 Faster setup (~2 min), less disk space, but requires workarounds that break on every Claude Code update.
 
@@ -182,7 +182,7 @@ Inside proot-distro Ubuntu, Claude Code identifies itself as running on Linux. I
 
 ## MCP (Model Context Protocol)
 
-Both MCP transport types work on Android:
+Two of three MCP transport types work on Android:
 
 - **Remote HTTP servers** (e.g., Cloudflare) -- connect over HTTPS, zero local install. Best option for mobile.
 - **Local stdio servers** (e.g., `npx -y @modelcontextprotocol/server-memory`) -- spawns child processes via npx. Tested with Node.js v25.8.1.

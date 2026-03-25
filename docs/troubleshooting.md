@@ -324,7 +324,9 @@ ln -sf "$(command -v rg)" "$VENDOR_DIR/arm64-android/rg"
 
 **Cause:** Claude Code bundles platform-specific ripgrep binaries but does not include an `arm64-android` build. The binary path it expects simply doesn't exist.
 
-**Custom agents also affected:** If custom agents defined in `.claude/agents/` fail to load, it is the same root cause -- Claude Code's file search cannot find the agent definition files on `arm64-android`. The symlink fix above resolves agent loading as well.
+### Custom agents also affected
+
+If custom agents defined in `.claude/agents/` fail to load, it is the same root cause -- Claude Code's file search cannot find the agent definition files on `arm64-android`. The symlink fix above resolves agent loading as well.
 
 **Permanent fix:** Instead of (or in addition to) the symlink, set this environment variable in your `~/.bashrc`:
 
