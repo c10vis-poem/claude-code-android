@@ -33,7 +33,7 @@ ADB wireless debugging bypasses this. The phone connects to itself via `127.0.0.
 | Installed apps list | Blocked | `adb shell pm list packages` |
 | Full battery details | Blocked | `adb shell dumpsys battery` |
 | Touch/key injection | Blocked | `adb shell input tap/swipe/text` |
-| Full process list | Blocked | `adb shell ps -A` |
+| Full process list | Termux processes only | `adb shell ps -A` (all system processes) |
 | Activity manager | Partial | `adb shell am start/force-stop` (full) |
 | Device properties | Blocked | `adb shell getprop` |
 | Battery % (basic) | `termux-battery-status` | Both work |
@@ -50,6 +50,8 @@ ADB wireless debugging bypasses this. The phone connects to itself via `127.0.0.
 | Sensors | `termux-sensor` | Both work |
 
 The bottom 12 rows work without ADB via Termux API. The top 9 require ADB.
+
+> **Note:** The Termux API rows require the **Termux:API companion app** installed from the same source as Termux (both from F-Droid or both from GitHub). Mixing sources causes signature mismatches and silent failures.
 
 ---
 
@@ -160,9 +162,10 @@ adb shell settings put system screen_brightness 128
 ### Query calendar
 
 ```sh
+NOW=$(date +%s%3N)
 adb shell content query --uri content://com.android.calendar/events \
-  --projection title,dtstart,dtend,description \
-  --where "dtstart > $(date +%s%3N)"
+  --projection title:dtstart:dtend:description \
+  --where "dtstart\>$NOW"
 ```
 
 ### List installed apps

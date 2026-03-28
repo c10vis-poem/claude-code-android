@@ -1,7 +1,7 @@
 ╔══════════════════════════════════════════════════════╗
 ║  claude-code-android — Claims Verification           ║
-║  Date: 2026-03-19 10:58:11                          ║
-║  Kernel: 6.12.30                                     ║
+║  Date: 2026-03-28 09:42:38                          ║
+║  Kernel: 6.12.30-android16-5-p1bbed73-abogkiS948U   ║
 ╚══════════════════════════════════════════════════════╝
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -12,7 +12,7 @@ CLAIM 1: npm fails silently without TMPDIR
   Test (without TMPDIR): exit=0
   Evidence (without TMPDIR): make-fetch-happen:request-cache:https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-2.1.78.tgz
 make-fetch-happen:request-cache:https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-2.1.79.tgz
-make-fetch-happen:request-cache:https://registry.npmjs.org/@anthropic-ai%2fclaude-code
+make-fetch-happen:request-cache:https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-2.1.80.tgz
   Test (with TMPDIR=/data/data/com.termux/files/usr/tmp): exit=0
   Evidence (with TMPDIR): make-fetch-happen:request-cache:https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-2.1.78.tgz
   Result: npm cache ls succeeded both with and without TMPDIR on this test
@@ -26,17 +26,16 @@ CLAIM 2: /tmp requires proot bind mount to be writable on Android
   Source: README.md:74, TROUBLESHOOTING.md:81, INSTALL.md:42
   Claim: /tmp isn't writable from Termux sandbox; proot bind-mounts $PREFIX/tmp to /tmp
   Test: ls -la /tmp
-total 18
-drwx------.  5 <uid> <uid> 3452 Mar 19 10:58 .
-drwxr-xr-x. 32 root    root     831 Dec 31  2021 ..
-drwx------.  3 <uid> <uid> 3452 Mar 19 09:13 claude-<pid>
-drwx------.  3 <uid> <uid> 3452 Mar 19 09:12 node-compile-cache
+total 2215
+drwx------.  4 <uid> <uid>  20480 Mar 28 09:42 .
+drwxr-xr-x. 32 root    root       831 Dec 31  2021 ..
+-rw-------.  1 <uid> <uid> 163741 Mar 28 09:19 check.png
+-rw-------.  1 <uid> <uid> 430488 Mar 28 09:19 check2.jpg
   Result:
     /tmp writable (we are inside proot): true
     $PREFIX/tmp writable: true
     /tmp and $PREFIX/tmp resolve to same inode: true
-  Evidence: Claude Code socket dirs in /tmp:
-    (none found — that's fine)
+  Evidence: Claude Code socket dirs in /tmp: 1 found
   Note: We are already inside a proot session. The 'without proot' case
         cannot be tested without exiting proot, which would break this script.
         We verify the POSITIVE claim: proot bind mount makes /tmp writable.
@@ -50,16 +49,14 @@ CLAIM 3: Claude Code does not bundle an arm64-android ripgrep binary
   Test: Inspect /data/data/com.termux/files/usr/bin/../lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep
   Evidence: Platform directories in vendor/ripgrep:
     COPYING
-    arm64-android
     arm64-darwin
     arm64-linux
     arm64-win32
     x64-darwin
     x64-linux
     x64-win32
-  Evidence: arm64-android/rg is a SYMLINK -> /data/data/com.termux/files/usr/bin/rg
-  Result: No native arm64-android binary. Our symlink is the only rg there.
-  Evidence: arm64-linux/rg is a native binary (5248072 bytes) — confirms arm64-android is absent
+  Evidence: arm64-android/ directory does not exist at all
+  Result: No arm64-android directory — no native binary exists
   Verdict: CONFIRMED
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -83,13 +80,12 @@ CLAIM 5: proot-distro works on kernel 6.12 with proot >= 5.1.107-66
   Source: TROUBLESHOOTING.md:124, INSTALL.md:32
   Claim: TCGETS2 ioctl bug fixed in proot 5.1.107-66 (Oct 2025). Guest distros work.
   Evidence:
-    Kernel: 6.12.30
+    Kernel: 6.12.30-android16-5-p1bbed73-abogkiS948USQS1AZC7-4k
     proot version: 5.1.107-70
     proot-distro installed: yes
     proot-distro version: 4.38.0
     Minimum required proot: 5.1.107-66
     This proot sufficient: true
-
   Evidence: Ubuntu rootfs installed at /data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs/ubuntu
   Result: Ubuntu guest is installed — proot-distro successfully ran on this device
   Result: proot >= 5.1.107-66 confirmed, Ubuntu guest installed and verified
@@ -101,7 +97,7 @@ CLAIM 6: Android phantom process killer limits ~32 background processes
   Claim: Android limits background processes to ~32 across all apps
   Test: Count current background processes visible from Termux
   Evidence:
-    Background processes visible in /proc: 26
+    Background processes visible in /proc: 17
     Limit claim: ~32
     Note: 'Disable child process restrictions' developer option state
     cannot be read programmatically from Termux without root.
@@ -120,19 +116,23 @@ CLAIM 7: File descriptor limits vary by device
   Evidence:
     Soft FD limit: 32768
     Hard FD limit: 32768
-  Result: FD limit (32768) measured — this device is above any conservative ~1024 estimate
-  Verdict: CONFIRMED — limit varies by device; 32768 reported on this device
+  Result: FD limit is 32768 (soft) / 32768 (hard)
+          The docs say limits vary by device. This value confirms FD limits
+          exist and are queryable. Actual values differ across devices and
+          Android versions (e.g. 1024, 32768, or higher).
+  Verdict: CONFIRMED
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CLAIM 8: TMPDIR and proot alias should be in ~/.bashrc for persistence
   Source: README.md:53-54, INSTALL.md:126-129, TROUBLESHOOTING.md:44-48
   Claim: TMPDIR=$PREFIX/tmp and claude-android alias should be in ~/.bashrc
   Evidence: ~/.bashrc contents (relevant lines):
-    (proot+claude alias found)
+    1:export TMPDIR=$PREFIX/tmp
   Result:
-    TMPDIR in ~/.bashrc: false
-    proot/claude alias in ~/.bashrc: true
-  Verdict: UNCONFIRMED — TMPDIR=false, alias=true in ~/.bashrc
+    TMPDIR in ~/.bashrc: true
+    proot/claude alias in ~/.bashrc: false
+  Result: TMPDIR found but no claude-android proot alias in ~/.bashrc
+  Verdict: UNCONFIRMED — no proot launch alias found (expected claude-android or similar)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CLAIM 9: proot -b $PREFIX/tmp:/tmp remaps /tmp for Claude Code
@@ -140,9 +140,9 @@ CLAIM 9: proot -b $PREFIX/tmp:/tmp remaps /tmp for Claude Code
   Claim: proot intercepts syscalls and makes /tmp point to $PREFIX/tmp
   Test: Check if /tmp and $PREFIX/tmp contain identical contents (confirms bind mount)
   Evidence:
-    /tmp contents: claude-<pid> node-compile-cache proot-<pid>-<random>
-    $PREFIX/tmp contents: claude-<pid> node-compile-cache proot-<pid>-<random>
-    Claude Code runtime dirs in /tmp: /tmp/claude-<pid>
+    /tmp contents: check.png check2.jpg check3.jpg check4.jpg check_img claude-10491 install_b64.txt node-compile-cache 
+    $PREFIX/tmp contents: check.png check2.jpg check3.jpg check4.jpg check_img claude-10491 install_b64.txt node-compile-cache 
+    Claude Code runtime dirs in /tmp: /tmp/claude-10491
     Write to /tmp, read from $PREFIX/tmp (bind mount test): true
   Result: /tmp and $PREFIX/tmp are the same filesystem location — bind mount confirmed
   Verdict: CONFIRMED
@@ -158,13 +158,102 @@ CLAIM 10: curl installer (claude.ai/install.sh) works inside proot-distro Ubuntu
   Verdict: CONFIRMED
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 11: Cron sessions support tool restrictions via --tools flag
+  Source: CLAUDE.md constraint 11
+  Claim: claude CLI accepts --tools flag to restrict available tools in cron sessions
+  Evidence:
+    claude binary: /data/data/com.termux/files/usr/bin/claude
+    --tools flag in help output: true
+  Result: claude CLI accepts --tools flag for restricting tool access
+  Verdict: CONFIRMED
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 12: NDK sensor access works via termux-sensor
+  Source: termux/sensor-poc.c
+  Claim: termux-sensor can list and read device sensors
+  Test: termux-sensor -l (5-second timeout)
+  Evidence:
+    {
+      "sensors": [
+        "lsm6dsv_0 Accelerometer Non-wakeup",
+        "ak0991x_0 Magnetometer Non-wakeup",
+        "lsm6dsv_0 Gyroscope Non-wakeup",
+  Result: Sensor data returned from termux-sensor
+  Verdict: CONFIRMED
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 13: SSRF guard hook documented
+  Source: docs/ssrf-guard.md
+  Claim: SSRF guard hook documentation exists in docs/ssrf-guard.md
+  Test: Check if docs/ssrf-guard.md exists and is non-empty
+  Evidence: /data/data/com.termux/files/home/repos/claude-code-android/docs/ssrf-guard.md exists (350 lines)
+  Result: SSRF guard documentation present
+  Verdict: CONFIRMED
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 14: Agent permission separation documented
+  Source: docs/agent-permissions.md
+  Claim: Agent permission separation documentation exists in docs/agent-permissions.md
+  Test: Check if docs/agent-permissions.md exists and is non-empty
+  Evidence: /data/data/com.termux/files/home/repos/claude-code-android/docs/agent-permissions.md exists (124 lines)
+  Result: Agent permission separation documentation present
+  Verdict: CONFIRMED
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 15: Termux:API available (termux-battery-status)
+  Source: README.md, INSTALL.md
+  Claim: Termux:API package provides device access via termux-battery-status etc.
+  Test: termux-battery-status (5-second timeout)
+  Evidence:
+    {
+      "present": true,
+      "technology": "Li-ion",
+      "health": "GOOD",
+      "plugged": "UNPLUGGED",
+      "status": "DISCHARGING",
+      "temperature": 27.0,
+      "voltage": 4226,
+      "current": -477343,
+      "current_average": -387500,
+  Result: Valid JSON with percentage field returned
+  Verdict: CONFIRMED
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 16: xdg-open exists as termux-open symlink
+  Source: INSTALL.md
+  Claim: xdg-open is a symlink to termux-open for desktop compatibility
+  Test: Check if xdg-open is a symlink to termux-open
+  Evidence:
+    xdg-open path: /data/data/com.termux/files/usr/bin/xdg-open
+    readlink result: termux-open
+  Result: xdg-open is a symlink to termux-open
+  Verdict: CONFIRMED
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 17: Fingerprint authentication available via termux-fingerprint
+  Source: CLAUDE.md, security gate implementation
+  Claim: termux-fingerprint command is available for biometric authentication
+  Evidence: termux-fingerprint found at /data/data/com.termux/files/usr/bin/termux-fingerprint
+  Result: Fingerprint authentication command is on PATH
+  Verdict: CONFIRMED
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 18: Architecture is aarch64
+  Source: README.md, TROUBLESHOOTING.md
+  Claim: Device architecture is aarch64 (ARM 64-bit)
+  Test: uname -m
+  Evidence: Architecture reported as 'aarch64'
+  Result: Architecture confirmed as aarch64
+  Verdict: CONFIRMED
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SUMMARY
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Confirmed:    6/10
-  Unconfirmed:  2/10
-  Cannot test:  2/10
+  Confirmed:    14/18
+  Unconfirmed:  2/18
+  Cannot test:  2/18
 
-Results written to: tests/results/s26ultra-android16.txt
+Results written to: /data/data/com.termux/files/home/repos/claude-code-android/tests/results/sm-s948u-android16.txt
 
 Notes:
   UNCONFIRMED does not mean FALSE — it means the live test could not

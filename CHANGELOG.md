@@ -1,5 +1,50 @@
 # Changelog
 
+## [2.4.0] - 2026-03-28
+
+### Added
+- Termux:API elevated to required dependency with source-matching warning (F-Droid+F-Droid or GitHub+GitHub)
+- Fingerprint biometric gate documentation for securing sensitive operations
+- Vendor-specific Samsung sensor types documented (elevator detector, back tap, car crash detect, pocket mode, drop classifier)
+- install.sh: architecture check (aarch64 required), pkg update before install, termux-api package
+- CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1 documented as durable ripgrep fix (survives updates)
+- "From the developer" tip at top of README
+- Third device screenshot (Samsung Galaxy S23+)
+- Session persistence note (crond, Termux:Boot, shell scripts)
+- Cron proot wrapper note for Path A users
+- 8 new test claims in verify-claims.sh (cron, sensors, SSRF, agent permissions, Termux:API, xdg-open, fingerprint, architecture)
+- Supported versions table in SECURITY.md
+- verify-claims.sh reference in CONTRIBUTING.md
+- Issue template chooser (config.yml disables blank issues)
+- docs/skills.md created (workflow skills moved from README)
+
+### Changed
+- ADB capability table: process inspection corrected from "Blocked" to "Termux processes only"
+- MCP section: corrected xdg-open claim (exists as symlink to termux-open; OAuth localhost redirects still fail)
+- Time estimates qualified with "(experienced)" across all installation paths
+- "Why This Is Hard" section condensed from 4 subsections to 5 bullet points
+- Path B "Most users should start here" callout added
+- Security warning moved from README top to ADB section (contextually appropriate)
+- Agent roster replaced with summary + link to docs/agents.md
+- Workflow skills moved to docs/skills.md, README keeps Android skills only
+- "Our Story" link removed from top navigation bar
+- Known Constraints "No systemd" row expanded with crond, Termux:Boot, termux-job-scheduler
+- /doctor skill disambiguated from built-in `claude doctor` command
+- termux-safe skill: "No apt" corrected to "Prefer pkg over apt"
+- README reduced from 416 to ~382 lines
+
+### Fixed
+- install.sh: missing pkg update before package install
+- Calendar query example in ADB docs (projection delimiter, shell escaping)
+- Screenshot file extension mismatch (pixel10pro was PNG with .jpg extension)
+- verify-claims.sh FD limit test no longer hardcodes ~1024
+- PR #31701 status updated to "Closed (not merged)" in upstream issues table
+- Troubleshooting count updated from "17+" to "20+"
+
+### Community
+- AAudio source module PR (termux-packages#29074) -- adds module-aaudio-source.c to PulseAudio, enabling microphone input via AAudio on Android 12+ where OpenSL ES input was removed. Approved by robertkirkman, hardware-tested on 32-bit ARM Android 8 and 64-bit ARM Android 13. Awaiting maintainer merge.
+- CUPS fix PR (termux-packages#29123) -- fixes three bugs making CUPS nonfunctional on fresh Termux installs: (1) web UI returns 403 on static assets because package builder strips world-read permissions, (2) Add Printer crashes cupsd due to missing spool directory, (3) policy engine denies admin operations because SystemGroup directive was removed. Approved by TomJo2000. Awaiting maintainer merge.
+
 ## [2.3.0] - 2026-03-25
 
 ### Added

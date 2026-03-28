@@ -20,7 +20,7 @@ You are running inside Termux on Android (aarch64). These constraints produce **
   - Binaries: `$PREFIX/bin`
   - Config: `$PREFIX/etc`
 - **No ports below 1024.** No root = no binding to 80, 443, etc. Use 1024+.
-- **No `apt` or `apt-get`.** Termux uses `pkg`. Example: `pkg install nodejs -y`.
+- **Prefer `pkg` over `apt`.** Both work, but `pkg` auto-updates the package index before installing.
 - **No Docker, no containers.** The kernel does not support them without root.
 
 ## Silent Failure Modes
@@ -35,7 +35,7 @@ You are running inside Termux on Android (aarch64). These constraints produce **
 
 ## Package Installation
 
-Use `pkg`, not `apt`:
+Prefer `pkg` (auto-updates the index before install). `apt` and `apt-get` also work but skip the auto-update:
 ```bash
 pkg install <package> -y
 pkg upgrade

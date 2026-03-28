@@ -17,6 +17,7 @@ Before you begin, confirm you have the following:
 | **Terminal** | [Termux from F-Droid](https://f-droid.org/en/packages/com.termux/) — **not** the Play Store version, which is outdated and will fail |
 | **Subscription** | Claude Max or Claude Pro (provides the API access Claude Code requires) |
 | **Network** | Active internet connection (Claude Code streams from Anthropic's API) |
+| **Termux:API** | Both the `termux-api` package (`pkg install termux-api`) and the [Termux:API companion app from F-Droid](https://f-droid.org/en/packages/com.termux.api/) are required for device features (battery, camera, TTS, SMS, GPS, sensors) |
 
 > **Warning:** The Play Store version of Termux has not been updated since 2020 and does not support current package repositories. You must use F-Droid or install the `.apk` directly from the [Termux GitHub releases](https://github.com/termux/termux-app/releases).
 
@@ -29,12 +30,12 @@ This guide has two installation paths. Pick one before you start.
 | | Path A — Native Termux | Path B — proot-distro Ubuntu |
 |---|---|---|
 | **Best for** | Quick setup, experienced users | Full Linux environment, fewer workarounds |
-| **Setup time** | ~2 minutes | ~10-15 minutes |
+| **Setup time** | ~2 min (experienced) | ~10-15 min (experienced) |
 | **Ongoing maintenance** | Ripgrep fix breaks on every update | Just update normally |
 | **Install method** | npm | Native installer (curl) |
 | **Node.js required** | Yes (v25+) | No |
 
-**New to this?** Start with Path B — it has fewer things that can go wrong.
+**New to this?** Start with Path B -- it has fewer things that can go wrong. Allow 30-45 minutes for your first install including Termux and F-Droid setup.
 
 **Want the fastest setup?** Use Path A.
 
@@ -73,7 +74,7 @@ There is no root access. There is no systemd. There is no `/tmp` in the way most
 Open Termux and run:
 
 ```bash
-pkg install nodejs git curl proot ripgrep -y
+pkg install nodejs git curl proot ripgrep termux-api -y
 ```
 
 This installs Node.js v25+, git, curl, proot, and ripgrep. All five are required — Node.js runs Claude Code, git is needed for repository operations, curl is used during authentication flows, proot handles the `/tmp` bind mount at launch, and ripgrep is required for Claude Code's Grep and Glob tools to work on ARM64.
@@ -233,6 +234,17 @@ mkdir -p "$VENDOR_DIR/arm64-android"
 ln -sf "$(command -v rg)" "$VENDOR_DIR/arm64-android/rg"
 ```
 
+### Durable ripgrep fix (recommended)
+
+Instead of the symlink (which breaks on every update), set this environment variable:
+
+```bash
+echo 'export CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1' >> ~/.bashrc
+source ~/.bashrc
+```
+
+With `CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1`, Claude Code uses the system-installed ripgrep (`pkg install ripgrep`) instead of its bundled binary. This survives Claude Code updates -- no re-symlinking required. The symlink approach above still works but must be re-applied after every `npm update`.
+
 ### Updating Termux packages
 
 ```bash
@@ -342,7 +354,7 @@ On first launch, authentication requires manual URL copy/paste. No browser auto-
 
 | | Path A (Native Termux) | Path B (proot-distro Ubuntu) |
 |---|---|---|
-| Setup time | ~2 minutes | ~10-15 minutes |
+| Setup time | ~2 min (experienced) | ~10-15 min (experienced) |
 | Disk usage | Minimal | ~2 GB for Ubuntu rootfs + Claude Code |
 | /tmp workaround | Required (proot bind mount) | Not needed |
 | ripgrep fix | Required (symlink, breaks on update) | Not needed |
@@ -376,7 +388,7 @@ but because the runtime identity did.
 
 ---
 
-*Last verified: March 25, 2026*
+*Last verified: March 28, 2026*
 
 ---
 
@@ -395,6 +407,8 @@ crond -s  # Start the cron daemon (no systemd, must start manually)
 # Example: run a daily code review at 9am
 echo "0 9 * * * cd ~/repos/your-project && claude -p 'review recent changes and summarize' >> ~/cron-output.log 2>&1" | crontab -
 ```
+
+**Path A users:** Cron jobs need the same proot wrapper that interactive sessions use. Replace bare `claude -p` with `proot -b $PREFIX/tmp:/tmp claude -p` in your crontab entries. Without this, Claude Code cannot write to `/tmp` and will fail silently.
 
 Your cron script must set environment variables explicitly:
 ```bash

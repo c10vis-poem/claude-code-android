@@ -37,7 +37,7 @@ Device-specific sensors (tilt detector, pick-up gesture, auto-rotation, motion d
 
 ### Test 1: Multi-Sensor Quick Read (5 samples each)
 
-All 8 tested sensor types returned data:
+All 8 quick-read sensor types returned data (step counter confirmed separately during walking test):
 
 - **Accelerometer**: x=0.49, y=3.23, z=9.25 m/s^2 (phone tilted ~20 deg from vertical)
 - **Magnetometer**: x=40.3, y=30.1, z=-36.0 uT (indoor magnetic field, stable)
@@ -103,6 +103,22 @@ Peak rotation of 1.057 rad/s (about 60 deg/s) indicates turns while walking.
 5. **The walking signature is clearly visible** in the accelerometer data: magnitude oscillates around 9.81 m/s^2 with each footstrike pushing it to ~10.8 and each flight phase dropping it below 9.0.
 
 6. **Barometric pressure captures real environmental signal** at 0.01 hPa resolution -- sufficient for indoor floor-level detection.
+
+---
+
+## Vendor-Specific Sensors (Samsung)
+
+The updated sensor-poc.c now supports vendor-specific sensor types (type IDs above 65536) via list-scan fallback when getDefaultSensor returns NULL. On a Samsung Galaxy S26 Ultra (Android 16), these Samsung-specific sensors were detected and resolved:
+
+| Type ID | Name | Vendor | Status |
+|---------|------|--------|--------|
+| 65605 | Pocket Mode | Samsung | Resolved (event-driven, awaiting trigger) |
+| 65644 | Drop Classifier | Samsung | Resolved (event-driven, awaiting trigger) |
+| 65648 | Car Crash Detect | Samsung | Resolved (event-driven, awaiting trigger) |
+| 65651 | Back Tap | Samsung | Resolved (event-driven, awaiting trigger) |
+| 65655 | Elevator Detector | Samsung | Resolved (event-driven, awaiting trigger) |
+
+Note: these are event-driven wakeup sensors. They resolve via the NDK API but only produce data when their physical trigger occurs (phone dropped, back tapped, elevator entered, etc.). Availability varies by device manufacturer and model. Non-Samsung devices will have different vendor-specific sensors or none.
 
 ---
 

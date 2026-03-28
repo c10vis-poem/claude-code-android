@@ -11,12 +11,13 @@
 #   bash install.sh
 #
 # What this script does:
-#   1. Checks you're running in Termux
-#   2. Installs required packages (nodejs, git, curl, proot, ripgrep)
+#   1. Checks you're running in Termux (not inside proot)
+#   2. Checks architecture is aarch64
 #   3. Sets TMPDIR for npm
-#   4. Installs Claude Code via npm
-#   5. Creates the arm64-android ripgrep symlink
-#   6. Adds a launch alias to ~/.bashrc
+#   4. Updates package index and installs packages (nodejs, git, curl, proot, ripgrep, termux-api)
+#   5. Installs Claude Code via npm
+#   6. Creates the arm64-android ripgrep symlink
+#   7. Configures shell (TMPDIR, CLAUDE_CODE_USE_NATIVE_FILE_SEARCH, launch alias)
 #
 # What this script does NOT do:
 #   - Require root (there is none)
@@ -51,6 +52,13 @@ fi
 
 ok "Running in Termux"
 
+# --- Architecture check ---
+ARCH=$(uname -m)
+if [ "$ARCH" != "aarch64" ]; then
+  fail "Unsupported architecture: $ARCH. Claude Code requires aarch64 (64-bit ARM)."
+fi
+ok "Architecture: $ARCH"
+
 # --- Step 1: Set TMPDIR ---
 
 export TMPDIR="$PREFIX/tmp"
@@ -58,8 +66,11 @@ ok "TMPDIR set to $TMPDIR"
 
 # --- Step 2: Install packages ---
 
-info "Installing packages (nodejs, git, curl, proot, ripgrep)..."
-pkg install nodejs git curl proot ripgrep -y || fail "Package installation failed. Check your internet connection."
+info "Updating package index..."
+pkg update -y || fail "pkg update failed. Check your internet connection."
+
+info "Installing packages (nodejs, git, curl, proot, ripgrep, termux-api)..."
+pkg install nodejs git curl proot ripgrep termux-api -y || fail "Package installation failed. Check your internet connection."
 
 # Verify Node.js version
 NODE_VER=$(node -v 2>/dev/null || echo "none")
@@ -104,6 +115,17 @@ if ! grep -q 'TMPDIR=\$PREFIX/tmp' ~/.bashrc 2>/dev/null; then
   ok "TMPDIR added to .bashrc"
 else
   ok "TMPDIR already in .bashrc"
+fi
+
+# Add CLAUDE_CODE_USE_NATIVE_FILE_SEARCH if not already in .bashrc
+NATIVE_SEARCH_LINE="export CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1"
+if ! grep -q 'CLAUDE_CODE_USE_NATIVE_FILE_SEARCH' ~/.bashrc 2>/dev/null; then
+  echo "" >> ~/.bashrc
+  echo "# Use system ripgrep instead of bundled (survives Claude Code updates)" >> ~/.bashrc
+  echo "$NATIVE_SEARCH_LINE" >> ~/.bashrc
+  ok "Added CLAUDE_CODE_USE_NATIVE_FILE_SEARCH to ~/.bashrc"
+else
+  ok "CLAUDE_CODE_USE_NATIVE_FILE_SEARCH already in ~/.bashrc"
 fi
 
 # Add alias if not already in .bashrc

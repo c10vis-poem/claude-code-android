@@ -15,34 +15,28 @@
 <p align="center">
   <img src="assets/screenshot-s26ultra.jpg" alt="Samsung Galaxy S26 Ultra running Claude Code" width="260">
   &nbsp;&nbsp;&nbsp;
-  <img src="assets/screenshot-pixel10pro.jpg" alt="Google Pixel 10 Pro running Claude Code" width="260">
+  <img src="assets/screenshot-s23plus.jpg" alt="Samsung Galaxy S23+ running Claude Code" width="260">
+  &nbsp;&nbsp;&nbsp;
+  <img src="assets/screenshot-pixel10pro.png" alt="Google Pixel 10 Pro running Claude Code" width="260">
 </p>
 <p align="center">
-  <em>S26 Ultra (Android 16) · Pixel 10 Pro (Android 16) · <a href="assets/">more screenshots</a></em>
+  <em>S26 Ultra (Android 16) · S23+ (Android 15) · Pixel 10 Pro (Android 16) · <a href="assets/">more screenshots</a></em>
 </p>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/Android-14%2B-brightgreen.svg" alt="Android 14+">
-  <img src="https://img.shields.io/badge/Version-2.3.0-blue.svg" alt="Version 2.3.0">
+  <img src="https://img.shields.io/badge/Version-2.4.0-blue.svg" alt="Version 2.4.0">
   <img src="https://img.shields.io/badge/Last%20Verified-March%202026-lightgrey.svg" alt="Last Verified March 2026">
 </p>
 
 <p align="center">
-  <a href="docs/install.md">Install Guide</a> · <a href="docs/troubleshooting.md">Troubleshooting</a> · <a href="docs/adb-wireless.md">ADB Wireless</a> · <a href="docs/constitution-template.md">CLAUDE.md Template</a> · <a href="docs/agents.md">Meet the Crew</a> · <a href="docs/story.md">Our Story</a>
+  <a href="docs/install.md">Install Guide</a> · <a href="docs/troubleshooting.md">Troubleshooting</a> · <a href="docs/adb-wireless.md">ADB Wireless</a> · <a href="docs/constitution-template.md">CLAUDE.md Template</a> · <a href="docs/agents.md">Meet the Crew</a>
 </p>
 
----
+> **From the developer:** This guide looks long because we document every edge case we hit. The actual install is about 5 commands. If you just want to get started, jump straight to [Path B Quick Start](#path-b----recommended-full-linux-environment) and come back here when something breaks.
 
-## Security Warning
-
-> **Read this before enabling wireless debugging.**
->
-> ADB wireless debugging opens a network-accessible port on your device. Any device on the same WiFi network can attempt to pair. ADB requires a pairing code for every new connection, but the port is still exposed.
->
-> **Best practice:** Enable wireless debugging only when you need it. Disable it when you're done. On public WiFi, it must be off. The connection from Termux is localhost-only (`127.0.0.1`), so the ADB server itself does not listen on external interfaces from the Termux side — but the Android wireless debugging daemon does.
->
-> This is the same risk every Android developer accepts when using wireless debugging. It is documented here because many users of this guide may be encountering ADB for the first time. See [ADB-WIRELESS.md](docs/adb-wireless.md) for full security details.
+> Using ADB wireless debugging? Read the [security considerations](#adb-wireless-self-connect) first.
 
 ---
 
@@ -68,15 +62,12 @@ Once Termux is open:
 pkg upgrade -y
 pkg install proot-distro -y          # Required for Path B (recommended)
 pkg install android-tools -y         # Required for ADB self-connect
+pkg install termux-api -y            # Required for device API access
 ```
 
-If you plan to use Termux API features (battery status, TTS, camera, notifications, SMS, GPS):
+Then install the **Termux:API** companion app from F-Droid (search "Termux:API"). Both the `termux-api` package and the companion app are required -- the package provides the commands (`termux-battery-status`, `termux-tts-speak`, `termux-notification`, etc.) and the companion app provides the Android permissions bridge. Without both, API calls fail silently.
 
-```bash
-pkg install termux-api -y
-```
-
-Then install the **Termux:API** companion app from F-Droid (search "Termux:API"). The `termux-api` package provides the commands; the companion app provides the Android permissions bridge.
+> **Source matching rule:** Termux and Termux:API must come from the same source (both F-Droid or both GitHub releases). Mixing sources causes silent permission failures that are difficult to diagnose.
 
 > **Already have Termux from F-Droid with packages installed?** Skip to Quick Start.
 
@@ -86,7 +77,9 @@ Then install the **Termux:API** companion app from F-Droid (search "Termux:API")
 
 There are two ways to install Claude Code on Android. Both require a [Claude Pro or Max subscription](https://www.anthropic.com/pricing).
 
-### Path B — Recommended (Full Linux Environment)
+**Most users should start here.**
+
+### Path B -- Recommended (Full Linux Environment)
 
 The cleanest setup. Installs Ubuntu inside Termux using proot-distro — think of it as a lightweight Linux environment running inside your phone's terminal. Claude Code runs in a standard Linux environment with no workarounds needed.
 
@@ -134,7 +127,7 @@ source ~/.bashrc
 
 | | Path A (Native Termux) | Path B (Ubuntu in Termux) |
 |---|---|---|
-| Setup time | ~2 minutes | ~10-15 minutes |
+| Setup time | ~2 min (experienced) | ~10-15 min (experienced) |
 | Disk usage | Minimal | ~2 GB |
 | Install method | npm | Official Anthropic installer |
 | Node.js required | Yes | No |
@@ -153,29 +146,19 @@ Once you've installed Claude Code and authenticated:
 2. Launch: `claude`
 3. Try: "What files are in this directory?"
 4. Type `/help` to see available commands
-5. If you install the skills below, `/doctor` verifies your setup
+5. If you install the skills below, the `/doctor` skill (not the built-in `claude doctor`, which doesn't work in Termux) verifies your setup
 
 ---
 
 ## Why This Is Hard
 
-Running Claude Code on Android means solving problems that don't exist on desktop.
+Running Claude Code on Android means solving problems that don't exist on desktop. Quick summary:
 
-### /tmp doesn't exist
-
-Claude Code expects a writable `/tmp` for sockets and internal communication. Android doesn't provide one. Without it, Claude Code fails silently — no error message, no crash log, just nothing. Path A fixes this with `proot -b $PREFIX/tmp:/tmp`. Path B avoids it entirely because Ubuntu has native `/tmp`. There's also a `CLAUDE_CODE_TMPDIR` environment variable — set it to any writable folder in your shell profile and Claude Code will use that instead of `/tmp`.
-
-### Node.js v24 may hang
-
-Node.js v24 can hang on startup under native Termux on 64-bit ARM (aarch64) devices. This is specific to v24, not Termux generally. v25 resolves it. Upgrading to v25+ or using Path B (which uses the native binary installer instead of Node.js) avoids the issue. Inside proot-distro Ubuntu, Node v24+ works fine.
-
-### Missing ripgrep binary
-
-Claude Code bundles ripgrep for its search tools but ships no ARM64 Android build. Path A needs a symlink workaround (the `/fix-ripgrep` skill handles this). Path B doesn't need it — Ubuntu's ripgrep is available through the PATH.
-
-### Platform detection mismatch
-
-Inside proot-distro Ubuntu, Claude Code identifies itself as running on Linux. In native Termux, it identifies as running on Android. Many packages and tools behave differently depending on which platform they detect. Tool failures in native Termux sometimes resolve themselves inside the Ubuntu guest for this reason alone.
+- **/tmp does not exist.** Claude Code needs `/tmp` for sockets. Android has none. Path A uses `proot -b $PREFIX/tmp:/tmp`; Path B has `/tmp` natively. You can also set `CLAUDE_CODE_TMPDIR` to any writable directory.
+- **Node.js v24 may hang.** Specific to v24 on native Termux (aarch64). v25+ resolves it. Path B avoids Node entirely.
+- **Missing ripgrep binary.** Claude Code ships no ARM64 Android build. Path A needs a symlink workaround (`/fix-ripgrep` skill). Path B uses Ubuntu's ripgrep.
+- **Platform detection mismatch.** Native Termux reports `android`; proot-distro Ubuntu reports `linux`. Some tools behave differently or fail depending on which they detect.
+- **File paths vary by manufacturer.** External storage paths, sdcard symlinks, and `/proc` layouts differ across Samsung, Pixel, OnePlus, and others. Test file operations on your specific device rather than assuming paths from documentation.
 
 ---
 
@@ -186,7 +169,7 @@ Two of three MCP transport types work on Android:
 
 - **Remote HTTP servers** (e.g., Cloudflare) -- connect over HTTPS, zero local install. Best option for mobile.
 - **Local stdio servers** (e.g., `npx -y @modelcontextprotocol/server-memory`) -- spawns child processes via npx. Tested with Node.js v25.8.1.
-- **OAuth-based MCP servers** -- expected to fail. Termux has no browser redirect mechanism (`xdg-open` does not exist). Use token-based auth instead.
+- **OAuth-based MCP servers** -- expected to fail. Termux provides `xdg-open` (symlink to `termux-open`) so browsers can launch, but OAuth redirect callbacks to `localhost` still fail because Termux has no loopback HTTP listener. Use token-based auth instead.
 
 To add a remote MCP server:
 ```
@@ -213,11 +196,13 @@ By connecting your phone to itself over ADB wireless debugging, Claude Code gain
 | Calendar events | Blocked | `adb shell content query` |
 | Installed apps list | Blocked | `adb shell pm list packages` |
 | Touch and gesture injection | Blocked | `adb shell input tap/swipe/text` |
-| Process inspection | Blocked | `adb shell ps -A` / `dumpsys` |
+| Process inspection | Termux processes only | `adb shell ps -A` (all processes) / `dumpsys` |
 | Launch/stop apps | Partial | `adb shell am start/force-stop` |
 | Device properties | Blocked | `adb shell getprop` |
 
 These work alongside Termux API features (camera, TTS, clipboard, GPS, SMS, notifications, sensors, vibration) which don't need ADB at all.
+
+> **Security warning:** ADB wireless debugging opens a network-accessible port on your device. Any device on the same WiFi network can attempt to pair. ADB requires a pairing code for every new connection, but the port is still exposed. **Enable wireless debugging only when you need it. Disable it when you're done. On public WiFi, it must be off.** The connection from Termux is localhost-only (`127.0.0.1`), so the ADB server itself does not listen on external interfaces from the Termux side, but the Android wireless debugging daemon does. This is the same risk every Android developer accepts when using wireless debugging. See [ADB-WIRELESS.md](docs/adb-wireless.md) for full security details.
 
 ### Quick Setup
 
@@ -255,12 +240,13 @@ If you have a desktop or laptop running Claude Code, [Remote Control](https://do
 | Document | What It Covers |
 |----------|---------------|
 | **[INSTALL.md](docs/install.md)** | Full step-by-step setup for both paths, verification, maintenance |
-| **[TROUBLESHOOTING.md](docs/troubleshooting.md)** | 17+ common failures with symptoms, causes, and fixes |
+| **[TROUBLESHOOTING.md](docs/troubleshooting.md)** | 20+ common failures with symptoms, causes, and fixes |
 | **[ADB-WIRELESS.md](docs/adb-wireless.md)** | ADB self-connect setup, security model, capability table |
 | **[CONSTITUTION-TEMPLATE.md](docs/constitution-template.md)** | CLAUDE.md template with Android/Termux constraints baked in |
-| **[SENSORS.md](docs/sensors.md)** | NDK sensor access from Termux -- 9 of 11 standard types confirmed working |
+| **[SENSORS.md](docs/sensors.md)** | NDK sensor access from Termux -- 9 of 11 standard types confirmed, plus Samsung vendor sensors |
 | **[SSRF-GUARD.md](docs/ssrf-guard.md)** | WebFetch safety hook blocking private/reserved IP ranges |
 | **[AGENT-PERMISSIONS.md](docs/agent-permissions.md)** | Permission separation guide -- no agent gets both web and write access |
+| **[FINGERPRINT-GATE.md](docs/fingerprint-gate.md)** | Biometric approval gate for sensitive operations using `termux-fingerprint` |
 
 ### Tools & Config
 
@@ -274,7 +260,7 @@ If you have a desktop or laptop running Claude Code, [Remote Control](https://do
 
 | Document | What It Covers |
 |----------|---------------|
-| **[CHANGELOG.md](CHANGELOG.md)** | Version history from 0.1.0 to 2.3.0 |
+| **[CHANGELOG.md](CHANGELOG.md)** | Version history from 0.1.0 to 2.4.0 |
 | **[CONTRIBUTING.md](.github/CONTRIBUTING.md)** | How to contribute, report bugs, submit device reports |
 | **[AGENTS.md](docs/agents.md)** | The 6 AI agents that build and maintain this repo |
 | **[STORY.md](docs/story.md)** | How this project came together |
@@ -315,7 +301,7 @@ Running on a phone means real limits. Path B (Ubuntu) resolves some of them.
 | Constraint | Impact | Workaround |
 |-----------|--------|-----------|
 | No root | No `sudo`, no ports below 1024 | Use ports 1024+, skip anything needing root |
-| No systemd | No system services in native Termux. Inside Ubuntu, `cron` and some daemons work. | Use `crond` or shell scripts for scheduling |
+| No systemd | No system services manager. `crond` works in both native Termux and Ubuntu for scheduled tasks. Termux:Boot runs scripts at device startup. Shell scripts and `termux-job-scheduler` provide additional automation. | Use `crond`, Termux:Boot, or shell scripts |
 | ~512MB Node.js heap | Large datasets must stream | Process incrementally, don't buffer |
 | File descriptor limits | Heavy I/O can hit limits on some devices | Limit concurrent processes. Check with `ulimit -n` |
 | Phantom process killer | Android may kill excess background processes | Disable in Developer Options if available, or limit background processes |
@@ -334,19 +320,11 @@ This repo includes [Claude Code skills](https://docs.anthropic.com/en/docs/claud
 
 | Skill | What It Does |
 |-------|-------------|
-| `/doctor` | Diagnose your full Termux + Claude Code setup in one pass |
+| `/doctor` | Diagnose your full Termux + Claude Code setup in one pass (not `claude doctor`, which doesn't work in Termux) |
 | `/fix-ripgrep` | Fix broken search tools (missing ARM64 Android binary) |
 | `termux-safe` | Auto-loaded rules preventing `sudo`, wrong paths, silent failures |
 
-### Workflow (works anywhere)
-
-| Skill | What It Does |
-|-------|-------------|
-| `/audience-first` | Define your audience before publishing |
-| `/scope-framing` | Frame research before starting — what decision does this serve? |
-| `/config-validator` | Audit `.claude/` directory for consistency |
-| `/minimum-viable` | Justify tool choices — can a shell script do this? |
-| `/search-optimized-writing` | Write docs that are findable — error messages, searchable headings |
+See [all skills](docs/skills.md) including workflow tools that work in any environment.
 
 ### Installing Skills
 
@@ -371,19 +349,7 @@ Claude Code reads a CLAUDE.md file from your project root for persistent rules. 
 
 ## The Agents
 
-This repo is built and maintained by 6 AI agents — Claude Code instances with defined roles, coordinated by a lead instance. They run up to 6 concurrently on a single phone.
-
-| Agent | Role |
-|-------|------|
-| **Pilgrim** | Lead instance. Routes tasks, reviews work, enforces rules. |
-| **Architect** | Planning and design. Read-only — proposes, never executes. |
-| **Librarian** | External research and verification. Finds facts, challenges assumptions. |
-| **Smith** | Code, testing, debugging. Builds it, then tries to break it. |
-| **Chronicler** | Documentation. Turns decisions into readable records. |
-| **Curator** | Repo hygiene. Config, links, file organization, missing standards. |
-| **Herald** | Audience-facing content. Community posts, announcements, descriptions. |
-
-See [AGENTS.md](docs/agents.md) for the full breakdown.
+This repo is built and maintained by 6 specialized AI agents running concurrently on a single phone. See [Meet the Crew](docs/agents.md) for the full roster and how they work.
 
 ---
 
@@ -409,8 +375,20 @@ MIT. See [LICENSE](LICENSE).
 
 ---
 
+**A note from the developer:**
+
+Thank you to anybody reading this. I hope you enjoy my repo and have success utilizing it. I am exploring the intricacies of development, GitHub (and git in general), learning and growing. This is a passion project of mine and I update it regularly as I plan to further my usage of Claude Code on Android and in the process contribute back to Termux, which is what made all of this possible. I am a 100% part-time indie doing this because I enjoy it.
+
+If you find something broken, have a question, or want to contribute, [open an issue](https://github.com/ferrumclaudepilgrim/claude-code-android/issues) or submit a PR. Every bit helps.
+
+Built on [Termux](https://github.com/termux).
+
+[@ferrumclaudepilgrim](https://github.com/ferrumclaudepilgrim)
+
+---
+
 <p align="center">
   <em>Built on a phone, in Termux, on ARM64, on Android.</em><br>
   <em>By a human and an AI, working together.</em><br>
-  <em>v2.3.0</em>
+  <em>v2.4.0</em>
 </p>

@@ -20,7 +20,7 @@ Use the [device report template](https://github.com/ferrumclaudepilgrim/claude-c
 1. Fork the repo
 2. Create a branch (`fix/description`)
 3. Make your changes
-4. Open a PR with your device info (model, Android version, Node version)
+4. Open a PR with your device info (model, Android version, Node version). The PR template will guide you through the required information.
 
 Keep PRs focused on a single change. Include what you tested and on what device.
 
@@ -32,3 +32,15 @@ Skills live in `.claude/skills/`. Each skill has a `SKILL.md` with YAML frontmat
 2. Add a `SKILL.md` following the [Claude Code skills format](https://docs.anthropic.com/en/docs/claude-code/skills). Note: Claude Code extends the base Agent Skills spec with fields like `user-invocable`, `disable-model-invocation`, and `argument-hint`
 3. Test it on a real Android/Termux device
 4. Open a PR with what it does and what device you tested on
+
+## Testing
+
+Before submitting a PR that changes documentation claims, run the verification suite:
+
+```bash
+bash tests/verify-claims.sh
+```
+
+This tests documented claims against your actual device. Submit the output file (saved to `tests/results/`) alongside your PR so reviewers can see your device's results.
+
+See `.claude/skills/doctor/` for an example of a well-structured skill with YAML frontmatter.

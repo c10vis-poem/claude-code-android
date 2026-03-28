@@ -1,12 +1,14 @@
 ---
 name: doctor
-description: Diagnose your Claude Code on Android/Termux setup. Checks proot, TMPDIR, Node version, ripgrep, phantom process killer, and fd limits.
+description: Diagnose your Android/Termux environment (not the built-in `claude doctor`). Checks proot, TMPDIR, Node version, ripgrep, Termux:API, phantom process killer, and fd limits.
 user-invocable: true
 argument-hint: (no arguments needed)
 allowed-tools: Bash, Grep
 ---
 
-# Claude Code Android — Environment Diagnostic
+# Claude Code Android -- Environment Diagnostic
+
+> **Not the same as `claude doctor`.** The built-in `claude doctor` checks Claude Code's own health. This skill checks the Android/Termux environment: proot, TMPDIR, Node version, ripgrep, Termux:API, process limits, and storage.
 
 Run every check below. Report results as a table: component, status (PASS/FAIL/WARN), detail.
 
@@ -84,6 +86,12 @@ WARN if less than 500MB free.
 grep -q 'claude-android\|proot.*claude' ~/.bashrc 2>/dev/null && echo "CONFIGURED" || echo "NOT SET"
 ```
 PASS if alias exists. WARN if not (user has to type proot command every time).
+
+**13. Termux:API installed:**
+```bash
+command -v termux-battery-status >/dev/null 2>&1 && echo "INSTALLED" || echo "MISSING"
+```
+PASS if installed. WARN if missing (Termux API features like battery, camera, TTS, clipboard will not work).
 
 ## Output Format
 

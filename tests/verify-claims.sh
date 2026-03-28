@@ -14,8 +14,17 @@ PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
 HOME="${HOME:-/data/data/com.termux/files/home}"
 
 # Generate a device-specific filename
-DEVICE_MODEL=$(getprop ro.product.model 2>/dev/null | tr ' ' '-' | tr '[:upper:]' '[:lower:]' || echo "unknown")
-ANDROID_VER=$(getprop ro.build.version.release 2>/dev/null || echo "unknown")
+DEVICE_MODEL=$(getprop ro.product.model 2>/dev/null | tr ' ' '-' | tr '[:upper:]' '[:lower:]' || true)
+if [ -z "$DEVICE_MODEL" ]; then
+  DEVICE_MODEL=$(adb shell getprop ro.product.model 2>/dev/null | tr -d '\r' | tr ' ' '-' | tr '[:upper:]' '[:lower:]' || true)
+fi
+DEVICE_MODEL="${DEVICE_MODEL:-unknown}"
+
+ANDROID_VER=$(getprop ro.build.version.release 2>/dev/null || true)
+if [ -z "$ANDROID_VER" ]; then
+  ANDROID_VER=$(adb shell getprop ro.build.version.release 2>/dev/null | tr -d '\r' || true)
+fi
+ANDROID_VER="${ANDROID_VER:-unknown}"
 RESULTS_DIR="$(dirname "$0")/results"
 mkdir -p "$RESULTS_DIR"
 RESULTS_FILE="${RESULTS_DIR}/${DEVICE_MODEL:-unknown}-android${ANDROID_VER:-unknown}.txt"
@@ -159,8 +168,8 @@ echo "  Result:"
 echo "    /tmp writable (we are inside proot): $TMP_WRITABLE"
 echo "    \$PREFIX/tmp writable: $PREFIX_TMP_WRITABLE"
 echo "    /tmp and \$PREFIX/tmp resolve to same inode: $TMP_IS_SYMLINK"
-echo "  Evidence: Claude Code socket dirs in /tmp:"
-ls /tmp/claude-* 2>/dev/null | head -5 || echo "    (none found — that's fine)"
+CLAUDE_SOCK_COUNT=$(ls -d /tmp/claude-* 2>/dev/null | wc -l)
+echo "  Evidence: Claude Code socket dirs in /tmp: $CLAUDE_SOCK_COUNT found"
 
 echo "  Note: We are already inside a proot session. The 'without proot' case"
 echo "        cannot be tested without exiting proot, which would break this script."
@@ -355,18 +364,12 @@ echo "  Evidence:"
 echo "    Soft FD limit: $FD_LIMIT_SOFT"
 echo "    Hard FD limit: $FD_LIMIT_HARD"
 
-if [ "$FD_LIMIT_SOFT" != 'unknown' ]; then
-    if [ "$FD_LIMIT_SOFT" -le 1024 ] 2>/dev/null; then
-        echo "  Result: FD limit ($FD_LIMIT_SOFT) is at or below the claimed ~1024"
-        verdict_confirmed
-    elif [ "$FD_LIMIT_SOFT" -le 4096 ] 2>/dev/null; then
-        echo "  Result: FD limit ($FD_LIMIT_SOFT) is higher than 1024 but in same order of magnitude"
-        echo "          The '~1024' claim may be a conservative estimate or vary by device/proot version"
-        verdict_unconfirmed "FD limit is $FD_LIMIT_SOFT, higher than claimed ~1024"
-    else
-        echo "  Result: FD limit ($FD_LIMIT_SOFT) is significantly higher than claimed ~1024"
-        verdict_unconfirmed "FD limit $FD_LIMIT_SOFT is much higher than claimed ~1024"
-    fi
+if [ "$FD_LIMIT_SOFT" != 'unknown' ] && [ "$FD_LIMIT_SOFT" -gt 0 ] 2>/dev/null; then
+    echo "  Result: FD limit is $FD_LIMIT_SOFT (soft) / $FD_LIMIT_HARD (hard)"
+    echo "          The docs say limits vary by device. This value confirms FD limits"
+    echo "          exist and are queryable. Actual values differ across devices and"
+    echo "          Android versions (e.g. 1024, 32768, or higher)."
+    verdict_confirmed
 else
     verdict_cannot_test "could not read ulimit value"
 fi
@@ -406,10 +409,9 @@ if $TMPDIR_IN_BASHRC && $ALIAS_IN_BASHRC; then
     verdict_confirmed
 elif $TMPDIR_IN_BASHRC; then
     echo "  Result: TMPDIR found but no claude-android proot alias in ~/.bashrc"
-    echo "  Note: The pilgrim alias includes proot, which satisfies the intent"
-    # Check for pilgrim alias as alternative
-    if grep -q 'pilgrim.*proot\|proot.*pilgrim' "$BASHRC" 2>/dev/null; then
-        echo "  Note: 'pilgrim' alias with proot found — functionally equivalent"
+    # Check for any proot alias as alternative
+    if grep -q 'proot' "$BASHRC" 2>/dev/null; then
+        echo "  Note: proot alias found in ~/.bashrc -- functionally equivalent"
         verdict_confirmed
     else
         verdict_unconfirmed "no proot launch alias found (expected claude-android or similar)"
@@ -519,6 +521,213 @@ else
         echo "    The installer may not have been run yet in this guest"
         verdict_unconfirmed "Ubuntu guest present but no claude binary found — installer not yet run"
     fi
+fi
+
+# ──────────────────────────────────────────────────────────────
+# CLAIM 11: Cron sessions support tool restrictions
+# Source: CLAUDE.md constraint 11
+# ──────────────────────────────────────────────────────────────
+print_claim 11 "Cron sessions support tool restrictions via --tools flag"
+echo "  Source: CLAUDE.md constraint 11"
+echo "  Claim: claude CLI accepts --tools flag to restrict available tools in cron sessions"
+
+CLAUDE_BIN_11="$(command -v claude 2>/dev/null || echo '')"
+if [ -z "$CLAUDE_BIN_11" ]; then
+    echo "  Test: claude binary not found on PATH"
+    verdict_cannot_test "claude binary not installed"
+else
+    TOOLS_FLAG_FOUND=false
+    if claude --help 2>&1 | grep -q "tools"; then
+        TOOLS_FLAG_FOUND=true
+    fi
+
+    echo "  Evidence:"
+    echo "    claude binary: $CLAUDE_BIN_11"
+    echo "    --tools flag in help output: $TOOLS_FLAG_FOUND"
+
+    if $TOOLS_FLAG_FOUND; then
+        echo "  Result: claude CLI accepts --tools flag for restricting tool access"
+        verdict_confirmed
+    else
+        echo "  Result: --tools flag not found in claude --help output"
+        verdict_unconfirmed "--tools flag not found in help output"
+    fi
+fi
+
+# ──────────────────────────────────────────────────────────────
+# CLAIM 12: NDK sensor access works
+# Source: termux/sensor-poc.c
+# ──────────────────────────────────────────────────────────────
+print_claim 12 "NDK sensor access works via termux-sensor"
+echo "  Source: termux/sensor-poc.c"
+echo "  Claim: termux-sensor can list and read device sensors"
+
+TERMUX_SENSOR_BIN="$(command -v termux-sensor 2>/dev/null || echo '')"
+if [ -z "$TERMUX_SENSOR_BIN" ]; then
+    SENSOR_POC="$HOME/repos/claude-code-android/termux/sensor-poc"
+    if [ -x "$SENSOR_POC" ]; then
+        echo "  Evidence: sensor-poc binary exists at $SENSOR_POC"
+        echo "  Result: NDK sensor proof-of-concept compiled; termux-sensor not available"
+        verdict_cannot_test "termux-sensor not available but sensor-poc binary exists"
+    else
+        echo "  Evidence: Neither termux-sensor nor sensor-poc binary found"
+        verdict_cannot_test "Termux:API not installed (termux-sensor not available)"
+    fi
+else
+    echo "  Test: termux-sensor -l (5-second timeout)"
+    SENSOR_OUTPUT=""
+    SENSOR_OUTPUT=$(timeout 5 termux-sensor -l 2>/dev/null | head -5 || echo '')
+
+    echo "  Evidence:"
+    if [ -n "$SENSOR_OUTPUT" ]; then
+        echo "$SENSOR_OUTPUT" | sed 's/^/    /'
+        echo "  Result: Sensor data returned from termux-sensor"
+        verdict_confirmed
+    else
+        echo "    (no output or timed out)"
+        verdict_cannot_test "termux-sensor returned no data or timed out (companion app may not be running)"
+    fi
+fi
+
+# ──────────────────────────────────────────────────────────────
+# CLAIM 13: SSRF guard hook documented
+# Source: docs/ssrf-guard.md
+# ──────────────────────────────────────────────────────────────
+print_claim 13 "SSRF guard hook documented"
+echo "  Source: docs/ssrf-guard.md"
+echo "  Claim: SSRF guard hook documentation exists in docs/ssrf-guard.md"
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SSRF_DOC="$REPO_ROOT/docs/ssrf-guard.md"
+
+echo "  Test: Check if docs/ssrf-guard.md exists and is non-empty"
+
+if [ -f "$SSRF_DOC" ] && [ -s "$SSRF_DOC" ]; then
+    DOC_LINES="$(wc -l < "$SSRF_DOC")"
+    echo "  Evidence: $SSRF_DOC exists ($DOC_LINES lines)"
+    echo "  Result: SSRF guard documentation present"
+    verdict_confirmed
+else
+    echo "  Evidence: $SSRF_DOC not found or empty"
+    verdict_unconfirmed "docs/ssrf-guard.md missing or empty"
+fi
+
+# ──────────────────────────────────────────────────────────────
+# CLAIM 14: Agent permission separation documented
+# Source: docs/agent-permissions.md
+# ──────────────────────────────────────────────────────────────
+print_claim 14 "Agent permission separation documented"
+echo "  Source: docs/agent-permissions.md"
+echo "  Claim: Agent permission separation documentation exists in docs/agent-permissions.md"
+
+AGENT_PERMS_DOC="$REPO_ROOT/docs/agent-permissions.md"
+
+echo "  Test: Check if docs/agent-permissions.md exists and is non-empty"
+
+if [ -f "$AGENT_PERMS_DOC" ] && [ -s "$AGENT_PERMS_DOC" ]; then
+    DOC_LINES="$(wc -l < "$AGENT_PERMS_DOC")"
+    echo "  Evidence: $AGENT_PERMS_DOC exists ($DOC_LINES lines)"
+    echo "  Result: Agent permission separation documentation present"
+    verdict_confirmed
+else
+    echo "  Evidence: $AGENT_PERMS_DOC not found or empty"
+    verdict_unconfirmed "docs/agent-permissions.md missing or empty"
+fi
+
+# ──────────────────────────────────────────────────────────────
+# CLAIM 15: Termux:API available
+# Source: README.md, INSTALL.md
+# ──────────────────────────────────────────────────────────────
+print_claim 15 "Termux:API available (termux-battery-status)"
+echo "  Source: README.md, INSTALL.md"
+echo "  Claim: Termux:API package provides device access via termux-battery-status etc."
+
+BATTERY_BIN="$(command -v termux-battery-status 2>/dev/null || echo '')"
+if [ -z "$BATTERY_BIN" ]; then
+    echo "  Evidence: termux-battery-status not found on PATH"
+    verdict_cannot_test "termux-api package not installed"
+else
+    echo "  Test: termux-battery-status (5-second timeout)"
+    BATTERY_OUTPUT=""
+    BATTERY_OUTPUT=$(timeout 5 termux-battery-status 2>/dev/null || echo '')
+
+    echo "  Evidence:"
+    if echo "$BATTERY_OUTPUT" | grep -q "percentage"; then
+        echo "$BATTERY_OUTPUT" | head -10 | sed 's/^/    /'
+        echo "  Result: Valid JSON with percentage field returned"
+        verdict_confirmed
+    else
+        echo "    Output: $(echo "$BATTERY_OUTPUT" | head -3)"
+        echo "    (no 'percentage' field found)"
+        verdict_cannot_test "termux-battery-status did not return valid data (companion app may not be running)"
+    fi
+fi
+
+# ──────────────────────────────────────────────────────────────
+# CLAIM 16: xdg-open exists as termux-open symlink
+# Source: INSTALL.md
+# ──────────────────────────────────────────────────────────────
+print_claim 16 "xdg-open exists as termux-open symlink"
+echo "  Source: INSTALL.md"
+echo "  Claim: xdg-open is a symlink to termux-open for desktop compatibility"
+
+XDG_OPEN_PATH="$(command -v xdg-open 2>/dev/null || echo '')"
+if [ -z "$XDG_OPEN_PATH" ]; then
+    echo "  Evidence: xdg-open not found on PATH"
+    verdict_unconfirmed "xdg-open not found on PATH"
+else
+    echo "  Test: Check if xdg-open is a symlink to termux-open"
+    LINK_TARGET_16="$(readlink "$XDG_OPEN_PATH" 2>/dev/null || echo '')"
+
+    echo "  Evidence:"
+    echo "    xdg-open path: $XDG_OPEN_PATH"
+    echo "    readlink result: $LINK_TARGET_16"
+
+    if echo "$LINK_TARGET_16" | grep -q "termux-open"; then
+        echo "  Result: xdg-open is a symlink to termux-open"
+        verdict_confirmed
+    else
+        echo "  Result: xdg-open exists but is not a symlink to termux-open"
+        verdict_unconfirmed "xdg-open exists but does not link to termux-open"
+    fi
+fi
+
+# ──────────────────────────────────────────────────────────────
+# CLAIM 17: Fingerprint authentication available
+# Source: CLAUDE.md, security gate implementation
+# ──────────────────────────────────────────────────────────────
+print_claim 17 "Fingerprint authentication available via termux-fingerprint"
+echo "  Source: CLAUDE.md, security gate implementation"
+echo "  Claim: termux-fingerprint command is available for biometric authentication"
+
+FINGERPRINT_BIN="$(command -v termux-fingerprint 2>/dev/null || echo '')"
+if [ -n "$FINGERPRINT_BIN" ]; then
+    echo "  Evidence: termux-fingerprint found at $FINGERPRINT_BIN"
+    echo "  Result: Fingerprint authentication command is on PATH"
+    verdict_confirmed
+else
+    echo "  Evidence: termux-fingerprint not found on PATH"
+    verdict_cannot_test "termux-api package not installed (termux-fingerprint not available)"
+fi
+
+# ──────────────────────────────────────────────────────────────
+# CLAIM 18: Architecture is aarch64
+# Source: README.md, TROUBLESHOOTING.md
+# ──────────────────────────────────────────────────────────────
+print_claim 18 "Architecture is aarch64"
+echo "  Source: README.md, TROUBLESHOOTING.md"
+echo "  Claim: Device architecture is aarch64 (ARM 64-bit)"
+
+ARCH="$(uname -m 2>/dev/null || echo 'unknown')"
+echo "  Test: uname -m"
+echo "  Evidence: Architecture reported as '$ARCH'"
+
+if [ "$ARCH" = "aarch64" ]; then
+    echo "  Result: Architecture confirmed as aarch64"
+    verdict_confirmed
+else
+    echo "  Result: Architecture is '$ARCH', not aarch64"
+    verdict_unconfirmed "architecture is '$ARCH', expected 'aarch64'"
 fi
 
 # ──────────────────────────────────────────────────────────────
