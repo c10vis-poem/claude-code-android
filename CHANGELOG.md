@@ -1,5 +1,30 @@
 # Changelog
 
+## [2.5.0] - 2026-04-02
+
+### Added
+- **Path C -- AVF (Android Virtualization Framework)** documented as experimental third installation path. Claude Code installed and used for real work inside an AVF VM on a Pixel 10 Pro (Android 16). Full setup checklist, VM configuration, ADB hardware bridge, security defaults, and three-path comparison included. See `docs/avf-guide.md`.
+- VM configuration section documenting writable `vm_config.json` with configurable RAM (`memory_mib`), memory balloon control (`auto_memory_balloon`), and boot timeout
+- ADB wireless debugging from inside the VM documented with pairing workflow, port scanning, split-screen pairing tip, and screen-off stability commands (semi-fix)
+- ADB hardware bridge section: 42 sensors enumerable, GPS coordinates accessible, camera launchable with viewfinder capture, screenshots and screen recording, input injection (tap/swipe/text), battery state, WiFi info, plus command reference
+- Security defaults section covering default passwords, SSH config, firewall state, shared storage SSH key exposure, and hardening suggestions
+- Technical details appendix: virtual hardware inventory (15 virtio devices), kernel config findings (CONFIG_SYSVIPC disabled, BPF/FUSE/OverlayFS enabled), running services (7 AVF-specific), crosvm launch parameters
+- AVF section added to README Quick Start with inline setup commands, key capabilities, and limitations summary
+- Three-path comparison table in README (Path A / Path B / Path C) replacing the two-path table, including RAM, ADB hardware bridge, and audio columns
+- Path C column added to device compatibility table
+- Community resources section in AVF guide: 10 curated links covering memory fixes, GPU status, setup guides, bug filing, and Snapdragon alternatives
+- Navigation bar updated with AVF guide link
+
+### Changed
+- Troubleshooting "Paths We're Watching" section upgraded from "Not Recommended Yet" to "Experimental, Tested on Pixel" with verified capabilities, known issues, and security notes
+- Known issues table expanded with: `apt upgrade` hang on TUI dialogs, SysV IPC disabled, nftables non-functional, Terminal Activity recreation, VM IP rotation, GPU acceleration limited to Pixel 10
+- Version badge updated to 2.5.0
+- Last verified badge updated to April 2026
+- Device compatibility table expanded with Path C column
+
+### Community
+- AVF testing performed on a single Pixel 10 Pro. All findings framed as observations from our test device, not universal claims. Google's AVF documentation remains extremely limited -- most capabilities and limitations were discovered empirically. Screen-off stability improved with ADB hardening but remains a semi-fix. Copy-paste reliability in the Terminal app remains the largest UX friction point.
+
 ## [2.4.0] - 2026-03-28
 
 ### Added

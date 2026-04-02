@@ -26,8 +26,8 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/Android-14%2B-brightgreen.svg" alt="Android 14+">
-  <img src="https://img.shields.io/badge/Version-2.4.0-blue.svg" alt="Version 2.4.0">
-  <img src="https://img.shields.io/badge/Last%20Verified-March%202026-lightgrey.svg" alt="Last Verified March 2026">
+  <img src="https://img.shields.io/badge/Version-2.5.0-blue.svg" alt="Version 2.5.0">
+  <img src="https://img.shields.io/badge/Last%20Verified-April%202026-lightgrey.svg" alt="Last Verified April 2026">
 </p>
 
 <p align="center">
@@ -125,18 +125,41 @@ source ~/.bashrc
 
 ### Which Path Should I Use?
 
-| | Path A (Native Termux) | Path B (Ubuntu in Termux) |
-|---|---|---|
-| Setup time | ~2 min (experienced) | ~10-15 min (experienced) |
-| Disk usage | Minimal | ~2 GB |
-| Install method | npm | Official Anthropic installer |
-| Node.js required | Yes | No |
-| /tmp workaround | Required every launch | Not needed |
-| Ripgrep fix | Required, breaks on updates | Not needed |
-| Ongoing maintenance | Re-fix after each update | Just update normally |
-| Best for | Experienced users, light usage | Everyone else |
+| | Path A (Native Termux) | Path B (Ubuntu in Termux) | Path C (AVF VM) |
+|---|---|---|---|
+| Setup time | ~2 min (experienced) | ~10-15 min (experienced) | ~20 min (experienced) |
+| Disk usage | Minimal | ~2 GB | ~2 GB |
+| Install method | npm | Official Anthropic installer | Official Anthropic installer |
+| Node.js required | Yes | No | No |
+| /tmp workaround | Required every launch | Not needed | Not needed |
+| Ripgrep fix | Required, breaks on updates | Not needed | Not needed |
+| Ongoing maintenance | Re-fix after each update | Just update normally | Just update normally |
+| Device support | Any ARM64 Android 14+ | Any ARM64 Android 14+ | Pixel 6+ Android 16+ only |
+| RAM | Shared with Android | Shared with Android | Configurable (default 4 GB) |
+| Termux API access | Full | Full | None (partial via ADB bridge -- 42 sensors, GPS, camera, input) |
+| ADB hardware bridge | N/A | N/A | 42 sensors, GPS, camera, screenshots, screen recording, input injection, battery, WiFi |
+| Audio | Via Termux API | Via Termux API | Native (PulseAudio + VirtIO) |
+| Stability | Stable | Stable | Experimental |
+| Best for | Experienced users, light usage | Everyone else | Experimenters with Pixel devices |
 
 > **First timer?** Use Path B. Fewer things break.
+
+### Path C -- Experimental (AVF Linux VM)
+
+Android 16 on Pixel 6+ devices includes a built-in Linux VM via the Android Virtualization Framework (AVF). This gives you a real Linux kernel, native `/tmp`, and `process.platform === "linux"` -- no proot, no workarounds. RAM allocation is configurable via `vm_config.json`, ADB wireless debugging from inside the VM provides access to 42 phone sensors, GPS, camera, screen capture, and input injection. Headless GUI rendering is possible with native audio.
+
+```bash
+# Enable in: Settings > System > Developer Options > Linux development environment
+# Open the Terminal app, wait for Debian image download (~761 MB)
+# Inside the VM:
+curl -fsSL https://claude.ai/install.sh | bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+claude
+```
+
+**Limitations:** VM may be killed when screen turns off (ADB whitelist commands improved stability in our testing but are not a complete fix). No Termux API access (camera, TTS, GPS, SMS). Samsung/Snapdragon devices not supported. See **[AVF-GUIDE.md](docs/avf-guide.md)** for the full setup, VM configuration, ADB hardware bridge, security defaults, and three-path comparison.
+
+> **This is experimental.** Tested on a single Pixel 10 Pro. If you need stability, use Path A or B.
 
 ### Your First Session
 
@@ -247,6 +270,7 @@ If you have a desktop or laptop running Claude Code, [Remote Control](https://do
 | **[SSRF-GUARD.md](docs/ssrf-guard.md)** | WebFetch safety hook blocking private/reserved IP ranges |
 | **[AGENT-PERMISSIONS.md](docs/agent-permissions.md)** | Permission separation guide -- no agent gets both web and write access |
 | **[FINGERPRINT-GATE.md](docs/fingerprint-gate.md)** | Biometric approval gate for sensitive operations using `termux-fingerprint` |
+| **[AVF-GUIDE.md](docs/avf-guide.md)** | Android Virtualization Framework setup, VM configuration, ADB hardware bridge, security defaults, Path A/B/C comparison |
 
 ### Tools & Config
 
@@ -260,7 +284,7 @@ If you have a desktop or laptop running Claude Code, [Remote Control](https://do
 
 | Document | What It Covers |
 |----------|---------------|
-| **[CHANGELOG.md](CHANGELOG.md)** | Version history from 0.1.0 to 2.4.0 |
+| **[CHANGELOG.md](CHANGELOG.md)** | Version history from 0.1.0 to 2.5.0 |
 | **[CONTRIBUTING.md](.github/CONTRIBUTING.md)** | How to contribute, report bugs, submit device reports |
 | **[AGENTS.md](docs/agents.md)** | The 6 AI agents that build and maintain this repo |
 | **[STORY.md](docs/story.md)** | How this project came together |
@@ -269,14 +293,15 @@ If you have a desktop or laptop running Claude Code, [Remote Control](https://do
 
 ## Device Compatibility
 
-| Device | Android | Path A | Path B | ADB | Last Verified |
-|--------|---------|--------|--------|-----|---------------|
-| Samsung Galaxy S26 Ultra | 16 | Works | Works | Works | 2026-03-19 |
-| Google Pixel 10 Pro | 16 | Works | Works | Untested | 2026-03-19 |
-| Samsung Galaxy S23+ | 15 | Untested | Works | Untested | 2026-03-19 |
-| Samsung Galaxy S24/S25 | 15-16 | Untested | Untested | Untested | — |
-| Google Pixel 8/9 | 15-16 | Untested | Untested | Untested | — |
-| OnePlus 12/13 | 14-15 | Untested | Untested | Untested | — |
+| Device | Android | Path A | Path B | ADB | Path C | Last Verified |
+|--------|---------|--------|--------|-----|--------|---------------|
+| Samsung Galaxy S26 Ultra | 16 | Works | Works | Works | Untested | 2026-03-19 |
+| Google Pixel 10 Pro | 16 | Works | Works | Untested | Untested | 2026-03-19 |
+| Google Pixel 10 Pro (AVF) | 16 | N/A | N/A | Untested | Works (experimental) | 2026-04-01 |
+| Samsung Galaxy S23+ | 15 | Untested | Works | Untested | Untested | 2026-03-19 |
+| Samsung Galaxy S24/S25 | 15-16 | Untested | Untested | Untested | Untested | — |
+| Google Pixel 8/9 | 15-16 | Untested | Untested | Untested | Untested | — |
+| OnePlus 12/13 | 14-15 | Untested | Untested | Untested | Untested | — |
 
 **Verified** means install, authentication, and basic operations tested end-to-end on real hardware. Test results: [tests/results/](tests/results/)
 
@@ -390,5 +415,5 @@ Built on [Termux](https://github.com/termux).
 <p align="center">
   <em>Built on a phone, in Termux, on ARM64, on Android.</em><br>
   <em>By a human and an AI, working together.</em><br>
-  <em>v2.4.0</em>
+  <em>v2.5.0</em>
 </p>

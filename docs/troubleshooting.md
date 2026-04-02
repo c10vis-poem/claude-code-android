@@ -25,6 +25,7 @@ If you haven't installed yet, see [INSTALL.md](install.md) first.
 - [Play Store Termux doesn't work](#play-store-termux-doesnt-work)
 - [PDF reading fails ("pdftoppm is not installed")](#pdf-reading-fails-pdftoppm-is-not-installed)
 - [`claude doctor` crashes](#claude-doctor-crashes)
+- [Path C — AVF (Experimental)](#path-c--avf-experimental)
 - [Upstream Issues](#upstream-issues)
 - [ADB Wireless Debugging](#adb-wireless-debugging)
 
@@ -550,20 +551,37 @@ solved cleanly — contributions welcome.
 
 ---
 
-## Paths We're Watching
+## Path C -- AVF (Experimental)
 
-### Android Virtualization Framework (AVF) — Not Recommended Yet
+### Android Virtualization Framework (AVF) -- Experimental, Tested on Pixel
 
-Android 16 includes a built-in Linux terminal via the Android Virtualization Framework (AVF), available on some devices (Pixel 6+, some Samsung Exynos models). We've evaluated it as a potential Path C — a real Linux VM with native `/tmp`, no proot overhead, and `process.platform === "linux"`.
+Android 16 includes a built-in Linux VM via the Android Virtualization Framework (AVF). Claude Code has been installed and used for real work inside an AVF VM on a Pixel 10 Pro (tested 2026-04-01). It is now documented as **Path C -- experimental**.
 
-**Current limitations that prevent recommendation:**
+See **[AVF-GUIDE.md](avf-guide.md)** for the full setup checklist, VM configuration, ADB hardware bridge setup, security defaults, and comparison with Path A and Path B.
 
-- **~4GB default RAM allocation** regardless of device RAM — OOM kills during moderate workloads (may be a crosvm default rather than a hard architectural cap, but no documented way to change it)
-- **Network goes through NAT** via Android's Tethering Manager — SSH and API calls can fail unpredictably
-- **Crashes lose data** — the Terminal app marks any unclean shutdown as "VM damaged" and requires full reinstall
-- **Snapdragon devices not supported** — Qualcomm only supports "protected" VMs, not the mode the Terminal app requires
-- **Background killing** — Android can suspend the VM when Termux is backgrounded
+**What works:**
+- Claude Code installs via the official Anthropic installer and completed real tasks during our testing
+- `process.platform === "linux"` -- no platform detection issues
+- Native `/tmp` -- no bind mounts or TMPDIR workarounds
+- Standard `apt` package management, including systemd updates
+- RAM allocation is configurable via the `memory_mib` field in `/mnt/internal/linux/vm_config.json` (default 4 GB, we changed this to 8 GB on our test device)
+- ADB wireless debugging from inside the VM provides access to 42 phone sensors, GPS, camera, screenshots, screen recording, input injection, battery state, and WiFi info
+- Audio playback and recording (PulseAudio + VirtIO SoundCard)
+- Headless GUI rendering (Firefox screenshots, automated browser tasks)
 
-**We'll revisit when:** network works reliably, RAM cap is raised or configurable, and at least one confirmed report of Claude Code completing a real task end-to-end without a crash.
+**What doesn't work well (yet):**
+- **VM killed when screen turns off** -- the most-reported AVF issue. ADB whitelist commands improved stability in our testing (the VM survived screen-off and always-on-display-off) but this is a semi-fix -- the Terminal app Activity can still get recreated, disrupting the session even though the VM itself may survive. Google acknowledged the issue at LPC 2025.
+- **SysV IPC disabled in kernel** -- fio and some Python multiprocessing features do not work (CONFIG_SYSVIPC not set). Hard wall.
+- **nftables non-functional** -- use iptables-legacy instead
+- **`apt upgrade` can hang** -- whiptail TUI dialogs block non-interactive sessions. Use `DEBIAN_FRONTEND=noninteractive` or kill the blocking process.
+- **"VM damaged" on unclean shutdown** -- requires full reinstall of the Debian image
+- **Samsung/Snapdragon not supported** -- Qualcomm only supports "protected" VMs; Knox RKP conflicts with AVF. Hardware/firmware limitation.
+- **No Termux API access** -- camera, TTS, clipboard, GPS, SMS, sensors are not available inside the VM natively (partial access via ADB bridge)
+- **No kernel module loading** -- monolithic kernel, /lib/modules/ is empty
+- **Copy-paste unreliable** -- multi-line commands break when pasted into the Terminal app
 
-**Experimenting with AVF?** [Open an issue](https://github.com/ferrumclaudepilgrim/claude-code-android/issues/new?template=device_report.md) with your findings — we're actively tracking this.
+**Security note:** The VM ships with convenience-oriented defaults (known default password, SSH password auth enabled, no firewall, passwordless sudo). See the AVF guide's security section for details and hardening suggestions.
+
+**Networking fix:** Cellular data requires enabling "Unrestricted mobile data usage" in the Terminal app's settings, then restarting the device. WiFi works without this step. (Google Issue Tracker #402523629)
+
+**Using AVF?** [Open an issue](https://github.com/ferrumclaudepilgrim/claude-code-android/issues/new?template=device_report.md) with your findings -- we're tracking stability reports across devices.
