@@ -43,6 +43,8 @@ This guide has two installation paths. Pick one before you start.
 
 [Jump to Path A](#step-1-install-dependencies) · [Jump to Path B](#path-b-proot-distro-ubuntu)
 
+**Have a Pixel 6+ on Android 16?** There is a third option -- Path C uses the Android Virtualization Framework (AVF) to run a real Linux VM with zero workarounds. See the [AVF Guide](avf-guide.md) for setup.
+
 ---
 
 ## Why This Is Hard
