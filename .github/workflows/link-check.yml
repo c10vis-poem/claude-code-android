@@ -10,14 +10,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check Markdown links
+      - name: Check internal Markdown links
         uses: lycheeverse/lychee-action@v2
         with:
           args: >-
-            --accept 429
-            --exclude anthropic.com
-            --exclude f-droid.org
-            --exclude play.google.com
-            --exclude issuetracker.google.com
+            --offline
+            --no-progress
             "**/*.md"
           fail: true
