@@ -19,6 +19,8 @@ Before you begin, confirm you have the following:
 | **Network** | Active internet connection (Claude Code streams from Anthropic's API) |
 | **Termux:API** | Both the `termux-api` package (`pkg install termux-api`) and the [Termux:API companion app from F-Droid](https://f-droid.org/en/packages/com.termux.api/) are required for device features (battery, camera, TTS, SMS, GPS, sensors) |
 
+> **Permission tip:** Only grant the Termux:API permissions your workflow requires. You can deny SMS, Contacts, Call Log, Camera, Microphone, and Location and still use Claude Code normally. See the [Security Model](security-model.md) for what each permission exposes.
+
 > **Warning:** The Play Store version of Termux has not been updated since 2020 and does not support current package repositories. You must use F-Droid or install the `.apk` directly from the [Termux GitHub releases](https://github.com/termux/termux-app/releases).
 
 ---
@@ -324,6 +326,12 @@ apt update && apt upgrade -y
 
 ```bash
 curl -fsSL https://claude.ai/install.sh | bash
+```
+
+If you prefer to inspect the script before running it:
+
+```bash
+curl -fsSL https://claude.ai/install.sh -o install.sh && less install.sh && bash install.sh
 ```
 
 Native installer. No Node.js required. Installs to `~/.local/bin/claude`.

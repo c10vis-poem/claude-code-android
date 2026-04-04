@@ -1,5 +1,27 @@
 # Changelog
 
+## [2.5.1] - 2026-04-03
+
+### Added
+- **Security model document** (`docs/security-model.md`) -- centralized threat model covering Termux:API permission exposure, ADB capability escalation, the critical difference between app-level and shell-level access, threat scenarios in plain language, existing mitigations, and a minimal-risk setup checklist
+- **README security notice** -- visible before Prerequisites, links to security model
+- **Termux:API permission scoping guidance** in install guide -- only grant the permissions your workflow requires
+- **Download-then-inspect alternative** in install guide Path B -- inspect the install script before running it
+- **shellcheck CI workflow** -- runs on push and PR for install.sh and verify-claims.sh
+- **Markdown link checker CI workflow** -- checks for broken links across all documentation
+- **Executable hook examples** -- `examples/ssrf-guard.sh` and `examples/fingerprint-gate.sh` adapted from documentation into standalone runnable files
+
+### Changed
+- **ADB capabilities table** -- added risk/exposure column so capabilities include security context
+- **SSRF guard and fingerprint gate docs** -- reference examples/ files as canonical script location
+- **Skills documentation** -- Android-specific and general-purpose workflow skills separated with descriptive intros
+- **README navigation bar** -- added Security Model link
+- **Version badge** updated to 2.5.1
+
+### Security
+- Security audit found users could complete installation and grant full device access (SMS, contacts, GPS, camera, screen capture, input injection) without encountering a security warning. This release adds the security model, README warning, permission scoping guidance, and risk context to the ADB capabilities table.
+
+
 ## [2.5.0] - 2026-04-02
 
 ### Added

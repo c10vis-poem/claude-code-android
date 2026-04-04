@@ -63,6 +63,8 @@ A helper function parses `auth_result` and returns exit code 0 (approved) or 1 (
 
 ## Setup
 
+The gate script is also available as [`examples/fingerprint-gate.sh`](../examples/fingerprint-gate.sh) in this repository.
+
 ### Step 1 -- Create the gate function
 
 Create a file that any hook can source. Put it wherever makes sense for your setup -- `~/.claude/hooks/` is a natural choice if you keep your hooks there.
