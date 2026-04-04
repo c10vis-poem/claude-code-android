@@ -25,29 +25,29 @@ ADB wireless debugging bypasses this. The phone connects to itself via `127.0.0.
 
 ## Before and After
 
-| Capability | Termux (no ADB) | With ADB |
-|------------|-----------------|----------|
-| Screenshot | Blocked | `adb shell screencap` |
-| System settings (brightness, DND) | Blocked | `adb shell settings get/put` |
-| Calendar events | Blocked | `adb shell content query` |
-| Installed apps list | Blocked | `adb shell pm list packages` |
-| Full battery details | Blocked | `adb shell dumpsys battery` |
-| Touch/key injection | Blocked | `adb shell input tap/swipe/text` |
-| Full process list | Termux processes only | `adb shell ps -A` (all system processes) |
-| Activity manager | Partial | `adb shell am start/force-stop` (full) |
-| Device properties | Blocked | `adb shell getprop` |
-| Battery % (basic) | `termux-battery-status` | Both work |
-| Camera capture | `termux-camera-photo` | Both work |
-| TTS | `termux-tts-speak` | Both work |
-| Clipboard | `termux-clipboard-get/set` | Both work |
-| GPS location | `termux-location` | Both work |
-| SMS | `termux-sms-list/send` | Both work |
-| Notifications | `termux-notification-list` | Both work |
-| Background scheduling | `crond` / job-scheduler | Both work |
-| Volume control | `termux-volume` | Both work |
-| Vibration | `termux-vibrate` | Both work |
-| Wifi info | `termux-wifi-connectioninfo` | Both work |
-| Sensors | `termux-sensor` | Both work |
+| Capability | Termux (no ADB) | With ADB | Risk/Exposure |
+|------------|-----------------|----------|---------------|
+| Screenshot | Blocked | `adb shell screencap` | Captures any screen including banking apps |
+| System settings (brightness, DND) | Blocked | `adb shell settings get/put` | Can modify device configuration |
+| Calendar events | Blocked | `adb shell content query` | Reads private calendar data |
+| Installed apps list | Blocked | `adb shell pm list packages` | Full app inventory visible |
+| Full battery details | Blocked | `adb shell dumpsys battery` | Device state information |
+| Touch/key injection | Blocked | `adb shell input tap/swipe/text` | Can operate any app autonomously |
+| Full process list | Termux processes only | `adb shell ps -A` (all system processes) | All running processes visible |
+| Activity manager | Partial | `adb shell am start/force-stop` (full) | Can launch or kill any app |
+| Device properties | Blocked | `adb shell getprop` | Hardware and build identifiers |
+| Battery % (basic) | `termux-battery-status` | Both work | |
+| Camera capture | `termux-camera-photo` | Both work | |
+| TTS | `termux-tts-speak` | Both work | |
+| Clipboard | `termux-clipboard-get/set` | Both work | |
+| GPS location | `termux-location` | Both work | |
+| SMS | `termux-sms-list/send` | Both work | |
+| Notifications | `termux-notification-list` | Both work | |
+| Background scheduling | `crond` / job-scheduler | Both work | |
+| Volume control | `termux-volume` | Both work | |
+| Vibration | `termux-vibrate` | Both work | |
+| Wifi info | `termux-wifi-connectioninfo` | Both work | |
+| Sensors | `termux-sensor` | Both work | |
 
 The bottom 12 rows work without ADB via Termux API. The top 9 require ADB.
 

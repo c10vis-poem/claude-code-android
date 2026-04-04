@@ -6,7 +6,8 @@ Reusable [Claude Code skills](https://docs.anthropic.com/en/docs/claude-code/ski
 
 ## Android / Termux
 
-Skills specific to running Claude Code on Android.
+These skills address platform constraints specific to Termux on Android. They handle issues that do not exist on desktop.
+
 
 | Skill | What It Does |
 |-------|-------------|
@@ -18,7 +19,8 @@ Skills specific to running Claude Code on Android.
 
 ## Workflow
 
-General-purpose workflow skills that work in any environment, not just Android.
+These skills work in any Claude Code environment -- desktop, server, or mobile. They are general-purpose workflow tools included as a starting point.
+
 
 | Skill | What It Does |
 |-------|-------------|

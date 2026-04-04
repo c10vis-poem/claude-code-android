@@ -26,12 +26,12 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/Android-14%2B-brightgreen.svg" alt="Android 14+">
-  <img src="https://img.shields.io/badge/Version-2.5.0-blue.svg" alt="Version 2.5.0">
+  <img src="https://img.shields.io/badge/Version-2.5.1-blue.svg" alt="Version 2.5.1">
   <img src="https://img.shields.io/badge/Last%20Verified-April%202026-lightgrey.svg" alt="Last Verified April 2026">
 </p>
 
 <p align="center">
-  <a href="docs/install.md">Install Guide</a> · <a href="docs/troubleshooting.md">Troubleshooting</a> · <a href="docs/adb-wireless.md">ADB Wireless</a> · <a href="docs/constitution-template.md">CLAUDE.md Template</a> · <a href="docs/agents.md">Meet the Crew</a>
+  <a href="docs/install.md">Install Guide</a> · <a href="docs/security-model.md">Security Model</a> · <a href="docs/troubleshooting.md">Troubleshooting</a> · <a href="docs/adb-wireless.md">ADB Wireless</a> · <a href="docs/constitution-template.md">CLAUDE.md Template</a> · <a href="docs/agents.md">Meet the Crew</a>
 </p>
 
 > **From the developer:** This guide looks long because we document every edge case we hit. The actual install is about 5 commands. If you just want to get started, jump straight to [Path B Quick Start](#path-b----recommended-full-linux-environment) and come back here when something breaks.
@@ -39,6 +39,8 @@
 > Using ADB wireless debugging? Read the [security considerations](#adb-wireless-self-connect) first.
 
 ---
+
+> **Security notice:** This guide contains walkthroughs and features that can only be accessed using Termux:API and/or ADB. These features are optional but powerful -- covering device sensors, location, screen capture, and more. If you plan to use them, read the [Security Model](docs/security-model.md) first to understand what each one opens up.
 
 ## Prerequisites
 
@@ -284,7 +286,7 @@ If you have a desktop or laptop running Claude Code, [Remote Control](https://do
 
 | Document | What It Covers |
 |----------|---------------|
-| **[CHANGELOG.md](CHANGELOG.md)** | Version history from 0.1.0 to 2.5.0 |
+| **[CHANGELOG.md](CHANGELOG.md)** | Version history from 0.1.0 to 2.5.1 |
 | **[CONTRIBUTING.md](.github/CONTRIBUTING.md)** | How to contribute, report bugs, submit device reports |
 | **[AGENTS.md](docs/agents.md)** | The 6 AI agents that build and maintain this repo |
 | **[STORY.md](docs/story.md)** | How this project came together |
@@ -415,5 +417,5 @@ Built on [Termux](https://github.com/termux).
 <p align="center">
   <em>Built on a phone, in Termux, on ARM64, on Android.</em><br>
   <em>By a human and an AI, working together.</em><br>
-  <em>v2.5.0</em>
+  <em>v2.5.1</em>
 </p>

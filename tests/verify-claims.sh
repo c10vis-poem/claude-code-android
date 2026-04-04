@@ -329,7 +329,7 @@ echo "  Source: TROUBLESHOOTING.md:199, README.md:105"
 echo "  Claim: Android limits background processes to ~32 across all apps"
 echo "  Test: Count current background processes visible from Termux"
 
-BG_PROC_COUNT="$(ls /proc/ 2>/dev/null | grep -c '^[0-9]' || echo '0')"
+BG_PROC_COUNT="$(find /proc/ -maxdepth 1 -regex '/proc/[0-9]+' 2>/dev/null | wc -l || echo '0')"
 
 echo "  Evidence:"
 echo "    Background processes visible in /proc: $BG_PROC_COUNT"
@@ -428,9 +428,6 @@ print_claim 9 "proot -b \$PREFIX/tmp:/tmp remaps /tmp for Claude Code"
 echo "  Source: INSTALL.md:118, TROUBLESHOOTING.md:71"
 echo "  Claim: proot intercepts syscalls and makes /tmp point to \$PREFIX/tmp"
 
-PROOT_BIN="$(command -v proot 2>/dev/null || echo '')"
-TMP_CONTENTS_PROOT=""
-TMP_CONTENTS_PREFIX=""
 
 echo "  Test: Check if /tmp and \$PREFIX/tmp contain identical contents (confirms bind mount)"
 
