@@ -116,8 +116,8 @@ This gives the session full local capability but zero network access. If a cron 
 
 ## Further Reading
 
-- [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/) -- LLM06: Excessive Agency
-- [Claude Code tool permissions](https://docs.anthropic.com/en/docs/claude-code/cli-usage) -- `--tools` and `--disallowedTools` flags
+- [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/) -- LLM08: Excessive Agency
+- [Claude Code tool permissions](https://code.claude.com/docs/en/cli-usage) -- `--tools` and `--disallowedTools` flags
 
 ---
 

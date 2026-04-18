@@ -29,7 +29,7 @@ Keep PRs focused on a single change. Include what you tested and on what device.
 Skills live in `.claude/skills/`. Each skill has a `SKILL.md` with YAML frontmatter. To contribute a new skill:
 
 1. Create a directory under `.claude/skills/<skill-name>/`
-2. Add a `SKILL.md` following the [Claude Code skills format](https://docs.anthropic.com/en/docs/claude-code/skills). Note: Claude Code extends the base Agent Skills spec with fields like `user-invocable`, `disable-model-invocation`, and `argument-hint`
+2. Add a `SKILL.md` following the [Claude Code skills format](https://code.claude.com/docs/en/skills). Note: Claude Code extends the base Agent Skills spec with fields like `user-invocable`, `disable-model-invocation`, and `argument-hint`
 3. Test it on a real Android/Termux device
 4. Open a PR with what it does and what device you tested on
 

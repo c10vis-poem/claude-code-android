@@ -70,7 +70,7 @@ By default, Claude Code has access to `curl`, `wget`, and other network tools th
 MCP servers receive tool responses from Claude Code. If Claude Code has access to contacts, SMS, or location data, that data can appear in tool responses sent to any connected MCP server. The SSRF guard does not intercept MCP data flow.
 
 **Can a malicious file trick the agent into exfiltrating data?**
-Prompt injection -- where a file contains instructions that redirect the agent's behavior -- is a known risk with all LLM-based tools. In our testing with Claude Opus, injection success rates were low (approximately 1-2%), but not zero. A file could attempt to instruct the agent to send data to an external URL.
+Prompt injection -- where a file contains instructions that redirect the agent's behavior -- is a known risk with all LLM-based tools. The risk is non-zero. A file could attempt to instruct the agent to send data to an external URL.
 
 ---
 
@@ -113,4 +113,4 @@ These gaps exist by default in the current setup:
 
 ---
 
-Last updated: 2026-04-03.
+Last updated: 2026-04-18.

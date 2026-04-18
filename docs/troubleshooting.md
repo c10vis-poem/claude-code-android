@@ -366,30 +366,24 @@ Then grant microphone permission to Termux when Android prompts you (or manually
 
 ---
 
-### Hooks not firing (platform detection issue)
+### Hooks on Termux native
 
-**You see:** Hooks configured in `.claude/settings.json` never trigger. There is no error message. You will see hooks simply not executing — no output from your hook scripts, no side effects.
+**Status (verified 2026-04-18):** Hooks fire correctly on Termux native (`process.platform === "android"`). Earlier versions of this doc reported they did not, citing closed-not-planned upstream issue [#16615](https://github.com/anthropics/claude-code/issues/16615). Current Claude Code releases handle the `android` platform correctly. SessionStart and PreToolUse hooks with command-type entries and matchers like `Write|Edit|Read|Glob|Grep|Bash` execute as expected.
 
-SessionStart/SessionStop hooks may work, but PreToolUse/PostToolUse hooks do not fire at all.
-
-You can verify the platform detection issue:
+You can verify the platform identifier (informational, not a blocker):
 
 ```
 $ node -e "console.log(process.platform)"
 android
 ```
 
-If this prints `android` instead of `linux`, you are affected.
+If your hooks are not firing on Termux:
 
-**Fix:** There is no complete fix — this is an upstream bug. Partial workarounds:
-
-1. **proot approach** (may help): Running through `proot -b $PREFIX/tmp:/tmp claude` causes some system calls to report `linux` instead of `android`. Results vary by Claude Code version.
-
-2. **cli.js patching** (fragile): Locate Claude Code's main script and patch platform checks. This breaks on every update.
-
-3. **Track the upstream issue:** See [GitHub issue #16615](https://github.com/anthropics/claude-code/issues/16615) for the latest status.
-
-**Cause:** Node.js reports `process.platform === "android"` on Termux, but Claude Code only checks for `darwin`, `win32`, and `linux`. Some code paths reject the `android` platform entirely, silently skipping hook execution.
+1. Confirm the hook command path resolves on Termux (`$HOME` and `$PREFIX` expand inside the JSON config; absolute paths also work)
+2. Set `timeout` explicitly in the hook entry (some hooks fail silently without one)
+3. Verify hook exit codes (PreToolUse: `2` = block, `0` = allow; non-zero non-2 = non-blocking error)
+4. For PreToolUse/PostToolUse, confirm the matcher pattern (regex) actually matches the tool name
+5. Check `~/.claude/logs/` if present
 
 ---
 

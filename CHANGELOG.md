@@ -1,5 +1,39 @@
 # Changelog
 
+## [2.6.0] - 2026-04-18
+
+Documentation refresh plus security hardening. Corrects stale claims, migrates docs URLs following Anthropic's domain move, updates Path A install instructions for upstream npm package restructure, corrects the hooks-on-Termux section to reflect current behavior, adds an audio-backend section covering `/voice` mode on vendor-broken devices, and adds an Android 17 Beta status note to the AVF guide. Rewrites `examples/ssrf-guard.sh` to close real bypasses in the previous regex-based implementation, adds a 47-case test harness, and adds `.gitattributes` so shell scripts stay LF on Windows checkouts (CRLF breaks them on Termux).
+
+### Fixed
+- OWASP LLM Top 10 citation in `docs/agent-permissions.md` (Excessive Agency is LLM08, not LLM06)
+- Anthropic pricing URL in README migrated from `anthropic.com/pricing` to `claude.com/pricing`
+- Uncited "approximately 1-2%" prompt injection rate removed from `docs/security-model.md`; replaced with "non-zero risk" framing
+- `dd` benchmark in `docs/avf-guide.md` qualified to note that the read figure includes page cache and overstates real disk throughput
+- Claude Code version reference refreshed in `.claude/skills/doctor/SKILL.md` example output
+- Hooks-on-Termux section in `docs/troubleshooting.md` corrected. Earlier wording stated PreToolUse/PostToolUse hooks did not fire on `process.platform === "android"`; that is no longer accurate. Replaced with concrete debugging steps. Reference to upstream issue #16615 retained as historical context.
+- **`examples/ssrf-guard.sh` rewritten to close real bypasses.** The previous regex-based IPv4 check required four dotted octets, so short-form IPs (`http://127.1/`) and mixed-format IPs (decimal `2130706433`, hex `0x7f000001`) passed through to loopback. A prompt-injected WebFetch call using any of those forms would reach internal services. The rewrite offloads URL parsing to Node's `new URL()` — the same RFC 3986 normalization Claude Code's WebFetch uses internally — then applies private-range checks on the normalized hostname. Covers short-form IPv4, decimal, hex, IPv4-mapped IPv6, cloud metadata aliases, case-sensitive hostnames, and malformed URLs. WebSearch bare queries (no `://`) now pass through instead of being blocked as missing-scheme. DNS-rebinding limitation remains and is documented in the header.
+- Subscription tier list in README and `docs/install.md` expanded from "Pro or Max" to match upstream's documented list (Pro, Max, Team, Enterprise, or Console/API account).
+- `docs/install.md` softened "preferred installation method" to "recommended installation method" to match upstream wording exactly.
+
+### Changed
+- All Anthropic Claude Code docs URLs migrated from `docs.anthropic.com/en/docs/claude-code/*` to `code.claude.com/docs/en/*` (Anthropic moved the docs domain). Affects README.md, `.github/CONTRIBUTING.md`, `docs/agent-permissions.md`, `docs/skills.md`.
+- Path A install method updated to route Claude Code through the `cli-wrapper.cjs` JavaScript fallback. Anthropic restructured the `@anthropic-ai/claude-code` npm package so the CLI is delivered via platform-specific optional native binaries; android-arm64 is not in that distribution list. The install completes but bare `claude` errors with "claude native binary not installed." The same package ships `cli-wrapper.cjs`, a JavaScript fallback launcher; invoking it through Node works on android-arm64. The existing proot tmp wrapper is retained. Affects README, `install.sh`, `docs/install.md`.
+- README intro updated from "two ways" to "three ways" to reflect Path C/AVF documentation already present.
+- Footer dates refreshed on `docs/install.md`, `docs/security-model.md`, `docs/avf-guide.md`.
+- README "Last Verified" badge updated to `2026-04-18`; Version badge updated to `2.6.0`.
+
+### Added
+- New README section "Audio: /voice mode and the chain underneath" documenting the SoX → PulseAudio → backend → mic chain. Identifies vendor-device failures at the SLES backend layer (termux/termux-packages#28861, termux/termux-packages#27978, termux/termux-packages#27367, termux/termux-packages#26871) and points to termux/termux-packages#29319 (Oboe package + PulseAudio Oboe modules) as the fix path. Includes the user opt-in steps for after the PR lands. Caveat noted that Claude Code's own SoX detection on Termux is a separate concern.
+- Android 17 Beta status note at the top of `docs/avf-guide.md`. Existing Android 16 content retained as baseline reference; A17 Beta not re-verified end-to-end in this cycle.
+- `tests/ssrf-guard-tests.sh` — 47-case test harness for the SSRF guard. Feeds JSON PreToolUse payloads covering short-form IPs, private ranges, cloud metadata, IPv6 forms, bad schemes, WebSearch queries, and edge cases. Used to prove the previous guard had real bypasses and that the rewrite closes them.
+- `.gitattributes` pinning `*.sh` to LF line endings. Windows checkouts would otherwise get CRLF, which breaks the scripts when they land on Termux (bash errors on `$'\r'` at end of lines).
+
+### Notes
+- Path A cli-wrapper.cjs workaround verified on a current Termux install where Claude Code is actively running through it.
+- Path B (proot-distro Ubuntu + official curl|bash installer) documentation not freshly re-verified end-to-end in this update; matches Anthropic's current upstream guidance for linux-arm64.
+- Per-device verification dates in the README compatibility table left unchanged; individual devices not re-tested in this cycle.
+- SSRF guard rewrite tested on-device with 47 test cases; all pass. Previous implementation failed 7. Test harness at `tests/ssrf-guard-tests.sh` verifies this.
+
 ## [2.5.1] - 2026-04-03
 
 ### Added

@@ -15,7 +15,7 @@ Before you begin, confirm you have the following:
 | **OS** | Android 14+ |
 | **Kernel** | Varies by Android version — use `uname -r` to check (Android 14/15 use 5.10–6.6, Android 16 uses 6.12) |
 | **Terminal** | [Termux from F-Droid](https://f-droid.org/en/packages/com.termux/) — **not** the Play Store version, which is outdated and will fail |
-| **Subscription** | Claude Max or Claude Pro (provides the API access Claude Code requires) |
+| **Subscription** | Claude Pro, Max, Team, Enterprise, or Console account (provides the API access Claude Code requires) |
 | **Network** | Active internet connection (Claude Code streams from Anthropic's API) |
 | **Termux:API** | Both the `termux-api` package (`pkg install termux-api`) and the [Termux:API companion app from F-Droid](https://f-droid.org/en/packages/com.termux.api/) are required for device features (battery, camera, TTS, SMS, GPS, sensors) |
 
@@ -108,9 +108,9 @@ npm install -g @anthropic-ai/claude-code
 
 This installs Claude Code globally via npm. With `TMPDIR` set correctly, npm can stage files and complete the installation cleanly.
 
-> **Note:** Anthropic now offers a native installer (`curl -fsSL https://claude.ai/install.sh | bash`) as the preferred installation method. The native installer does not work in native Termux due to SSL library compatibility issues — use npm for Path A. The native installer works correctly in Path B (proot-distro Ubuntu) where the library stack is standard Linux.
+> **Note:** Anthropic now offers a native installer (`curl -fsSL https://claude.ai/install.sh | bash`) as the recommended installation method. The native installer does not work in native Termux due to SSL library compatibility issues — use npm for Path A. The native installer works correctly in Path B (proot-distro Ubuntu) where the library stack is standard Linux.
 
-> **Do not run `claude` directly.** The npm install puts the binary on your PATH, but Claude Code will fail silently without the proot wrapper. Step 4 is required.
+> **Do not run `claude` directly.** The npm install puts a `claude` shim on your PATH, but the postinstall cannot fetch a native binary for android-arm64 — bare `claude` errors with "claude native binary not installed." A JavaScript fallback ships in the same package; Step 4 invokes it through proot.
 
 ---
 
@@ -120,13 +120,13 @@ Claude Code hardcodes `/tmp` for runtime state. The fix is `proot` — a userspa
 
 proot was installed in Step 1.
 
-Launch Claude Code:
+Launch Claude Code through the JS fallback wrapper:
 
 ```bash
-proot -b $PREFIX/tmp:/tmp claude
+proot -b $PREFIX/tmp:/tmp node $PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli-wrapper.cjs
 ```
 
-This single invocation binds Termux's writable tmp directory to `/tmp`, allowing Claude Code to operate as if it were on a standard Linux system. No root. No containers. No virtualization. Just syscall interception.
+This binds Termux's writable tmp directory to `/tmp` (so Claude Code's `/tmp` references work) and runs Claude Code through the cli-wrapper.cjs JS fallback (so the missing android-arm64 native binary doesn't matter). No root. No containers. No virtualization.
 
 > **Alternative to the bind mount:** If you prefer not to use proot for this workaround, you can set the `CLAUDE_CODE_TMPDIR` environment variable to any writable directory:
 >
@@ -144,10 +144,10 @@ On first launch, Claude Code will prompt you to authenticate. A URL will appear 
 
 ## Step 5: Create the Alias
 
-Add this alias to your `~/.bashrc`. Use `claude-android` every time — running bare `claude` without the proot wrapper will fail silently:
+Add this alias to your `~/.bashrc`. Use `claude-android` every time — running bare `claude` will fail with "claude native binary not installed":
 
 ```bash
-echo "alias claude-android='proot -b \$PREFIX/tmp:/tmp claude'" >> ~/.bashrc
+echo "alias claude-android='proot -b \$PREFIX/tmp:/tmp node \$PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli-wrapper.cjs'" >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -398,7 +398,7 @@ but because the runtime identity did.
 
 ---
 
-*Last verified: March 28, 2026*
+*Last verified: 2026-04-18*
 
 ---
 

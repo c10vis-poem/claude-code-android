@@ -87,8 +87,8 @@ fi
 info "Installing Claude Code..."
 npm install -g @anthropic-ai/claude-code || fail "npm install failed. Check TMPDIR and internet connection."
 
-CLAUDE_VER=$(claude --version 2>/dev/null || echo "unknown")
-ok "Claude Code $CLAUDE_VER installed"
+CLAUDE_VER=$(node "$PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli-wrapper.cjs" --version 2>/dev/null || echo "unknown")
+ok "Claude Code $CLAUDE_VER installed (using cli-wrapper.cjs JS fallback; android-arm64 native binary not shipped upstream)"
 
 # --- Step 4: Fix ripgrep ---
 
@@ -104,7 +104,7 @@ fi
 
 # --- Step 5: Configure shell ---
 
-ALIAS_LINE="alias claude-android='proot -b \$PREFIX/tmp:/tmp claude'"
+ALIAS_LINE="alias claude-android='proot -b \$PREFIX/tmp:/tmp node \$PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli-wrapper.cjs'"
 TMPDIR_LINE="export TMPDIR=\$PREFIX/tmp"
 
 # Add TMPDIR if not already in .bashrc
@@ -144,7 +144,7 @@ echo ""
 echo "  Claude Code is installed."
 echo ""
 echo "  To launch:"
-echo "    proot -b \$PREFIX/tmp:/tmp claude"
+echo "    proot -b \$PREFIX/tmp:/tmp node \$PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli-wrapper.cjs"
 echo ""
 echo "  Or reload your shell and use the alias:"
 echo "    source ~/.bashrc"

@@ -2,6 +2,8 @@
 
 > **Experimental.** AVF support is new. Claude Code has been installed, configured, and used for real work inside an AVF VM on our test device (Pixel 10 Pro, Android 16). This guide documents what we observed, including capabilities that exceeded expectations and limitations that remain. Google's documentation of AVF is extremely limited -- most of what follows was discovered through hands-on testing.
 
+> **Android 17 Beta status (2026-04-18):** This guide reflects testing on Android 16. Android 17 Beta has not been re-verified end-to-end. Schema fields in `vm_config.json`, paths under `/mnt/internal/linux/`, GPU acceleration scope, and crosvm launch flags may have changed. Treat the specifics in this guide as a baseline to compare against, not as a current-on-A17 spec.
+
 ![Status: Experimental](https://img.shields.io/badge/Status-Experimental-orange.svg)
 
 ---
@@ -156,7 +158,7 @@ These capabilities were confirmed through direct testing on our Pixel 10 Pro. Re
 
 ### Hardware and Performance
 - **8 CPU cores visible** (1x Cortex-X4, 2x Cortex-A725, 5x Cortex-A520 on our Tensor G5 test device). Full big.LITTLE topology exposed via `--host-cpu-topology`.
-- **103 GB root disk.** Observed 552 MB/s sequential write and 4.2 GB/s sequential read using dd. The original disk benchmark tool (fio) could not run due to a kernel limitation (see Known Issues).
+- **103 GB root disk.** Observed 552 MB/s sequential write and 4.2 GB/s sequential read using dd with default flags; the read figure includes page cache, so real disk throughput is lower. The original disk benchmark tool (fio) could not run due to a kernel limitation (see Known Issues).
 - **zram swap** configured by default, scales proportionally with RAM allocation. No manual setup needed.
 
 ### Audio
@@ -498,4 +500,4 @@ Key flags: `--host-cpu-topology` exposes all CPU cores with their real frequency
 
 ---
 
-*Last updated: 2026-04-02. Tested on Pixel 10 Pro, Android 16. This is a single-device test -- your experience may differ. Google's AVF documentation remains extremely limited; most findings here were discovered empirically. If you test on a different device, please [open an issue](https://github.com/ferrumclaudepilgrim/claude-code-android/issues/new?template=device_report.md) with your results.*
+*Last updated: 2026-04-18. Tested on Pixel 10 Pro, Android 16; Android 17 Beta status note added 2026-04-18. This is a single-device test -- your experience may differ. Google's AVF documentation remains extremely limited; most findings here were discovered empirically. If you test on a different device, please [open an issue](https://github.com/ferrumclaudepilgrim/claude-code-android/issues/new?template=device_report.md) with your results.*

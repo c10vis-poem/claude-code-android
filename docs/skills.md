@@ -1,6 +1,6 @@
 # Claude Code Skills for Android
 
-Reusable [Claude Code skills](https://docs.anthropic.com/en/docs/claude-code/skills) shipped with this repo. Copy them to `~/.claude/skills/` to use in any project.
+Reusable [Claude Code skills](https://code.claude.com/docs/en/skills) shipped with this repo. Copy them to `~/.claude/skills/` to use in any project.
 
 ---
 

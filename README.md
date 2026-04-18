@@ -26,8 +26,8 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/Android-14%2B-brightgreen.svg" alt="Android 14+">
-  <img src="https://img.shields.io/badge/Version-2.5.1-blue.svg" alt="Version 2.5.1">
-  <img src="https://img.shields.io/badge/Last%20Verified-April%202026-lightgrey.svg" alt="Last Verified April 2026">
+  <img src="https://img.shields.io/badge/Version-2.6.0-blue.svg" alt="Version 2.6.0">
+  <img src="https://img.shields.io/badge/Last%20Verified-2026--04--18-lightgrey.svg" alt="Last Verified 2026-04-18">
 </p>
 
 <p align="center">
@@ -77,7 +77,7 @@ Then install the **Termux:API** companion app from F-Droid (search "Termux:API")
 
 ## Quick Start
 
-There are two ways to install Claude Code on Android. Both require a [Claude Pro or Max subscription](https://www.anthropic.com/pricing).
+There are three ways to install Claude Code on Android. All require a [Claude Pro, Max, Team, or Enterprise subscription](https://claude.com/pricing) (or a Console/API account).
 
 **Most users should start here.**
 
@@ -111,15 +111,16 @@ Faster setup (~2 min), less disk space, but requires workarounds that break on e
 pkg install nodejs git curl proot ripgrep -y
 export TMPDIR=$PREFIX/tmp   # Critical: npm fails silently without this
 npm install -g @anthropic-ai/claude-code
-# Required: bare 'claude' will fail — always use this wrapper
-proot -b $PREFIX/tmp:/tmp claude
+# Required: bare 'claude' will fail. The npm postinstall cannot fetch a
+# native binary for android-arm64; use the JS fallback wrapper instead:
+proot -b $PREFIX/tmp:/tmp node $PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli-wrapper.cjs
 ```
 
 Add this to `~/.bashrc` so it persists:
 
 ```bash
 echo 'export TMPDIR=$PREFIX/tmp' >> ~/.bashrc
-echo "alias claude-android='proot -b \$PREFIX/tmp:/tmp claude'" >> ~/.bashrc
+echo "alias claude-android='proot -b \$PREFIX/tmp:/tmp node \$PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli-wrapper.cjs'" >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -251,7 +252,7 @@ ADB works from inside the Ubuntu guest too. Setup takes about 5 minutes. See **[
 
 ## Alternative: Remote Control
 
-If you have a desktop or laptop running Claude Code, [Remote Control](https://docs.anthropic.com/en/docs/claude-code/remote-control) lets you control it from your phone via QR code. No Termux needed.
+If you have a desktop or laptop running Claude Code, [Remote Control](https://code.claude.com/docs/en/remote-control) lets you control it from your phone via QR code. No Termux needed.
 
 **Use Remote Control** when you have a desktop nearby and want quick mobile access.
 **Use this repo's approach** when you want Claude Code running locally on your phone with no desktop dependency.
@@ -321,6 +322,25 @@ See [Troubleshooting: PDF reading](docs/troubleshooting.md#pdf-reading-fails-pdf
 
 ---
 
+## Audio: /voice mode and the chain underneath
+
+`/voice` mode in Claude Code records via SoX, which feeds PulseAudio, which uses an audio backend (SLES, AAudio, or Oboe) to reach the microphone. On Android vendor devices where the OpenSL ES backend fails, the chain breaks at the backend layer: SoX records silence, and `/voice` receives nothing. Reports of this pattern in termux-packages: termux/termux-packages#28861 (Xiaomi Poco F8 Ultra), termux/termux-packages#27978 (Redmi A3), termux/termux-packages#27367 (OnePlus 12 / Nord 3), termux/termux-packages#26871 (Realme P3 Ultra).
+
+A fix is in flight upstream: termux-packages [PR #29319](https://github.com/termux/termux-packages/pull/29319) adds Google's Oboe library as a package and wires it into PulseAudio as opt-in modules. After it merges and lands in your Termux install:
+
+```bash
+pkg upgrade pulseaudio
+# Edit $PREFIX/etc/pulse/default.pa, uncomment:
+#   load-module module-oboe-source
+pulseaudio -k && pulseaudio --start
+```
+
+`/voice` mode should then reach the microphone on previously broken devices. SLES remains the default backend; the Oboe modules are opt-in, so installs that already work are unaffected.
+
+Caveat: Claude Code's own SoX detection on Termux has had separate Android-specific limitations. The fix above addresses the audio backend layer; if SoX detection itself blocks `/voice` on your device, this PR alone will not resolve that.
+
+---
+
 ## Known Constraints
 
 Running on a phone means real limits. Path B (Ubuntu) resolves some of them.
@@ -341,7 +361,7 @@ See [TROUBLESHOOTING.md](docs/troubleshooting.md) for detailed fixes.
 
 ## Skills
 
-This repo includes [Claude Code skills](https://docs.anthropic.com/en/docs/claude-code/skills) for Android and general-purpose workflow.
+This repo includes [Claude Code skills](https://code.claude.com/docs/en/skills) for Android and general-purpose workflow.
 
 ### Android / Termux
 
