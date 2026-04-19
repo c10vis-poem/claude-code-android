@@ -26,13 +26,15 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/Android-14%2B-brightgreen.svg" alt="Android 14+">
-  <img src="https://img.shields.io/badge/Version-2.6.0-blue.svg" alt="Version 2.6.0">
+  <img src="https://img.shields.io/badge/Version-2.7.0-blue.svg" alt="Version 2.7.0">
   <img src="https://img.shields.io/badge/Last%20Verified-2026--04--18-lightgrey.svg" alt="Last Verified 2026-04-18">
 </p>
 
 <p align="center">
   <a href="docs/install.md">Install Guide</a> · <a href="docs/security-model.md">Security Model</a> · <a href="docs/troubleshooting.md">Troubleshooting</a> · <a href="docs/adb-wireless.md">ADB Wireless</a> · <a href="docs/constitution-template.md">CLAUDE.md Template</a> · <a href="docs/agents.md">Meet the Crew</a>
 </p>
+
+> ⚠️ **Hit by the April 18 upstream regression?** `@anthropic-ai/claude-code` 2.1.113+ broke native Termux installs by switching to native binaries with no android-arm64 build. v2.7.0 of this guide pins to the last working version and disables the in-process auto-updater that would otherwise re-break the install. **[Recovery instructions →](#april-18-upstream-regression-path-a-recovery)**
 
 > **From the developer:** This guide looks long because we document every edge case we hit. The actual install is about 5 commands. If you just want to get started, jump straight to [Path B Quick Start](#path-b----recommended-full-linux-environment) and come back here when something breaks.
 
@@ -103,28 +105,59 @@ Storage requirement: approximately 2 GB for the Ubuntu environment plus Claude C
 
 > **Why `pkg upgrade` and `apt upgrade` first?** Without updated SSL libraries, the Claude Code installer returns 403. Both upgrades are required.
 
-### Path A — Fully Viable with Node v25+
+### Path A — Native Termux (pinned)
 
-Faster setup (~2 min), less disk space, but requires workarounds that break on every Claude Code update.
+Faster setup (~2 min), less disk space, but **must pin** to the last working upstream version (see callout below).
 
 ```bash
-pkg install nodejs git curl proot ripgrep -y
+pkg install nodejs git curl proot ripgrep jq -y
 export TMPDIR=$PREFIX/tmp   # Critical: npm fails silently without this
-npm install -g @anthropic-ai/claude-code
-# Required: bare 'claude' will fail. The npm postinstall cannot fetch a
-# native binary for android-arm64; use the JS fallback wrapper instead:
-proot -b $PREFIX/tmp:/tmp node $PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli-wrapper.cjs
+DISABLE_AUTOUPDATER=1 npm install -g @anthropic-ai/claude-code@2.1.112
+chmod -R a-w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
+proot -b $PREFIX/tmp:/tmp claude
 ```
 
 Add this to `~/.bashrc` so it persists:
 
 ```bash
 echo 'export TMPDIR=$PREFIX/tmp' >> ~/.bashrc
-echo "alias claude-android='proot -b \$PREFIX/tmp:/tmp node \$PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli-wrapper.cjs'" >> ~/.bashrc
+echo 'export DISABLE_AUTOUPDATER=1' >> ~/.bashrc
+echo "alias claude-android='proot -b \$PREFIX/tmp:/tmp claude'" >> ~/.bashrc
 source ~/.bashrc
 ```
 
-> **Scripted install:** There's also a [one-command installer](install.sh) for Path A.
+Also add `"env": {"DISABLE_AUTOUPDATER": "1"}` to `~/.claude/settings.json` so the auto-updater stays disabled inside running sessions, not just at shell launch.
+
+> **Scripted install:** The [one-command installer](install.sh) does all of this (pin + chmod + bashrc + settings.json merge) idempotently. Re-run it any time to recover or reapply.
+
+#### April 18 upstream regression — Path A recovery
+
+`@anthropic-ai/claude-code` versions **2.1.113 and later** ship the CLI as platform-specific native binaries instead of bundled JavaScript. android-arm64 is not in the published platforms list, so on native Termux the postinstall does nothing and `bin/claude.exe` stays as the 500-byte stub that prints `Error: claude native binary not installed`. This is tracked upstream at [anthropics/claude-code#50270](https://github.com/anthropics/claude-code/issues/50270).
+
+The in-process auto-updater also re-fetches `latest` on a timer **inside running sessions**, so a manual downgrade gets silently clobbered minutes later unless the install dir is locked read-only.
+
+**If your install is broken:**
+
+```bash
+# Restore write permission, uninstall the broken version, reinstall pinned, lock it
+chmod -R u+w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/ 2>/dev/null
+DISABLE_AUTOUPDATER=1 npm install -g @anthropic-ai/claude-code@2.1.112
+chmod -R a-w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
+echo 'export DISABLE_AUTOUPDATER=1' >> ~/.bashrc
+claude --version    # → 2.1.112 (Claude Code)
+```
+
+Or just rerun the [install script](install.sh) which does this idempotently.
+
+**To upgrade Path A later** (when upstream restores android-arm64 support, watch [#50270](https://github.com/anthropics/claude-code/issues/50270)):
+
+```bash
+chmod -R u+w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
+npm install -g @anthropic-ai/claude-code@<new-version>
+chmod -R a-w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
+```
+
+**Path B (proot-distro Ubuntu) is unaffected.** Inside the Ubuntu guest, `process.platform === 'linux'` and `process.arch === 'arm64'` match the upstream `linux-arm64` native binary, so `npm install -g @anthropic-ai/claude-code` (no pin) works normally. If the regression is a deal-breaker for you, Path B is the cleaner answer.
 
 ### Which Path Should I Use?
 
@@ -437,5 +470,5 @@ Built on [Termux](https://github.com/termux).
 <p align="center">
   <em>Built on a phone, in Termux, on ARM64, on Android.</em><br>
   <em>By a human and an AI, working together.</em><br>
-  <em>v2.5.1</em>
+  <em>v2.7.0</em>
 </p>
