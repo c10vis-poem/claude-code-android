@@ -14,10 +14,16 @@
 #   1. Checks you're running in Termux (not inside proot)
 #   2. Checks architecture is aarch64
 #   3. Sets TMPDIR for npm
-#   4. Updates package index and installs packages (nodejs, git, curl, proot, ripgrep, termux-api)
-#   5. Installs Claude Code via npm
-#   6. Creates the arm64-android ripgrep symlink
-#   7. Configures shell (TMPDIR, CLAUDE_CODE_USE_NATIVE_FILE_SEARCH, launch alias)
+#   4. Updates package index and installs packages (nodejs, git, curl, proot, ripgrep, termux-api, jq)
+#   5. Installs Claude Code via npm, PINNED to the last working version on Termux
+#      (see anthropics/claude-code#50270 — versions 2.1.113+ ship as native binaries
+#      with no android-arm64 build, breaking native Termux installs)
+#   6. Locks the install dir against the in-process auto-updater (chmod -R a-w)
+#   7. Sets DISABLE_AUTOUPDATER=1 in shell + ~/.claude/settings.json
+#   8. Creates the arm64-android ripgrep symlink
+#   9. Configures shell (TMPDIR, CLAUDE_CODE_USE_NATIVE_FILE_SEARCH, launch alias)
+#
+# Re-run safe: every step is idempotent.
 #
 # What this script does NOT do:
 #   - Require root (there is none)
@@ -26,6 +32,12 @@
 #   - Send any data anywhere
 
 set -euo pipefail
+
+# --- Pinned version ---
+# Last upstream version with the bundled cli.js entry that runs on android-arm64.
+# 2.1.113 switched to native-binary distribution which excludes android.
+# Tracking upstream: https://github.com/anthropics/claude-code/issues/50270
+CC_PIN="2.1.112"
 
 # --- Helpers ---
 
@@ -36,7 +48,7 @@ fail()  { printf '\033[0;31m[fail]\033[0m  %s\n' "$1"; exit 1; }
 
 # --- Preflight ---
 
-info "Claude Code on Android — Installer"
+info "Claude Code on Android — Installer (Path A, pinned to v${CC_PIN})"
 echo ""
 
 # Check we're in Termux
@@ -69,8 +81,8 @@ ok "TMPDIR set to $TMPDIR"
 info "Updating package index..."
 pkg update -y || fail "pkg update failed. Check your internet connection."
 
-info "Installing packages (nodejs, git, curl, proot, ripgrep, termux-api)..."
-pkg install nodejs git curl proot ripgrep termux-api -y || fail "Package installation failed. Check your internet connection."
+info "Installing packages (nodejs, git, curl, proot, ripgrep, termux-api, jq)..."
+pkg install nodejs git curl proot ripgrep termux-api jq -y || fail "Package installation failed. Check your internet connection."
 
 # Verify Node.js version
 NODE_VER=$(node -v 2>/dev/null || echo "none")
@@ -82,58 +94,120 @@ else
   ok "Node.js $NODE_VER"
 fi
 
-# --- Step 3: Install Claude Code ---
+# --- Step 3: Install Claude Code (pinned + auto-updater disabled) ---
 
-info "Installing Claude Code..."
-npm install -g @anthropic-ai/claude-code || fail "npm install failed. Check TMPDIR and internet connection."
+CC_DIR="$PREFIX/lib/node_modules/@anthropic-ai/claude-code"
 
-CLAUDE_VER=$(node "$PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli-wrapper.cjs" --version 2>/dev/null || echo "unknown")
-ok "Claude Code $CLAUDE_VER installed (using cli-wrapper.cjs JS fallback; android-arm64 native binary not shipped upstream)"
+# Detect existing install state and recover if broken
+if [ -f "$CC_DIR/package.json" ]; then
+  EXISTING_VER=$(node -e "console.log(require('$CC_DIR/package.json').version)" 2>/dev/null || echo "unknown")
+  info "Existing claude-code install detected: v${EXISTING_VER}"
 
-# --- Step 4: Fix ripgrep ---
+  # Always restore +w before any reinstall (chmod -R a-w from prior run blocks npm)
+  chmod -R u+w "$CC_DIR" 2>/dev/null || true
+
+  if [ "$EXISTING_VER" = "$CC_PIN" ]; then
+    info "Already on pinned version v${CC_PIN}. Skipping reinstall."
+    SKIP_INSTALL=1
+  else
+    info "Replacing v${EXISTING_VER} with pinned v${CC_PIN}..."
+    SKIP_INSTALL=0
+  fi
+else
+  SKIP_INSTALL=0
+fi
+
+if [ "$SKIP_INSTALL" -eq 0 ]; then
+  info "Installing Claude Code v${CC_PIN} with auto-updater disabled..."
+  DISABLE_AUTOUPDATER=1 npm install -g "@anthropic-ai/claude-code@${CC_PIN}" \
+    || fail "npm install failed. Check TMPDIR and internet connection."
+fi
+
+# Verify the install actually works (cli.js entry, returns version)
+CLAUDE_VER=$(claude --version 2>/dev/null | head -1 || echo "")
+if [ -z "$CLAUDE_VER" ] || [[ "$CLAUDE_VER" == *"not installed"* ]]; then
+  fail "Claude Code did not launch cleanly after install. Check 'claude --version' output."
+fi
+ok "Claude Code installed: ${CLAUDE_VER}"
+
+# --- Step 4: Lock install dir against the in-process auto-updater ---
+# Without this, the running claude session will silently re-fetch latest within
+# minutes and clobber the pin. See daniel-thisnow's comment on
+# anthropics/claude-code#50270 — the chmod is load-bearing.
+
+info "Locking install dir against the auto-updater..."
+chmod -R a-w "$CC_DIR"
+ok "Install dir is read-only (rerun this script to upgrade later)"
+
+# --- Step 5: Fix ripgrep ---
 
 info "Setting up ripgrep for Grep/Glob tools..."
-VENDOR_DIR="$(dirname "$(command -v claude)")/../lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep"
+VENDOR_DIR="$CC_DIR/vendor/ripgrep"
 if [ -d "$VENDOR_DIR" ]; then
+  # Need write back briefly to land the symlink
+  chmod -R u+w "$CC_DIR" 2>/dev/null || true
   mkdir -p "$VENDOR_DIR/arm64-android"
   ln -sf "$(command -v rg)" "$VENDOR_DIR/arm64-android/rg"
-  ok "ripgrep symlink created"
+  chmod -R a-w "$CC_DIR"
+  ok "ripgrep symlink created (CLAUDE_CODE_USE_NATIVE_FILE_SEARCH below also covers this)"
 else
   warn "Could not find vendor directory. Run /fix-ripgrep inside Claude Code later."
 fi
 
-# --- Step 5: Configure shell ---
-
-ALIAS_LINE="alias claude-android='proot -b \$PREFIX/tmp:/tmp node \$PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli-wrapper.cjs'"
-TMPDIR_LINE="export TMPDIR=\$PREFIX/tmp"
+# --- Step 6: Configure shell ---
 
 # Add TMPDIR if not already in .bashrc
 if ! grep -q 'TMPDIR=\$PREFIX/tmp' ~/.bashrc 2>/dev/null; then
-  echo "" >> ~/.bashrc
-  echo "# Claude Code on Android" >> ~/.bashrc
-  echo "$TMPDIR_LINE" >> ~/.bashrc
-  ok "TMPDIR added to .bashrc"
+  printf '\n# Claude Code on Android\nexport TMPDIR=$PREFIX/tmp\n' >> ~/.bashrc
+  ok "TMPDIR added to ~/.bashrc"
 else
-  ok "TMPDIR already in .bashrc"
+  ok "TMPDIR already in ~/.bashrc"
 fi
 
-# Add CLAUDE_CODE_USE_NATIVE_FILE_SEARCH if not already in .bashrc
-NATIVE_SEARCH_LINE="export CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1"
+# Add CLAUDE_CODE_USE_NATIVE_FILE_SEARCH (durable ripgrep fix that survives updates)
 if ! grep -q 'CLAUDE_CODE_USE_NATIVE_FILE_SEARCH' ~/.bashrc 2>/dev/null; then
-  echo "" >> ~/.bashrc
-  echo "# Use system ripgrep instead of bundled (survives Claude Code updates)" >> ~/.bashrc
-  echo "$NATIVE_SEARCH_LINE" >> ~/.bashrc
-  ok "Added CLAUDE_CODE_USE_NATIVE_FILE_SEARCH to ~/.bashrc"
+  printf '\n# Use system ripgrep instead of bundled (survives Claude Code updates)\nexport CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1\n' >> ~/.bashrc
+  ok "CLAUDE_CODE_USE_NATIVE_FILE_SEARCH added to ~/.bashrc"
 else
   ok "CLAUDE_CODE_USE_NATIVE_FILE_SEARCH already in ~/.bashrc"
 fi
 
-# Add alias if not already in .bashrc
+# Add DISABLE_AUTOUPDATER (belt-and-braces against the in-process updater)
+if ! grep -q 'DISABLE_AUTOUPDATER' ~/.bashrc 2>/dev/null; then
+  printf '\n# Block claude-code auto-updater (would otherwise pull broken 2.1.113+; see anthropics/claude-code#50270)\nexport DISABLE_AUTOUPDATER=1\n' >> ~/.bashrc
+  ok "DISABLE_AUTOUPDATER added to ~/.bashrc"
+else
+  ok "DISABLE_AUTOUPDATER already in ~/.bashrc"
+fi
+
+# Add the launch alias
+ALIAS_LINE="alias claude-android='proot -b \$PREFIX/tmp:/tmp claude'"
 if ! grep -q 'claude-android' ~/.bashrc 2>/dev/null; then
   echo "$ALIAS_LINE" >> ~/.bashrc
-  ok "claude-android alias added to .bashrc"
+  ok "claude-android alias added to ~/.bashrc"
 else
-  ok "claude-android alias already in .bashrc"
+  ok "claude-android alias already in ~/.bashrc"
+fi
+
+# --- Step 7: Merge env.DISABLE_AUTOUPDATER into ~/.claude/settings.json ---
+
+mkdir -p ~/.claude
+SETTINGS=~/.claude/settings.json
+SETTINGS_REAL=$(readlink -f "$SETTINGS" 2>/dev/null || echo "$SETTINGS")
+
+if [ ! -f "$SETTINGS_REAL" ]; then
+  echo '{"env":{"DISABLE_AUTOUPDATER":"1"}}' > "$SETTINGS_REAL"
+  ok "Created $SETTINGS with DISABLE_AUTOUPDATER"
+else
+  if jq -e '.env.DISABLE_AUTOUPDATER == "1"' "$SETTINGS_REAL" >/dev/null 2>&1; then
+    ok "settings.json already has env.DISABLE_AUTOUPDATER"
+  else
+    cp -p "$SETTINGS_REAL" "${SETTINGS_REAL}.bak.$(date +%s)"
+    TMP=$(mktemp)
+    jq '. as $orig | (.env // {}) + {"DISABLE_AUTOUPDATER":"1"} as $newenv | $orig + {"env": $newenv}' \
+      "$SETTINGS_REAL" > "$TMP" && mv "$TMP" "$SETTINGS_REAL"
+    ok "Merged env.DISABLE_AUTOUPDATER into settings.json (backup saved)"
+  fi
 fi
 
 # --- Done ---
@@ -141,14 +215,22 @@ fi
 echo ""
 echo "════════════════════════════════════════════"
 echo ""
-echo "  Claude Code is installed."
+echo "  Claude Code v${CC_PIN} is installed and locked."
 echo ""
 echo "  To launch:"
-echo "    proot -b \$PREFIX/tmp:/tmp node \$PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli-wrapper.cjs"
+echo "    proot -b \$PREFIX/tmp:/tmp claude"
 echo ""
 echo "  Or reload your shell and use the alias:"
 echo "    source ~/.bashrc"
 echo "    claude-android"
+echo ""
+echo "  Why pinned: claude-code 2.1.113+ is broken on native Termux."
+echo "  Tracking:   https://github.com/anthropics/claude-code/issues/50270"
+echo ""
+echo "  To upgrade later (when upstream restores android-arm64 support):"
+echo "    chmod -R u+w $CC_DIR"
+echo "    npm install -g @anthropic-ai/claude-code@<new-version>"
+echo "    chmod -R a-w $CC_DIR"
 echo ""
 echo "  First launch will ask you to authenticate"
 echo "  with your Anthropic account."
