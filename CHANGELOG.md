@@ -1,5 +1,34 @@
 # Changelog
 
+## [2.7.0] - 2026-04-18
+
+Emergency release pinning Path A (native Termux) install to `@anthropic-ai/claude-code@2.1.112` — the last upstream version that ships the bundled `cli.js` JavaScript entry point. Versions 2.1.113 and later switched to a platform-native binary distribution that excludes android-arm64; on native Termux those versions install but `claude` exits immediately with `Error: claude native binary not installed`. Tracked upstream at [anthropics/claude-code#50270](https://github.com/anthropics/claude-code/issues/50270). The in-process auto-updater also re-fetches `latest` on a timer **inside running sessions**, so the pin must be defended with `DISABLE_AUTOUPDATER=1` plus a load-bearing `chmod -R a-w` on the install directory. Path B (proot-distro Ubuntu) is unaffected — `process.platform === 'linux'` matches the published `linux-arm64` native binary. Path C (AVF) is unaffected for the same reason.
+
+If you installed using v2.6.0 or earlier and your `claude` is now broken, re-run the new `install.sh` or follow the recovery steps in the README and `docs/troubleshooting.md`.
+
+### Fixed
+- **Path A install no longer ships a working CLI without intervention** — upstream `@anthropic-ai/claude-code` 2.1.113 (April 17–18) and 2.1.114 dropped the bundled `cli.js` entry and switched `bin/claude.exe` to a platform-native binary stub. The android-arm64 native binary is not in the published optional-dependencies list. Postinstall on native Termux finds no matching platform package, leaves the 500-byte error stub in place, and every `claude` invocation prints `Error: claude native binary not installed`. v2.6.0 of this guide shipped `npm install -g @anthropic-ai/claude-code` with no version pin, so anyone running it after April 17–18 hit the broken state. v2.7.0 pins to `2.1.112`.
+- **Auto-updater clobbers manual downgrade** — Claude Code's in-process updater re-fetches `latest` on a timer inside running sessions. A user who manually downgrades to 2.1.112 sees the pin silently re-overwritten with 2.1.114 within minutes. Fix: `DISABLE_AUTOUPDATER=1` in shell env and `~/.claude/settings.json`, plus `chmod -R a-w` on the install dir. The `chmod` is the load-bearing one — the env reduces but does not stop the attempt.
+- **`cli-wrapper.cjs` references in install.sh, README, and `docs/install.md` are now incorrect for 2.1.113+ and were used by v2.6.0** — the wrapper in 2.1.113+ is a strict platform dispatcher with `process.exit(1)` on unsupported platforms (including android), not a JS fallback. v2.7.0 removes those references and uses the bundled `cli.js` entry exposed by the `claude` symlink in 2.1.112.
+
+### Changed
+- **`install.sh` rewritten** — pins `CC_PIN="2.1.112"`, installs with `DISABLE_AUTOUPDATER=1` in env, applies `chmod -R a-w` on `$PREFIX/lib/node_modules/@anthropic-ai/claude-code/` after install, adds `DISABLE_AUTOUPDATER=1` to `~/.bashrc`, merges `env.DISABLE_AUTOUPDATER` into `~/.claude/settings.json` via jq (preserving any existing config). Detects existing installs and recovers idempotently: chmod +w → reinstall pin → chmod -R a-w. Re-running the script is the supported recovery path.
+- **`docs/install.md`** — Step 3 documents the version pin, the auto-updater env, the chmod, and links to upstream `#50270`. Step 4 launches via `proot -b $PREFIX/tmp:/tmp claude` (the bundled cli.js entry exposed by the `claude` symlink in 2.1.112), not through `cli-wrapper.cjs`. Step 5 alias updated. "Updating Claude Code" section explains the chmod dance required to upgrade past the pin. "Uninstalling" section adds the chmod -R u+w prerequisite.
+- **README** — Path A code blocks updated to the pinned form. Footer version bumped to 2.7.0. Version badge bumped to 2.7.0.
+- **Step 1 dependencies** — added `jq` to the `pkg install` line in install.sh and `docs/install.md` (used for safely merging `~/.claude/settings.json` without clobbering existing config).
+
+### Added
+- **README top-of-page warning banner** linking to recovery instructions for visitors who hit the regression.
+- **README "April 18 upstream regression — Path A recovery" section** under Path A: explains the upstream change, the auto-updater clobber behavior, the recovery steps, and the upgrade path forward.
+- **`docs/troubleshooting.md` entry "Claude Code exits: 'native binary not installed'"** — full diagnostic, both Path A (pin) and Path B (proot-ubuntu) fixes, and the upgrade-later path.
+- **CHANGELOG note** that Path A is now in a maintenance-only state on the upstream side. The strategic move toward Path B (proot-distro Ubuntu) as the primary recommended path is planned for a future release.
+
+### Notes
+- Path B (proot-distro Ubuntu) and Path C (AVF) are unaffected by the upstream regression. Both run `process.platform === 'linux'` which matches the published `linux-arm64` native binary; `npm install -g @anthropic-ai/claude-code` (no pin) works normally inside the Ubuntu guest.
+- The pinned 2.1.112 install was verified end-to-end on Samsung Galaxy S26 Ultra (Android 16, kernel 6.12, Node v25.8.2) on 2026-04-18: install + chmod + auto-updater protection + `claude --version` returns `2.1.112 (Claude Code)`.
+- A backup tag `backup/pre-v2.7.0` was created on `main` before this release for rollback.
+- This guide does not redistribute Anthropic's claude-code package or vendor any binary content; pinning a published npm version and locking permissions on the install directory uses normal npm and POSIX mechanisms.
+
 ## [2.6.0] - 2026-04-18
 
 Documentation refresh plus security hardening. Corrects stale claims, migrates docs URLs following Anthropic's domain move, updates Path A install instructions for upstream npm package restructure, corrects the hooks-on-Termux section to reflect current behavior, adds an audio-backend section covering `/voice` mode on vendor-broken devices, and adds an Android 17 Beta status note to the AVF guide. Rewrites `examples/ssrf-guard.sh` to close real bypasses in the previous regex-based implementation, adds a 47-case test harness, and adds `.gitattributes` so shell scripts stay LF on Windows checkouts (CRLF breaks them on Termux).
