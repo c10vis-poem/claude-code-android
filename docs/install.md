@@ -78,10 +78,10 @@ There is no root access. There is no systemd. There is no `/tmp` in the way most
 Open Termux and run:
 
 ```bash
-pkg install nodejs git curl proot ripgrep termux-api -y
+pkg install nodejs git curl proot ripgrep termux-api jq -y
 ```
 
-This installs Node.js v25+, git, curl, proot, and ripgrep. All five are required — Node.js runs Claude Code, git is needed for repository operations, curl is used during authentication flows, proot handles the `/tmp` bind mount at launch, and ripgrep is required for Claude Code's Grep and Glob tools to work on ARM64.
+This installs Node.js v25+, git, curl, proot, ripgrep, termux-api, and jq. Node.js runs Claude Code, git is needed for repository operations, curl is used during authentication flows, proot handles the `/tmp` bind mount at launch, ripgrep is required for Claude Code's Grep and Glob tools to work on ARM64, termux-api ships the device-API CLIs paired with the companion app, and jq is used for safely merging `~/.claude/settings.json` in Step 5.
 
 ---
 
@@ -100,17 +100,26 @@ The `export` only lasts this session. The `echo` line makes it permanent across 
 
 ---
 
-## Step 3: Install Claude Code
+## Step 3: Install Claude Code (pinned)
 
 ```bash
-npm install -g @anthropic-ai/claude-code
+DISABLE_AUTOUPDATER=1 npm install -g @anthropic-ai/claude-code@2.1.112
+chmod -R a-w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
 ```
 
-This installs Claude Code globally via npm. With `TMPDIR` set correctly, npm can stage files and complete the installation cleanly.
+This installs Claude Code globally via npm at version **2.1.112** — the last upstream version that ships the bundled `cli.js` JavaScript entry point. Versions 2.1.113 and later switched to a platform-native binary distribution that excludes android-arm64; on native Termux those versions install but `claude` exits immediately with `Error: claude native binary not installed`. Tracked at [anthropics/claude-code#50270](https://github.com/anthropics/claude-code/issues/50270).
 
-> **Note:** Anthropic now offers a native installer (`curl -fsSL https://claude.ai/install.sh | bash`) as the recommended installation method. The native installer does not work in native Termux due to SSL library compatibility issues — use npm for Path A. The native installer works correctly in Path B (proot-distro Ubuntu) where the library stack is standard Linux.
+The `DISABLE_AUTOUPDATER=1` env disables Claude Code's in-process auto-updater that would otherwise re-fetch `latest` on a timer and clobber the pin **inside running sessions**. The `chmod -R a-w` is the load-bearing belt-and-braces — without it, the running session's updater silently overwrites the install dir even with the env var set.
 
-> **Do not run `claude` directly.** The npm install puts a `claude` shim on your PATH, but the postinstall cannot fetch a native binary for android-arm64 — bare `claude` errors with "claude native binary not installed." A JavaScript fallback ships in the same package; Step 4 invokes it through proot.
+> **Note:** Anthropic offers a native installer (`curl -fsSL https://claude.ai/install.sh | bash`) for supported platforms. It does not currently support android-arm64 — use the pinned npm install above for Path A. The native installer works correctly in Path B (proot-distro Ubuntu) where `process.platform === 'linux'` matches a published native binary.
+
+> **Upgrade later** (when upstream restores android-arm64 support, watch [#50270](https://github.com/anthropics/claude-code/issues/50270)):
+>
+> ```bash
+> chmod -R u+w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
+> npm install -g @anthropic-ai/claude-code@<new-version>
+> chmod -R a-w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
+> ```
 
 ---
 
@@ -120,13 +129,13 @@ Claude Code hardcodes `/tmp` for runtime state. The fix is `proot` — a userspa
 
 proot was installed in Step 1.
 
-Launch Claude Code through the JS fallback wrapper:
+Launch:
 
 ```bash
-proot -b $PREFIX/tmp:/tmp node $PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli-wrapper.cjs
+proot -b $PREFIX/tmp:/tmp claude
 ```
 
-This binds Termux's writable tmp directory to `/tmp` (so Claude Code's `/tmp` references work) and runs Claude Code through the cli-wrapper.cjs JS fallback (so the missing android-arm64 native binary doesn't matter). No root. No containers. No virtualization.
+This binds Termux's writable tmp directory to `/tmp` (so Claude Code's `/tmp` references work) and runs the `claude` symlink installed by npm in Step 3. No root. No containers. No virtualization.
 
 > **Alternative to the bind mount:** If you prefer not to use proot for this workaround, you can set the `CLAUDE_CODE_TMPDIR` environment variable to any writable directory:
 >
@@ -144,12 +153,15 @@ On first launch, Claude Code will prompt you to authenticate. A URL will appear 
 
 ## Step 5: Create the Alias
 
-Add this alias to your `~/.bashrc`. Use `claude-android` every time — running bare `claude` will fail with "claude native binary not installed":
+Add this alias to your `~/.bashrc`. Use `claude-android` every time — bare `claude` skips the proot bind mount and `/tmp`-touching operations will fail:
 
 ```bash
-echo "alias claude-android='proot -b \$PREFIX/tmp:/tmp node \$PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli-wrapper.cjs'" >> ~/.bashrc
+echo "alias claude-android='proot -b \$PREFIX/tmp:/tmp claude'" >> ~/.bashrc
+echo 'export DISABLE_AUTOUPDATER=1' >> ~/.bashrc
 source ~/.bashrc
 ```
+
+Also add `"env": {"DISABLE_AUTOUPDATER": "1"}` to `~/.claude/settings.json` so the auto-updater stays disabled inside running sessions, not just at shell launch.
 
 Then launch with:
 
@@ -223,19 +235,29 @@ Three devices verified across two Android versions (15 and 16), two manufacturer
 
 ## Keeping It Running
 
-### Updating Claude Code
+### Updating Claude Code (Path A)
+
+**Do not run `npm update -g @anthropic-ai/claude-code`** — that pulls `latest` which is currently 2.1.114 (broken on android-arm64). Stay on the pinned 2.1.112 until upstream restores android-arm64 support; track [#50270](https://github.com/anthropics/claude-code/issues/50270).
+
+To intentionally bump to a specific newer version once one is published as working on android-arm64:
 
 ```bash
-export TMPDIR=$PREFIX/tmp
-npm update -g @anthropic-ai/claude-code
+chmod -R u+w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
+DISABLE_AUTOUPDATER=1 npm install -g @anthropic-ai/claude-code@<new-version>
+chmod -R a-w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
+claude --version    # confirm
 ```
 
-After updating, the ripgrep symlink breaks (Claude Code replaces its vendor directory). Re-run `/fix-ripgrep` in your next session, or manually:
+The chmod dance is required because Step 3 locked the install dir read-only against the auto-updater. You have to restore write permission before any reinstall.
+
+After updating, the ripgrep symlink breaks (Claude Code replaces its vendor directory). The `CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1` env (added by `install.sh` in the original install) makes Claude Code use the system `rg` instead of its bundled binary, so this issue does not recur. If for some reason you need the symlink approach instead, restore it manually:
 
 ```bash
+chmod -R u+w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
 VENDOR_DIR="$(dirname "$(command -v claude)")/../lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep"
 mkdir -p "$VENDOR_DIR/arm64-android"
 ln -sf "$(command -v rg)" "$VENDOR_DIR/arm64-android/rg"
+chmod -R a-w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
 ```
 
 ### Durable ripgrep fix (recommended)
@@ -260,10 +282,13 @@ This updates proot, Node.js, and other dependencies. After a Node.js major versi
 ### Uninstalling
 
 ```bash
+chmod -R u+w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/ 2>/dev/null
 npm uninstall -g @anthropic-ai/claude-code
 ```
 
-Remove the alias from `~/.bashrc` if you added one. Remove `~/.claude/` to clear all configuration.
+The `chmod -R u+w` is required because Step 3 locked the install dir read-only; npm cannot remove read-only files without it.
+
+Remove the alias and `DISABLE_AUTOUPDATER` line from `~/.bashrc` if you added them. Remove `~/.claude/` to clear all configuration.
 
 ---
 

@@ -11,6 +11,7 @@ If you haven't installed yet, see [INSTALL.md](install.md) first.
 - [Claude Code hangs on startup](#claude-code-hangs-on-startup)
 - [Unsupported architecture: armhf](#unsupported-architecture-armhf)
 - [Claude Code won't start, no error](#claude-code-wont-start-no-error)
+- [Claude Code exits: "native binary not installed"](#claude-code-exits-native-binary-not-installed)
 - [OAuth / authentication fails on first launch](#oauth--authentication-fails-on-first-launch)
 - [proot-distro issues](#proot-distro-issues)
 - [Node.js v24 hangs](#nodejs-v24-hangs)
@@ -121,6 +122,57 @@ This avoids proot entirely but only redirects Claude's own temp files — other 
 **Cause:** `/tmp` is not writable. Claude Code hardcodes `/tmp` for socket files, IPC, and ephemeral state. On Android, `/tmp` either doesn't exist or isn't writable from Termux's sandbox.
 
 > **Note:** The proot bind mount resolves Claude Code operation including subagent task directories. Verified working with subagents on Android 16 (proot 5.1.107-70). Reports of EACCES on subagent tasks in issue [#15637](https://github.com/anthropics/claude-code/issues/15637) describe the experience *without* proot — the bind mount fixes it.
+
+---
+
+### Claude Code exits: "native binary not installed"
+
+**You see:**
+
+```
+$ claude
+Error: claude native binary not installed.
+
+Either postinstall did not run (--ignore-scripts, some pnpm configs)
+or the platform-native optional dependency was not downloaded
+(--omit=optional).
+```
+
+The package installed successfully via npm, but `claude` exits immediately with this error every time. Bare `claude --version` produces the same output.
+
+**Cause:** Upstream regression introduced in `@anthropic-ai/claude-code` 2.1.113. Versions 2.1.113 and later switched from a bundled `cli.js` JavaScript entry point to a platform-native binary (`bin/claude.exe`) wrapped by an optional-dependency dispatcher (`cli-wrapper.cjs`). The PLATFORMS map in the dispatcher includes darwin / linux (glibc + musl) / win32 — **android-arm64 is not in the list**. On native Termux, the postinstall script finds no matching platform package, leaves `bin/claude.exe` as the 500-byte error stub it ships with, and every subsequent `claude` invocation prints the message above.
+
+Tracked upstream at [anthropics/claude-code#50270](https://github.com/anthropics/claude-code/issues/50270).
+
+**Fix (Path A — pin to last working version):**
+
+```bash
+chmod -R u+w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/ 2>/dev/null
+DISABLE_AUTOUPDATER=1 npm install -g @anthropic-ai/claude-code@2.1.112
+chmod -R a-w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
+echo 'export DISABLE_AUTOUPDATER=1' >> ~/.bashrc
+claude --version    # → 2.1.112 (Claude Code)
+```
+
+The `chmod -R a-w` is load-bearing. The in-process auto-updater inside running Claude Code sessions re-fetches `latest` on a timer and silently overwrites the install dir. Locking the directory read-only blocks the overwrite. The `DISABLE_AUTOUPDATER=1` env reduces the attempt rate but is insufficient alone — the `chmod` is what holds.
+
+Or rerun the [`install.sh`](../install.sh) which does this idempotently.
+
+Also add `"env": {"DISABLE_AUTOUPDATER": "1"}` to `~/.claude/settings.json` so the auto-updater stays disabled inside running sessions, not just at shell launch. The pattern (using jq):
+
+```bash
+jq '.env = ((.env // {}) + {"DISABLE_AUTOUPDATER":"1"})' ~/.claude/settings.json > /tmp/s.json && mv /tmp/s.json ~/.claude/settings.json
+```
+
+**Fix (Path B — proot-distro Ubuntu):** unaffected. Inside the Ubuntu guest, `process.platform === 'linux'` and `process.arch === 'arm64'` match the upstream `linux-arm64` native binary, so `npm install -g @anthropic-ai/claude-code` (no pin) works normally. If you want to stop tracking the regression, switch to Path B.
+
+**To upgrade Path A later** (when upstream restores android-arm64 support, watch [#50270](https://github.com/anthropics/claude-code/issues/50270)):
+
+```bash
+chmod -R u+w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
+npm install -g @anthropic-ai/claude-code@<new-version>
+chmod -R a-w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
+```
 
 ---
 
