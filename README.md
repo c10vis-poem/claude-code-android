@@ -320,7 +320,7 @@ If you have a desktop or laptop running Claude Code, [Remote Control](https://co
 
 | Document | What It Covers |
 |----------|---------------|
-| **[CHANGELOG.md](CHANGELOG.md)** | Version history from 0.1.0 to 2.5.1 |
+| **[CHANGELOG.md](CHANGELOG.md)** | Version history from 0.1.0 to 2.7.0 |
 | **[CONTRIBUTING.md](.github/CONTRIBUTING.md)** | How to contribute, report bugs, submit device reports |
 | **[AGENTS.md](docs/agents.md)** | The 6 AI agents that build and maintain this repo |
 | **[STORY.md](docs/story.md)** | How this project came together |
