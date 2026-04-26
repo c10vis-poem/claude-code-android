@@ -20,7 +20,7 @@ One sentence. If you cannot describe it in one sentence, the scope is not define
 Usually: a shell script, a single file, a few commands piped together, a cron entry, a git hook. Describe it. Estimate the line count.
 
 **3. Why is the simple version insufficient?**
-State a concrete reason — not "it won't scale" but "it cannot handle binary data" or "it requires a persistent HTTP connection." If you cannot state a concrete reason, build the simple version.
+State a concrete reason. Not "it won't scale" but "it cannot handle binary data" or "it requires a persistent HTTP connection." If you cannot state a concrete reason, build the simple version.
 
 **4. What is the proposed implementation?**
 If you are not building the simple version: name the language, framework, and every dependency. Justify each one.

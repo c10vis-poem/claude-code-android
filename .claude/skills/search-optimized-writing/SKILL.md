@@ -14,10 +14,10 @@ Apply every check to the document or section before publishing. Report any headi
 ## Checks
 
 **1. What would someone Google to find this?**
-List the exact error messages or symptom strings a user would paste into a search engine. Copy them character-for-character as they appear in the terminal or browser — capitalisation, punctuation, and all.
+List the exact error messages or symptom strings a user would paste into a search engine. Copy them character-for-character as they appear in the terminal or browser, capitalisation, punctuation, and all.
 
 **2. Are those exact strings in the document?**
-Search your draft for each string from check 1. If a string is missing, add it — in a code block if it is a terminal error, in plain text if it is a symptom description. A user who pastes the error into Google must be able to land on your page.
+Search your draft for each string from check 1. If a string is missing, add it: in a code block if it is a terminal error, in plain text if it is a symptom description. A user who pastes the error into Google must be able to land on your page.
 
 **3. Are headings phrased as searches, not topics?**
 Compare your headings against how someone would phrase the problem. Prefer the user's language over internal terminology:

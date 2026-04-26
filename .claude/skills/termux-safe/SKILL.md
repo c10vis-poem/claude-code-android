@@ -6,11 +6,11 @@ user-invocable: false
 
 # Android / Termux Environment Constraints
 
-> **Scope:** These constraints apply to native Termux only. Inside a proot-distro guest (Path B), standard Linux rules apply — `apt` works normally, `/tmp` is writable, paths are standard.
+> **Scope:** These constraints apply to native Termux only. Inside a proot-distro guest (Path B), standard Linux rules apply: `apt` works normally, `/tmp` is writable, paths are standard.
 
 You are running inside Termux on Android (aarch64). These constraints produce **silent failures, not errors.** Every suggestion must account for them.
 
-## Hard Rules — Never Suggest These
+## Hard Rules: Never Suggest These
 
 - **No `sudo`.** Root does not exist. No `su`, no `doas`, no privilege escalation of any kind.
 - **No `systemctl` or `systemd`.** Android does not use systemd. No `journalctl`, no `service`, no unit files.

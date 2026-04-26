@@ -1,6 +1,6 @@
 ---
 name: config-validator
-description: Validate .claude/ configuration for consistency — agent definitions, skill files, hook registrations, settings.json, and tool grants. Use during repo audits or after adding new agents, skills, or hooks.
+description: Validate .claude/ configuration for consistency: agent definitions, skill files, hook registrations, settings.json, and tool grants. Use during repo audits or after adding new agents, skills, or hooks.
 user-invocable: true
 disable-model-invocation: false
 argument-hint: "(no arguments needed)"

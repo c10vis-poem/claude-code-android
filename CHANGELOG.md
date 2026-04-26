@@ -2,25 +2,25 @@
 
 ## [2.7.0] - 2026-04-18
 
-Emergency release pinning Path A (native Termux) install to `@anthropic-ai/claude-code@2.1.112` — the last upstream version that ships the bundled `cli.js` JavaScript entry point. Versions 2.1.113 and later switched to a platform-native binary distribution that excludes android-arm64; on native Termux those versions install but `claude` exits immediately with `Error: claude native binary not installed`. Tracked upstream at [anthropics/claude-code#50270](https://github.com/anthropics/claude-code/issues/50270). The in-process auto-updater also re-fetches `latest` on a timer **inside running sessions**, so the pin must be defended with `DISABLE_AUTOUPDATER=1` plus a load-bearing `chmod -R a-w` on the install directory. Path B (proot-distro Ubuntu) is unaffected — `process.platform === 'linux'` matches the published `linux-arm64` native binary. Path C (AVF) is unaffected for the same reason.
+Emergency release pinning Path A (native Termux) install to `@anthropic-ai/claude-code@2.1.112`, the last upstream version that ships the bundled `cli.js` JavaScript entry point. Versions 2.1.113 and later switched to a platform-native binary distribution that excludes android-arm64; on native Termux those versions install but `claude` exits immediately with `Error: claude native binary not installed`. Tracked upstream at [anthropics/claude-code#50270](https://github.com/anthropics/claude-code/issues/50270). The in-process auto-updater also re-fetches `latest` on a timer **inside running sessions**, so the pin must be defended with `DISABLE_AUTOUPDATER=1` plus a load-bearing `chmod -R a-w` on the install directory. Path B (proot-distro Ubuntu) is unaffected: `process.platform === 'linux'` matches the published `linux-arm64` native binary. Path C (AVF) is unaffected for the same reason.
 
 If you installed using v2.6.0 or earlier and your `claude` is now broken, re-run the new `install.sh` or follow the recovery steps in the README and `docs/troubleshooting.md`.
 
 ### Fixed
-- **Path A install no longer ships a working CLI without intervention** — upstream `@anthropic-ai/claude-code` 2.1.113 (April 17–18) and 2.1.114 dropped the bundled `cli.js` entry and switched `bin/claude.exe` to a platform-native binary stub. The android-arm64 native binary is not in the published optional-dependencies list. Postinstall on native Termux finds no matching platform package, leaves the 500-byte error stub in place, and every `claude` invocation prints `Error: claude native binary not installed`. v2.6.0 of this guide shipped `npm install -g @anthropic-ai/claude-code` with no version pin, so anyone running it after April 17–18 hit the broken state. v2.7.0 pins to `2.1.112`.
-- **Auto-updater clobbers manual downgrade** — Claude Code's in-process updater re-fetches `latest` on a timer inside running sessions. A user who manually downgrades to 2.1.112 sees the pin silently re-overwritten with 2.1.114 within minutes. Fix: `DISABLE_AUTOUPDATER=1` in shell env and `~/.claude/settings.json`, plus `chmod -R a-w` on the install dir. The `chmod` is the load-bearing one — the env reduces but does not stop the attempt.
-- **`cli-wrapper.cjs` references in install.sh, README, and `docs/install.md` are now incorrect for 2.1.113+ and were used by v2.6.0** — the wrapper in 2.1.113+ is a strict platform dispatcher with `process.exit(1)` on unsupported platforms (including android), not a JS fallback. v2.7.0 removes those references and uses the bundled `cli.js` entry exposed by the `claude` symlink in 2.1.112.
+- **Path A install no longer ships a working CLI without intervention**: upstream `@anthropic-ai/claude-code` 2.1.113 (April 17–18) and 2.1.114 dropped the bundled `cli.js` entry and switched `bin/claude.exe` to a platform-native binary stub. The android-arm64 native binary is not in the published optional-dependencies list. Postinstall on native Termux finds no matching platform package, leaves the 500-byte error stub in place, and every `claude` invocation prints `Error: claude native binary not installed`. v2.6.0 of this guide shipped `npm install -g @anthropic-ai/claude-code` with no version pin, so anyone running it after April 17–18 hit the broken state. v2.7.0 pins to `2.1.112`.
+- **Auto-updater clobbers manual downgrade**: Claude Code's in-process updater re-fetches `latest` on a timer inside running sessions. A user who manually downgrades to 2.1.112 sees the pin silently re-overwritten with 2.1.114 within minutes. Fix: `DISABLE_AUTOUPDATER=1` in shell env and `~/.claude/settings.json`, plus `chmod -R a-w` on the install dir. The `chmod` is the load-bearing one. The env reduces but does not stop the attempt.
+- **`cli-wrapper.cjs` references in install.sh, README, and `docs/install.md` are now incorrect for 2.1.113+ and were used by v2.6.0**: the wrapper in 2.1.113+ is a strict platform dispatcher with `process.exit(1)` on unsupported platforms (including android), not a JS fallback. v2.7.0 removes those references and uses the bundled `cli.js` entry exposed by the `claude` symlink in 2.1.112.
 
 ### Changed
-- **`install.sh` rewritten** — pins `CC_PIN="2.1.112"`, installs with `DISABLE_AUTOUPDATER=1` in env, applies `chmod -R a-w` on `$PREFIX/lib/node_modules/@anthropic-ai/claude-code/` after install, adds `DISABLE_AUTOUPDATER=1` to `~/.bashrc`, merges `env.DISABLE_AUTOUPDATER` into `~/.claude/settings.json` via jq (preserving any existing config). Detects existing installs and recovers idempotently: chmod +w → reinstall pin → chmod -R a-w. Re-running the script is the supported recovery path.
-- **`docs/install.md`** — Step 3 documents the version pin, the auto-updater env, the chmod, and links to upstream `#50270`. Step 4 launches via `proot -b $PREFIX/tmp:/tmp claude` (the bundled cli.js entry exposed by the `claude` symlink in 2.1.112), not through `cli-wrapper.cjs`. Step 5 alias updated. "Updating Claude Code" section explains the chmod dance required to upgrade past the pin. "Uninstalling" section adds the chmod -R u+w prerequisite.
-- **README** — Path A code blocks updated to the pinned form. Footer version bumped to 2.7.0. Version badge bumped to 2.7.0.
-- **Step 1 dependencies** — added `jq` to the `pkg install` line in install.sh and `docs/install.md` (used for safely merging `~/.claude/settings.json` without clobbering existing config).
+- **`install.sh` rewritten**: pins `CC_PIN="2.1.112"`, installs with `DISABLE_AUTOUPDATER=1` in env, applies `chmod -R a-w` on `$PREFIX/lib/node_modules/@anthropic-ai/claude-code/` after install, adds `DISABLE_AUTOUPDATER=1` to `~/.bashrc`, merges `env.DISABLE_AUTOUPDATER` into `~/.claude/settings.json` via jq (preserving any existing config). Detects existing installs and recovers idempotently: chmod +w → reinstall pin → chmod -R a-w. Re-running the script is the supported recovery path.
+- **`docs/install.md`**: Step 3 documents the version pin, the auto-updater env, the chmod, and links to upstream `#50270`. Step 4 launches via `proot -b $PREFIX/tmp:/tmp claude` (the bundled cli.js entry exposed by the `claude` symlink in 2.1.112), not through `cli-wrapper.cjs`. Step 5 alias updated. "Updating Claude Code" section explains the chmod dance required to upgrade past the pin. "Uninstalling" section adds the chmod -R u+w prerequisite.
+- **README**: Path A code blocks updated to the pinned form. Footer version bumped to 2.7.0. Version badge bumped to 2.7.0.
+- **Step 1 dependencies**: added `jq` to the `pkg install` line in install.sh and `docs/install.md` (used for safely merging `~/.claude/settings.json` without clobbering existing config).
 
 ### Added
 - **README top-of-page warning banner** linking to recovery instructions for visitors who hit the regression.
-- **README "April 18 upstream regression — Path A recovery" section** under Path A: explains the upstream change, the auto-updater clobber behavior, the recovery steps, and the upgrade path forward.
-- **`docs/troubleshooting.md` entry "Claude Code exits: 'native binary not installed'"** — full diagnostic, both Path A (pin) and Path B (proot-ubuntu) fixes, and the upgrade-later path.
+- **README "April 18 upstream regression: Path A recovery" section** under Path A: explains the upstream change, the auto-updater clobber behavior, the recovery steps, and the upgrade path forward.
+- **`docs/troubleshooting.md` entry "Claude Code exits: 'native binary not installed'"**: full diagnostic, both Path A (pin) and Path B (proot-ubuntu) fixes, and the upgrade-later path.
 - **CHANGELOG note** that Path A is now in a maintenance-only state on the upstream side. The strategic move toward Path B (proot-distro Ubuntu) as the primary recommended path is planned for a future release.
 
 ### Notes
@@ -40,7 +40,7 @@ Documentation refresh plus security hardening. Corrects stale claims, migrates d
 - `dd` benchmark in `docs/avf-guide.md` qualified to note that the read figure includes page cache and overstates real disk throughput
 - Claude Code version reference refreshed in `.claude/skills/doctor/SKILL.md` example output
 - Hooks-on-Termux section in `docs/troubleshooting.md` corrected. Earlier wording stated PreToolUse/PostToolUse hooks did not fire on `process.platform === "android"`; that is no longer accurate. Replaced with concrete debugging steps. Reference to upstream issue #16615 retained as historical context.
-- **`examples/ssrf-guard.sh` rewritten to close real bypasses.** The previous regex-based IPv4 check required four dotted octets, so short-form IPs (`http://127.1/`) and mixed-format IPs (decimal `2130706433`, hex `0x7f000001`) passed through to loopback. A prompt-injected WebFetch call using any of those forms would reach internal services. The rewrite offloads URL parsing to Node's `new URL()` — the same RFC 3986 normalization Claude Code's WebFetch uses internally — then applies private-range checks on the normalized hostname. Covers short-form IPv4, decimal, hex, IPv4-mapped IPv6, cloud metadata aliases, case-sensitive hostnames, and malformed URLs. WebSearch bare queries (no `://`) now pass through instead of being blocked as missing-scheme. DNS-rebinding limitation remains and is documented in the header.
+- **`examples/ssrf-guard.sh` rewritten to close real bypasses.** The previous regex-based IPv4 check required four dotted octets, so short-form IPs (`http://127.1/`) and mixed-format IPs (decimal `2130706433`, hex `0x7f000001`) passed through to loopback. A prompt-injected WebFetch call using any of those forms would reach internal services. The rewrite offloads URL parsing to Node's `new URL()` (the same RFC 3986 normalization Claude Code's WebFetch uses internally), then applies private-range checks on the normalized hostname. Covers short-form IPv4, decimal, hex, IPv4-mapped IPv6, cloud metadata aliases, case-sensitive hostnames, and malformed URLs. WebSearch bare queries (no `://`) now pass through instead of being blocked as missing-scheme. DNS-rebinding limitation remains and is documented in the header.
 - Subscription tier list in README and `docs/install.md` expanded from "Pro or Max" to match upstream's documented list (Pro, Max, Team, Enterprise, or Console/API account).
 - `docs/install.md` softened "preferred installation method" to "recommended installation method" to match upstream wording exactly.
 
@@ -54,7 +54,7 @@ Documentation refresh plus security hardening. Corrects stale claims, migrates d
 ### Added
 - New README section "Audio: /voice mode and the chain underneath" documenting the SoX → PulseAudio → backend → mic chain. Identifies vendor-device failures at the SLES backend layer (termux/termux-packages#28861, termux/termux-packages#27978, termux/termux-packages#27367, termux/termux-packages#26871) and points to termux/termux-packages#29319 (Oboe package + PulseAudio Oboe modules) as the fix path. Includes the user opt-in steps for after the PR lands. Caveat noted that Claude Code's own SoX detection on Termux is a separate concern.
 - Android 17 Beta status note at the top of `docs/avf-guide.md`. Existing Android 16 content retained as baseline reference; A17 Beta not re-verified end-to-end in this cycle.
-- `tests/ssrf-guard-tests.sh` — 47-case test harness for the SSRF guard. Feeds JSON PreToolUse payloads covering short-form IPs, private ranges, cloud metadata, IPv6 forms, bad schemes, WebSearch queries, and edge cases. Used to prove the previous guard had real bypasses and that the rewrite closes them.
+- `tests/ssrf-guard-tests.sh`: 47-case test harness for the SSRF guard. Feeds JSON PreToolUse payloads covering short-form IPs, private ranges, cloud metadata, IPv6 forms, bad schemes, WebSearch queries, and edge cases. Used to prove the previous guard had real bypasses and that the rewrite closes them.
 - `.gitattributes` pinning `*.sh` to LF line endings. Windows checkouts would otherwise get CRLF, which breaks the scripts when they land on Termux (bash errors on `$'\r'` at end of lines).
 
 ### Notes
@@ -225,27 +225,27 @@ Documentation refresh plus security hardening. Corrects stale claims, migrates d
 
 ---
 
-## [2.0.1] — 2026-03-21
+## [2.0.1] - 2026-03-21
 
 ### Security
 
-- **Scrubbed device UIDs from test results** — `tests/results/s26ultra-android16.txt` contained real Android UID values in directory listings. Replaced with `<uid>` placeholders throughout. UIDs are not secrets but are device-specific identifiers that belong to the device owner, not the public record.
-- **Sanitized `verify-claims.sh` to prevent future UID leaks** — The script now strips numeric UIDs from `ls -la` output before writing to results files. Future runs on any device will not capture owner UIDs.
+- **Scrubbed device UIDs from test results**: `tests/results/s26ultra-android16.txt` contained real Android UID values in directory listings. Replaced with `<uid>` placeholders throughout. UIDs are not secrets but are device-specific identifiers that belong to the device owner, not the public record.
+- **Sanitized `verify-claims.sh` to prevent future UID leaks**: The script now strips numeric UIDs from `ls -la` output before writing to results files. Future runs on any device will not capture owner UIDs.
 
 ### Fixed
 
-- **Screenshot alt text corrected in README** — Updated alt text on header screenshots to match the actual device shown in each image.
-- **Concurrency limit inconsistency** — STORY.md stated the historical limit of 3 (from before stress testing), CONSTITUTION-TEMPLATE.md still advised a limit of 2. Both now reflect the current tested limit of 6, consistent with CLAUDE.md and INSTALL.md.
-- **Issue #16615 status in TROUBLESHOOTING.md** — The upstream issues table listed `#16615` (Platform detection — `android` not recognized) as open. Status corrected to `Closed (not planned)`.
-- **Stale self-reported path in test results** — `tests/results/s26ultra-android16.txt` contained a "Results written to:" line with a device-specific absolute path. Replaced with a relative path that is valid on any clone.
+- **Screenshot alt text corrected in README**: Updated alt text on header screenshots to match the actual device shown in each image.
+- **Concurrency limit inconsistency**: STORY.md stated the historical limit of 3 (from before stress testing), CONSTITUTION-TEMPLATE.md still advised a limit of 2. Both now reflect the current tested limit of 6, consistent with CLAUDE.md and INSTALL.md.
+- **Issue #16615 status in TROUBLESHOOTING.md**: The upstream issues table listed `#16615` (Platform detection: `android` not recognized) as open. Status corrected to `Closed (not planned)`.
+- **Stale self-reported path in test results**: `tests/results/s26ultra-android16.txt` contained a "Results written to:" line with a device-specific absolute path. Replaced with a relative path that is valid on any clone.
 
 ---
 
-## [2.0.0] — 2026-03-21
+## [2.0.0] - 2026-03-21
 
 ### Added
 
-- **ADB wireless self-connect** — Claude Code on Android can now use ADB wireless
+- **ADB wireless self-connect**: Claude Code on Android can now use ADB wireless
   debugging to connect to its own device via `adb pair/connect 127.0.0.1`. This
   unlocks system capabilities that SELinux blocks from Termux directly: `screencap`,
   `settings get/put` (including DND zen_mode), `content query` (calendar, contacts),
@@ -253,19 +253,19 @@ Documentation refresh plus security hardening. Corrects stale claims, migrates d
   `ps -A`, and `getprop`. No root required. No third-party automation app required.
   See [ADB-WIRELESS.md](docs/adb-wireless.md) for the full setup guide.
 
-- **Agent concurrency limit raised to 6** — Stress testing with 6 simultaneous
+- **Agent concurrency limit raised to 6**: Stress testing with 6 simultaneous
   Claude Opus agents on mid-range Android hardware (8-core Snapdragon, 11 GB RAM)
   produced negligible load: +0.02 load average, -172 MB RAM (down, not up), +4.7°C
   temperature rise. The practical ceiling is API rate limits, not device hardware.
   Users running Claude Code agents can safely run up to 6 concurrently without thermal
   or memory concern on comparable devices. Adjust based on your hardware.
 
-- **`CLAUDE_CODE_TMPDIR` environment variable** — An alternative to the proot bind
+- **`CLAUDE_CODE_TMPDIR` environment variable**: An alternative to the proot bind
   mount workaround for TMPDIR. Setting `export CLAUDE_CODE_TMPDIR=/data/data/com.termux/files/home/tmp`
   (or any writable path) in your shell profile before launching Claude Code resolves
   the write-permission error without requiring proot. Documented in INSTALL.md Path A.
 
-- **Security model documented** — Wireless debugging enabled as a permanent state
+- **Security model documented**: Wireless debugging enabled as a permanent state
   introduces a security surface: any device on the same WiFi network can attempt ADB
   pairing. Mitigations documented: pairing code required for all new connections,
   connection is localhost-only from the Termux side, and wireless debugging can be
@@ -278,13 +278,13 @@ Documentation refresh plus security hardening. Corrects stale claims, migrates d
   documented as an alternative for users who prefer minimal setup or cannot run
   proot-distro.
 
-- **`process.platform` behavior clarified** — Inside proot-distro Ubuntu, Claude Code
+- **`process.platform` behavior clarified**: Inside proot-distro Ubuntu, Claude Code
   sees `process.platform === "linux"`. In native Termux, it sees `"android"`. Many npm
   packages and tools branch on this value. Users experiencing tool failures in native
   Termux may find them resolved inside the Ubuntu guest. This is now documented
   explicitly in INSTALL.md.
 
-- **Node v24 language softened** — The v24 hang is documented as "may hang on launch,
+- **Node v24 language softened**: The v24 hang is documented as "may hang on launch,
   likely related to TMPDIR write permissions" rather than a hard incompatibility. Users
   who have resolved TMPDIR (via bind mount or `CLAUDE_CODE_TMPDIR`) may find v24 works.
   The recommendation is still v20 LTS or the version Anthropic's installer provides.
@@ -300,11 +300,11 @@ Documentation refresh plus security hardening. Corrects stale claims, migrates d
 
 ---
 
-## [1.2.0] — 2026-03-20
+## [1.2.0] - 2026-03-20
 
 ### Features
 
-- **Path B promoted to recommended Quick Start.** README rewritten to lead with proot-distro Ubuntu — no /tmp workaround needed, native installer, cleaner environment. Path A (native Termux) presented as the lightweight alternative with a comparison table showing tradeoffs.
+- **Path B promoted to recommended Quick Start.** README rewritten to lead with proot-distro Ubuntu: no /tmp workaround needed, native installer, cleaner environment. Path A (native Termux) presented as the lightweight alternative with a comparison table showing tradeoffs.
 - **All three device screenshots in README.** S26 Ultra, Pixel 10 Pro, and S23+ screenshots displayed with captions identifying each device.
 - **Images moved to `assets/` directory.** Consistent naming: `assets/screenshot-s26ultra.jpg`, `assets/screenshot-pixel10pro.jpg`, `assets/screenshot-s23plus.jpg`, `assets/logo.jpg`.
 - **Remote Control section added.** Documents Anthropic's official mobile interface (launched Feb 2026) as an alternative to running Claude Code locally, with guidance on when to use each approach.
@@ -322,14 +322,14 @@ Documentation refresh plus security hardening. Corrects stale claims, migrates d
 - **Path A launch warning added.** After `npm install -g @anthropic-ai/claude-code`, users who type bare `claude` get a silent failure. Step 4 now marked Required and includes an explicit warning to use the proot launch command, not bare `claude`.
 - **`install.sh` shebang fixed.** Changed from hardcoded Termux path to `#!/usr/bin/env bash` for correct behavior when inspected on non-Termux systems.
 - **Orphaned Pixel screenshot deleted.** `Pixel-10-Pro-Quick-Install.png` was never referenced in any document and has been removed.
-- **AVF RAM claim hedged.** Changed from "hard 4GB cap" to "~4GB default allocation" — no hard architectural limit found in AOSP docs; this appears to be a crosvm default, not a ceiling.
+- **AVF RAM claim hedged.** Changed from "hard 4GB cap" to "~4GB default allocation". No hard architectural limit found in AOSP docs; this appears to be a crosvm default, not a ceiling.
 
 ### Community Feedback
 
 - **Issue templates updated.** Bug report template now includes install path (A or B), TMPDIR value, and CLAUDE_CODE_TMPDIR value as diagnostic fields. Device report template asks which path(s) were tested.
 - Both armhf/32-bit and Path A launch issues were reported by real users within the first hour of going live and addressed same day.
 
-## [1.1.0] — 2026-03-19
+## [1.1.0] - 2026-03-19
 
 ### Major UX Overhaul
 
@@ -356,17 +356,17 @@ Documentation refresh plus security hardening. Corrects stale claims, migrates d
 
 ### Verification
 
-- Added `tests/verify-claims.sh` — automated verification of all documentation claims
+- Added `tests/verify-claims.sh`: automated verification of all documentation claims
 - Verification results linked from device table and INSTALL.md
 
-## [1.0.0] — 2026-03-19
+## [1.0.0] - 2026-03-19
 
 ### First Stable Release
 
-- One-command installer (`install.sh`) — installs packages, Claude Code, ripgrep fix, and shell alias in one pass
+- One-command installer (`install.sh`): installs packages, Claude Code, ripgrep fix, and shell alias in one pass
 - Terminal screenshot proving Claude Code runs natively on Samsung Galaxy S26 Ultra
 
-## [0.4.0] — 2026-03-19
+## [0.4.0] - 2026-03-19
 
 ### Repo Quality Pass
 
@@ -376,9 +376,9 @@ Documentation refresh plus security hardening. Corrects stale claims, migrates d
 - Populated device compatibility table with verified device (Samsung Galaxy S26 Ultra) and common devices as "untested"
 - Added `disable-model-invocation: true` to `/fix-ripgrep` skill (prevents auto-invocation of a skill that installs packages)
 
-## [0.3.0] — 2026-03-19
+## [0.3.0] - 2026-03-19
 
-### Documentation Correction — proot-distro Works on Android 16
+### Documentation Correction: proot-distro Works on Android 16
 
 Previous documentation incorrectly stated that proot-distro was broken on Android 16 due to a "kernel-level restriction" with "no fix inside the guest distro." This was wrong.
 
@@ -394,16 +394,16 @@ Previous documentation incorrectly stated that proot-distro was broken on Androi
 ### Two Installation Paths
 
 Users now have a documented choice:
-- **Path A (Native Termux):** 4 commands, ~2 min, lighter — recommended for most users
-- **Path B (proot-distro Ubuntu):** Full Linux env, no /tmp workaround needed, native installer — for users who want a complete Linux environment
+- **Path A (Native Termux):** 4 commands, ~2 min, lighter; recommended for most users
+- **Path B (proot-distro Ubuntu):** Full Linux env, no /tmp workaround needed, native installer; for users who want a complete Linux environment
 
-## [0.2.0] — 2026-03-18
+## [0.2.0] - 2026-03-18
 
-### Skills — First Android/Termux Skills in the Ecosystem
+### Skills: First Android/Termux Skills in the Ecosystem
 
-- `/doctor` — full environment diagnostic (Node, proot, TMPDIR, ripgrep, phantom killer, storage)
-- `/fix-ripgrep` — detect and fix missing arm64-android ripgrep binary (Grep/Glob ENOENT fix)
-- `termux-safe` — auto-loaded constraints preventing sudo, wrong paths, silent failures
+- `/doctor`: full environment diagnostic (Node, proot, TMPDIR, ripgrep, phantom killer, storage)
+- `/fix-ripgrep`: detect and fix missing arm64-android ripgrep binary (Grep/Glob ENOENT fix)
+- `termux-safe`: auto-loaded constraints preventing sudo, wrong paths, silent failures
 
 ### Improvements
 
@@ -414,7 +414,7 @@ Users now have a documented choice:
 - Fixed logo identity leak (pilgrim-logo.jpg → logo.jpg)
 - Added CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md, CHANGELOG.md, PR template
 
-## [0.1.0] — 2026-03-18
+## [0.1.0] - 2026-03-18
 
 ### Initial Public Release
 

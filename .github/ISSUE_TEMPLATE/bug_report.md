@@ -13,7 +13,7 @@ assignees: ''
 - **Architecture:** (`uname -m` output)
 - **Kernel version:** (output of `uname -r`)
 - **Termux source:** (F-Droid / GitHub)
-- **Install path:** (A — native Termux with proot bind mount, or B — proot-distro Ubuntu)
+- **Install path:** (A: native Termux with proot bind mount, or B: proot-distro Ubuntu)
 - **Launched with proot?** (yes/no, and the exact proot command used)
 - **Node.js version:** (output of `node -v`)
 - **Claude Code version:** (output of `claude --version`)

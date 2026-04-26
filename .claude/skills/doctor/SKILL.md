@@ -98,12 +98,12 @@ PASS if installed. WARN if missing (Termux API features like battery, camera, TT
 Present results as:
 
 ```
-Claude Code Android — Doctor Report
+Claude Code Android: Doctor Report
 
 | # | Check | Status | Detail |
 |---|-------|--------|--------|
 | 1 | Node.js | PASS | v25.8.1 |
-| 2 | Claude Code | PASS | v2.5.1 |
+| 2 | Claude Code | PASS | v2.1.112 |
 ...
 ```
 

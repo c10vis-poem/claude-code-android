@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Claude Code on Android — One-Command Installer
+# Claude Code on Android: One-Command Installer
 # https://github.com/ferrumclaudepilgrim/claude-code-android
 #
 # Usage:
@@ -16,7 +16,7 @@
 #   3. Sets TMPDIR for npm
 #   4. Updates package index and installs packages (nodejs, git, curl, proot, ripgrep, termux-api, jq)
 #   5. Installs Claude Code via npm, PINNED to the last working version on Termux
-#      (see anthropics/claude-code#50270 — versions 2.1.113+ ship as native binaries
+#      (see anthropics/claude-code#50270; versions 2.1.113+ ship as native binaries
 #      with no android-arm64 build, breaking native Termux installs)
 #   6. Locks the install dir against the in-process auto-updater (chmod -R a-w)
 #   7. Sets DISABLE_AUTOUPDATER=1 in shell + ~/.claude/settings.json
@@ -48,7 +48,7 @@ fail()  { printf '\033[0;31m[fail]\033[0m  %s\n' "$1"; exit 1; }
 
 # --- Preflight ---
 
-info "Claude Code on Android — Installer (Path A, pinned to v${CC_PIN})"
+info "Claude Code on Android: Installer (Path A, pinned to v${CC_PIN})"
 echo ""
 
 # Check we're in Termux
@@ -133,7 +133,7 @@ ok "Claude Code installed: ${CLAUDE_VER}"
 # --- Step 4: Lock install dir against the in-process auto-updater ---
 # Without this, the running claude session will silently re-fetch latest within
 # minutes and clobber the pin. See daniel-thisnow's comment on
-# anthropics/claude-code#50270 — the chmod is load-bearing.
+# anthropics/claude-code#50270; the chmod is load-bearing.
 
 info "Locking install dir against the auto-updater..."
 chmod -R a-w "$CC_DIR"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# verify-claims.sh — Tests every technical claim in the claude-code-android docs
+# verify-claims.sh: Tests every technical claim in the claude-code-android docs
 # Safe to run on a live device. Non-destructive. Restores all state.
 #
 # Usage: bash tests/verify-claims.sh
@@ -48,7 +48,7 @@ print_header() {
     date_str="$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo 'unknown')"
     local kernel_short="${kernel:0:40}"
     printf "╔══════════════════════════════════════════════════════╗\n"
-    printf "║  claude-code-android — Claims Verification           ║\n"
+    printf "║  claude-code-android : Claims Verification           ║\n"
     printf "║  Date: %-45s║\n" "$date_str"
     printf "║  Kernel: %-43s║\n" "$kernel_short"
     printf "╚══════════════════════════════════════════════════════╝\n"
@@ -72,14 +72,14 @@ verdict_unconfirmed() {
     local reason="$1"
     UNCONFIRMED=$((UNCONFIRMED + 1))
     TOTAL=$((TOTAL + 1))
-    echo "  Verdict: UNCONFIRMED — $reason"
+    echo "  Verdict: UNCONFIRMED. $reason"
 }
 
 verdict_cannot_test() {
     local reason="$1"
     CANNOT_TEST=$((CANNOT_TEST + 1))
     TOTAL=$((TOTAL + 1))
-    echo "  Verdict: CANNOT TEST — $reason"
+    echo "  Verdict: CANNOT TEST. $reason"
 }
 
 # --- Reset results file ---
@@ -115,7 +115,7 @@ echo "  Test (without TMPDIR): exit=$NPM_WITHOUT_TMPDIR_EXIT"
 if [ -n "$NPM_WITHOUT_TMPDIR_OUTPUT" ]; then
     echo "  Evidence (without TMPDIR): $(echo "$NPM_WITHOUT_TMPDIR_OUTPUT" | head -3)"
 else
-    echo "  Evidence (without TMPDIR): (no output — silent failure)"
+    echo "  Evidence (without TMPDIR): (no output, silent failure)"
 fi
 echo "  Test (with TMPDIR=$PREFIX/tmp): exit=$NPM_WITH_TMPDIR_EXIT"
 echo "  Evidence (with TMPDIR): $(echo "$NPM_WITH_TMPDIR_OUTPUT" | head -1)"
@@ -213,7 +213,7 @@ else
         LINUX_RG="$VENDOR_BASE/arm64-linux/rg"
         if [ -f "$LINUX_RG" ] && [ ! -L "$LINUX_RG" ]; then
             LINUX_SIZE="$(stat -c '%s' "$LINUX_RG" 2>/dev/null || echo '?')"
-            echo "  Evidence: arm64-linux/rg is a native binary ($LINUX_SIZE bytes) — confirms arm64-android is absent"
+            echo "  Evidence: arm64-linux/rg is a native binary ($LINUX_SIZE bytes); confirms arm64-android is absent"
         fi
         verdict_confirmed
 
@@ -221,7 +221,7 @@ else
         ANDROID_SIZE="$(stat -c '%s' "$ANDROID_RG" 2>/dev/null || echo '?')"
         echo "  Evidence: arm64-android/rg is a NATIVE binary ($ANDROID_SIZE bytes)"
         echo "  Result: Anthropic has shipped an arm64-android binary. Claim is now FALSE."
-        verdict_unconfirmed "a native arm64-android binary was found — Anthropic may have added it"
+        verdict_unconfirmed "a native arm64-android binary was found; Anthropic may have added it"
 
     elif [ -d "$ANDROID_DIR" ]; then
         echo "  Evidence: arm64-android/ directory exists but contains no rg binary"
@@ -230,7 +230,7 @@ else
 
     else
         echo "  Evidence: arm64-android/ directory does not exist at all"
-        echo "  Result: No arm64-android directory — no native binary exists"
+        echo "  Result: No arm64-android directory; no native binary exists"
         verdict_confirmed
     fi
 fi
@@ -257,7 +257,7 @@ echo "    Upstream issue #23634: https://github.com/anthropics/claude-code/issue
 echo "    Upstream issue #23665: https://github.com/anthropics/claude-code/issues/23665"
 
 if [ "$NODE_MAJOR" -ge 25 ] 2>/dev/null; then
-    echo "  Result: Running v25+. Claim consistent — we are on the correct version."
+    echo "  Result: Running v25+. Claim consistent: we are on the correct version."
     echo "          The v24 hang cannot be tested without downgrading."
 fi
 verdict_cannot_test "downgrading Node.js would break the working environment"
@@ -306,7 +306,7 @@ echo "    This proot sufficient: $PROOT_SUFFICIENT"
 UBUNTU_ROOTFS="/data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs/ubuntu"
 if [ -d "$UBUNTU_ROOTFS" ]; then
     echo "  Evidence: Ubuntu rootfs installed at $UBUNTU_ROOTFS"
-    echo "  Result: Ubuntu guest is installed — proot-distro successfully ran on this device"
+    echo "  Result: Ubuntu guest is installed; proot-distro successfully ran on this device"
 fi
 
 if $PROOT_SUFFICIENT && [ -d "$UBUNTU_ROOTFS" ]; then
@@ -455,7 +455,7 @@ rm -f "/tmp/$TEST_MARKER" "$PREFIX/tmp/$TEST_MARKER" 2>/dev/null || true
 echo "    Write to /tmp, read from \$PREFIX/tmp (bind mount test): $FOUND_IN_PREFIX"
 
 if [ "$TMP_FILES" = "$PREFIX_TMP_FILES" ] || $FOUND_IN_PREFIX; then
-    echo "  Result: /tmp and \$PREFIX/tmp are the same filesystem location — bind mount confirmed"
+    echo "  Result: /tmp and \$PREFIX/tmp are the same filesystem location; bind mount confirmed"
     verdict_confirmed
 elif [ -n "$CLAUDE_DIRS_IN_TMP" ]; then
     echo "  Result: Claude Code created /tmp/claude-* dirs, proving /tmp is writable inside proot"
@@ -507,7 +507,7 @@ else
             echo "    File size: $FILE_SIZE bytes"
         fi
 
-        echo "  Result: Claude Code binary present in Ubuntu guest — installer ran successfully"
+        echo "  Result: Claude Code binary present in Ubuntu guest; installer ran successfully"
         verdict_confirmed
     else
         echo "    Searched paths:"
@@ -516,7 +516,7 @@ else
         done
         echo "    Ubuntu guest is installed but no claude binary found in expected locations"
         echo "    The installer may not have been run yet in this guest"
-        verdict_unconfirmed "Ubuntu guest present but no claude binary found — installer not yet run"
+        verdict_unconfirmed "Ubuntu guest present but no claude binary found; installer not yet run"
     fi
 fi
 
@@ -741,7 +741,7 @@ echo ""
 echo "Results written to: $RESULTS_FILE"
 echo ""
 echo "Notes:"
-echo "  UNCONFIRMED does not mean FALSE — it means the live test could not"
+echo "  UNCONFIRMED does not mean FALSE: it means the live test could not"
 echo "  produce the failure condition safely on a working device."
 echo "  CANNOT TEST indicates claims verified by upstream evidence or prior"
 echo "  test records rather than live reproduction."

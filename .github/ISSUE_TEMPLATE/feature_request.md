@@ -15,7 +15,7 @@ assignees: ''
 ## Your environment
 - **Device:**
 - **Android version:**
-- **Install path:** (A — native Termux / B — proot-distro Ubuntu)
+- **Install path:** (A: native Termux / B: proot-distro Ubuntu)
 
 ## Have you checked existing resources?
 - [ ] Searched [existing issues](https://github.com/ferrumclaudepilgrim/claude-code-android/issues)

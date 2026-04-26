@@ -1,6 +1,6 @@
 ---
 name: audience-first
-description: Before finalizing any public-facing design, document, or feature — identify the audience, what they search for, and what they need most urgently. Use when creating README sections, naming repos, writing descriptions, or designing user-facing interfaces.
+description: Before finalizing any public-facing design, document, or feature, identify the audience, what they search for, and what they need most urgently. Use when creating README sections, naming repos, writing descriptions, or designing user-facing interfaces.
 user-invocable: true
 disable-model-invocation: false
 argument-hint: "<what you're about to create or publish>"
@@ -9,15 +9,15 @@ allowed-tools: Read, Bash, Glob, Grep
 
 # Audience-First Checklist
 
-Complete every question below before finalizing any public-facing work. Do not skip items because they seem obvious — the obvious answers are usually wrong.
+Complete every question below before finalizing any public-facing work. Do not skip items because they seem obvious; the obvious answers are usually wrong.
 
 ## Required Questions
 
 **1. Who is the audience?**
-Be specific. Not "developers" — "developers who just hit error X and are searching for a fix right now." Name the frustration, the skill level, the context. If there are multiple audiences, rank them and address the primary one first.
+Be specific. Not "developers" but "developers who just hit error X and are searching for a fix right now." Name the frustration, the skill level, the context. If there are multiple audiences, rank them and address the primary one first.
 
 **2. What would they search for?**
-List exact search terms — the strings they would type into Google or GitHub search. Not what you would search for, but what someone encountering this problem for the first time would type. At least 3 terms.
+List exact search terms: the strings they would type into Google or GitHub search. Not what you would search for, but what someone encountering this problem for the first time would type. At least 3 terms.
 
 **3. What do they need most urgently?**
 The answer, not the explanation. Someone in crisis wants the fix first, the theory second. What is the one thing they came here to find out?

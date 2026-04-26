@@ -27,19 +27,19 @@ spawn .../vendor/ripgrep/arm64-android/rg ENOENT
 
 Run these steps in order. Stop and report if any step fails.
 
-**Step 1 — Detect the problem:**
+**Step 1, Detect the problem:**
 ```bash
 VENDOR_DIR="$(dirname "$(command -v claude)")/../lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep"
 echo "Vendor dir: $VENDOR_DIR"
 ls "$VENDOR_DIR/arm64-android/rg" 2>/dev/null && echo "ALREADY FIXED" || echo "NEEDS FIX"
 ```
 
-**Step 2 — Install system ripgrep (if not present):**
+**Step 2, Install system ripgrep (if not present):**
 ```bash
 command -v rg >/dev/null 2>&1 && echo "ripgrep already installed" || pkg install ripgrep -y
 ```
 
-**Step 3 — Create symlink:**
+**Step 3, Create symlink:**
 ```bash
 VENDOR_DIR="$(dirname "$(command -v claude)")/../lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep"
 mkdir -p "$VENDOR_DIR/arm64-android"
@@ -47,7 +47,7 @@ ln -sf "$(command -v rg)" "$VENDOR_DIR/arm64-android/rg"
 echo "Symlink created: $(ls -la "$VENDOR_DIR/arm64-android/rg")"
 ```
 
-**Step 4 — Verify:** Use the Grep tool (not bash grep) to search for any string in the current directory. If it returns results without ENOENT, the fix worked.
+**Step 4, Verify:** Use the Grep tool (not bash grep) to search for any string in the current directory. If it returns results without ENOENT, the fix worked.
 
 ## Important notes
 
