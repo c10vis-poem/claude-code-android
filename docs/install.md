@@ -10,11 +10,11 @@ Before you begin, confirm you have the following:
 
 | Component | Requirement |
 |-----------|-------------|
-| **Architecture** | aarch64 (64-bit ARM) — run `uname -m` to verify. If it returns `armv7l` or `armv8l`, Claude Code will not work on your device |
+| **Architecture** | aarch64 (64-bit ARM); run `uname -m` to verify. If it returns `armv7l` or `armv8l`, Claude Code will not work on your device |
 | **Device** | aarch64 Android device (ARM64) |
 | **OS** | Android 14+ |
-| **Kernel** | Varies by Android version — use `uname -r` to check (Android 14/15 use 5.10–6.6, Android 16 uses 6.12) |
-| **Terminal** | [Termux from F-Droid](https://f-droid.org/en/packages/com.termux/) — **not** the Play Store version, which is outdated and will fail |
+| **Kernel** | Varies by Android version; use `uname -r` to check (Android 14/15 use 5.10–6.6, Android 16 uses 6.12) |
+| **Terminal** | [Termux from F-Droid](https://f-droid.org/en/packages/com.termux/), **not** the Play Store version, which is outdated and will fail |
 | **Subscription** | Claude Pro, Max, Team, Enterprise, or Console account (provides the API access Claude Code requires) |
 | **Network** | Active internet connection (Claude Code streams from Anthropic's API) |
 | **Termux:API** | Both the `termux-api` package (`pkg install termux-api`) and the [Termux:API companion app from F-Droid](https://f-droid.org/en/packages/com.termux.api/) are required for device features (battery, camera, TTS, SMS, GPS, sensors) |
@@ -29,7 +29,7 @@ Before you begin, confirm you have the following:
 
 This guide has two installation paths. Pick one before you start.
 
-| | Path A — Native Termux | Path B — proot-distro Ubuntu |
+| | Path A: Native Termux | Path B: proot-distro Ubuntu |
 |---|---|---|
 | **Best for** | Quick setup, experienced users | Full Linux environment, fewer workarounds |
 | **Setup time** | ~2 min (experienced) | ~10-15 min (experienced) |
@@ -51,9 +51,9 @@ This guide has two installation paths. Pick one before you start.
 
 Running Claude Code on Android means solving problems that don't exist on desktop Linux. The full explanation is in the [README](../README.md#why-this-is-hard). The key points:
 
-1. **`/tmp` isn't writable** — Claude Code needs it, Android doesn't provide it. Path A fixes this with a proot bind mount. Path B avoids it entirely (Ubuntu has native `/tmp`).
-2. **Node.js v24 may hang on ARM64** — use v25+ (Termux ships this by default). The hang is specific to v24, not Termux generally. v25 resolves it. If you encounter it, try setting `CLAUDE_CODE_TMPDIR` (see Step 4) or use Path B, where this constraint does not apply.
-3. **ripgrep binary missing for ARM64 Android** — Path A needs a symlink fix. Path B doesn't need it.
+1. **`/tmp` isn't writable.** Claude Code needs it, Android doesn't provide it. Path A fixes this with a proot bind mount. Path B avoids it entirely (Ubuntu has native `/tmp`).
+2. **Node.js v24 may hang on ARM64.** Use v25+ (Termux ships this by default). The hang is specific to v24, not Termux generally. v25 resolves it. If you encounter it, try setting `CLAUDE_CODE_TMPDIR` (see Step 4) or use Path B, where this constraint does not apply.
+3. **ripgrep binary missing for ARM64 Android.** Path A needs a symlink fix. Path B doesn't need it.
 
 ---
 
@@ -62,7 +62,7 @@ Running Claude Code on Android means solving problems that don't exist on deskto
 Key paths and versions for a working installation:
 
 - **Architecture:** aarch64 (ARM64)
-- **Kernel:** Varies by Android version — verify with `uname -r` (Android 14/15: 5.10–6.6, Android 16: 6.12)
+- **Kernel:** Varies by Android version; verify with `uname -r` (Android 14/15: 5.10–6.6, Android 16: 6.12)
 - **Shell:** Termux
 - **Home:** `/data/data/com.termux/files/home`
 - **Prefix:** `/data/data/com.termux/files/usr`
@@ -107,11 +107,11 @@ DISABLE_AUTOUPDATER=1 npm install -g @anthropic-ai/claude-code@2.1.112
 chmod -R a-w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
 ```
 
-This installs Claude Code globally via npm at version **2.1.112** — the last upstream version that ships the bundled `cli.js` JavaScript entry point. Versions 2.1.113 and later switched to a platform-native binary distribution that excludes android-arm64; on native Termux those versions install but `claude` exits immediately with `Error: claude native binary not installed`. Tracked at [anthropics/claude-code#50270](https://github.com/anthropics/claude-code/issues/50270).
+This installs Claude Code globally via npm at version **2.1.112**, the last upstream version that ships the bundled `cli.js` JavaScript entry point. Versions 2.1.113 and later switched to a platform-native binary distribution that excludes android-arm64; on native Termux those versions install but `claude` exits immediately with `Error: claude native binary not installed`. Tracked at [anthropics/claude-code#50270](https://github.com/anthropics/claude-code/issues/50270).
 
-The `DISABLE_AUTOUPDATER=1` env disables Claude Code's in-process auto-updater that would otherwise re-fetch `latest` on a timer and clobber the pin **inside running sessions**. The `chmod -R a-w` is the load-bearing belt-and-braces — without it, the running session's updater silently overwrites the install dir even with the env var set.
+The `DISABLE_AUTOUPDATER=1` env disables Claude Code's in-process auto-updater that would otherwise re-fetch `latest` on a timer and clobber the pin **inside running sessions**. The `chmod -R a-w` is the load-bearing belt-and-braces; without it, the running session's updater silently overwrites the install dir even with the env var set.
 
-> **Note:** Anthropic offers a native installer (`curl -fsSL https://claude.ai/install.sh | bash`) for supported platforms. It does not currently support android-arm64 — use the pinned npm install above for Path A. The native installer works correctly in Path B (proot-distro Ubuntu) where `process.platform === 'linux'` matches a published native binary.
+> **Note:** Anthropic offers a native installer (`curl -fsSL https://claude.ai/install.sh | bash`) for supported platforms. It does not currently support android-arm64; use the pinned npm install above for Path A. The native installer works correctly in Path B (proot-distro Ubuntu) where `process.platform === 'linux'` matches a published native binary.
 
 > **Upgrade later** (when upstream restores android-arm64 support, watch [#50270](https://github.com/anthropics/claude-code/issues/50270)):
 >
@@ -125,7 +125,7 @@ The `DISABLE_AUTOUPDATER=1` env disables Claude Code's in-process auto-updater t
 
 ## Step 4: Launch Claude Code (Required)
 
-Claude Code hardcodes `/tmp` for runtime state. The fix is `proot` — a userspace path remapper that requires no root privileges. It intercepts system calls and makes `/tmp` point to Termux's writable tmp directory.
+Claude Code hardcodes `/tmp` for runtime state. The fix is `proot`, a userspace path remapper that requires no root privileges. It intercepts system calls and makes `/tmp` point to Termux's writable tmp directory.
 
 proot was installed in Step 1.
 
@@ -145,15 +145,15 @@ This binds Termux's writable tmp directory to `/tmp` (so Claude Code's `/tmp` re
 > source ~/.bashrc
 > ```
 >
-> This tells Claude Code to use that directory for temporary files instead of the default `/tmp`. No proot required. Add this before the `claude` launch command in your startup alias. Note: this only redirects Claude's own temp files — other tools that hardcode `/tmp` may still fail. The proot approach above is more comprehensive.
+> This tells Claude Code to use that directory for temporary files instead of the default `/tmp`. No proot required. Add this before the `claude` launch command in your startup alias. Note: this only redirects Claude's own temp files; other tools that hardcode `/tmp` may still fail. The proot approach above is more comprehensive.
 
-On first launch, Claude Code will prompt you to authenticate. A URL will appear in your terminal — open it in your phone's browser to complete OAuth. If authentication fails, see the [OAuth troubleshooting entry](troubleshooting.md#oauth--authentication-fails-on-first-launch).
+On first launch, Claude Code will prompt you to authenticate. A URL will appear in your terminal; open it in your phone's browser to complete OAuth. If authentication fails, see the [OAuth troubleshooting entry](troubleshooting.md#oauth--authentication-fails-on-first-launch).
 
 ---
 
 ## Step 5: Create the Alias
 
-Add this alias to your `~/.bashrc`. Use `claude-android` every time — bare `claude` skips the proot bind mount and `/tmp`-touching operations will fail:
+Add this alias to your `~/.bashrc`. Use `claude-android` every time; bare `claude` skips the proot bind mount and `/tmp`-touching operations will fail:
 
 ```bash
 echo "alias claude-android='proot -b \$PREFIX/tmp:/tmp claude'" >> ~/.bashrc
@@ -176,22 +176,22 @@ claude-android
 After completing the steps above, run these commands to confirm your setup matches the verified configuration:
 
 ```bash
-# Node.js — must be v25+
+# Node.js: must be v25+
 node -v
 
-# npm — should be v11+
+# npm: should be v11+
 npm -v
 
-# Claude Code — confirms the binary is installed and on PATH
+# Claude Code: confirms the binary is installed and on PATH
 claude --version
 
-# proot — confirms proot is available
+# proot: confirms proot is available
 proot --help 2>&1 | head -1
 
-# TMPDIR — must be set to a writable path
+# TMPDIR: must be set to a writable path
 echo $TMPDIR
 
-# /tmp bind — confirms proot remapping works
+# /tmp bind: confirms proot remapping works
 proot -b $PREFIX/tmp:/tmp ls /tmp
 ```
 
@@ -226,8 +226,8 @@ Community-reported working configurations:
 | Device | Android Version | Kernel | Termux Source | Node.js | Status |
 |--------|----------------|--------|---------------|---------|--------|
 | Samsung Galaxy S26 Ultra | Android 16 | 6.12.30 | F-Droid | v25.8.1 | Path A + B verified |
-| Google Pixel 10 Pro | Android 16 | — | F-Droid | v25.8.1 | Path A + B verified |
-| Samsung Galaxy S23+ | Android 15 | — | F-Droid | v25.8.1 | Path B verified |
+| Google Pixel 10 Pro | Android 16 | n/a | F-Droid | v25.8.1 | Path A + B verified |
+| Samsung Galaxy S23+ | Android 15 | n/a | F-Droid | v25.8.1 | Path B verified |
 
 Three devices verified across two Android versions (15 and 16), two manufacturers (Samsung and Google). Auth required manual URL copy-paste on all devices (expected for Path B). Expected to work on Android 14+ with any aarch64 device. [Submit a device report](https://github.com/ferrumclaudepilgrim/claude-code-android/issues/new?template=device_report.md) if you've tested on different hardware.
 
@@ -237,7 +237,7 @@ Three devices verified across two Android versions (15 and 16), two manufacturer
 
 ### Updating Claude Code (Path A)
 
-**Do not run `npm update -g @anthropic-ai/claude-code`** — that pulls `latest` which is currently 2.1.114 (broken on android-arm64). Stay on the pinned 2.1.112 until upstream restores android-arm64 support; track [#50270](https://github.com/anthropics/claude-code/issues/50270).
+**Do not run `npm update -g @anthropic-ai/claude-code`.** That pulls `latest` which is currently 2.1.114 (broken on android-arm64). Stay on the pinned 2.1.112 until upstream restores android-arm64 support; track [#50270](https://github.com/anthropics/claude-code/issues/50270).
 
 To intentionally bump to a specific newer version once one is published as working on android-arm64:
 
@@ -303,27 +303,27 @@ A full Ubuntu Linux environment inside Termux. No `/tmp` workaround. No ripgrep 
 - You prefer the native installer over npm
 - You want fewer things that break on updates
 
-### Setup — Every Step, Verified
+### Setup: Every Step, Verified
 
 Tested on Pixel 10 Pro and Samsung Galaxy S26 Ultra, both Android 16. Every command is the exact sequence that works.
 
-**Step 1 — Update Termux:**
+**Step 1: Update Termux:**
 
 ```bash
 pkg upgrade -y
 ```
 
-Termux selects a mirror automatically. This updates all base packages including openssl and curl. **This step is required** — without updated SSL libraries, the Claude Code installer returns 403.
+Termux selects a mirror automatically. This updates all base packages including openssl and curl. **This step is required.** Without updated SSL libraries, the Claude Code installer returns 403.
 
 > You may be asked about config files (like OpenSSL). On a fresh install, choose "install the package maintainer's version."
 
-**Step 2 — Install proot-distro:**
+**Step 2: Install proot-distro:**
 
 ```bash
 pkg install proot-distro -y
 ```
 
-**Step 3 — Install Ubuntu:**
+**Step 3: Install Ubuntu:**
 
 ```bash
 proot-distro install ubuntu
@@ -331,7 +331,7 @@ proot-distro install ubuntu
 
 Downloads Ubuntu 25.10 (Questing Quokka), approximately 55MB.
 
-**Step 4 — Enter Ubuntu:**
+**Step 4: Enter Ubuntu:**
 
 ```bash
 proot-distro login ubuntu
@@ -339,9 +339,9 @@ proot-distro login ubuntu
 
 Your prompt changes to `root@localhost`. You are now inside a full Ubuntu Linux environment.
 
-> The warning `can't sanitize binding "/proc/self/fd/1"` appears during login. It is harmless — stdout works correctly.
+> The warning `can't sanitize binding "/proc/self/fd/1"` appears during login. It is harmless; stdout works correctly.
 
-**Step 5 — Update Ubuntu packages:**
+**Step 5: Update Ubuntu packages:**
 
 ```bash
 apt update && apt upgrade -y
@@ -349,7 +349,7 @@ apt update && apt upgrade -y
 
 **This step is required.** Fresh Ubuntu packages are not up to date. Without this, the Claude Code native installer returns 403 because the SSL/curl libraries cannot reach Anthropic's CDN.
 
-**Step 6 — Install Claude Code:**
+**Step 6: Install Claude Code:**
 
 ```bash
 curl -fsSL https://claude.ai/install.sh | bash
@@ -363,13 +363,13 @@ curl -fsSL https://claude.ai/install.sh -o install.sh && less install.sh && bash
 
 Native installer. No Node.js required. Installs to `~/.local/bin/claude`.
 
-**Step 7 — Add to PATH:**
+**Step 7: Add to PATH:**
 
 ```bash
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
 ```
 
-**Step 8 — Verify:**
+**Step 8: Verify:**
 
 ```bash
 claude --version
@@ -377,7 +377,7 @@ claude --version
 
 Should print the installed version number. The native installer always fetches the latest release.
 
-**Step 9 — Launch:**
+**Step 9: Launch:**
 
 ```bash
 claude
@@ -403,7 +403,7 @@ On first launch, authentication requires manual URL copy/paste. No browser auto-
 Code reports `process.platform === "linux"`. In native Termux, it reports `"android"`.
 Many npm packages and Claude Code's own bundled tools (including ripgrep) branch on
 this value. Tool failures, unresolved binary paths, and unexpected behavior in native
-Termux may resolve cleanly inside the Ubuntu guest — not because the hardware changed,
+Termux may resolve cleanly inside the Ubuntu guest, not because the hardware changed,
 but because the runtime identity did.
 
 ### Path B notes

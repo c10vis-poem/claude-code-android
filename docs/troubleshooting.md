@@ -26,7 +26,7 @@ If you haven't installed yet, see [INSTALL.md](install.md) first.
 - [Play Store Termux doesn't work](#play-store-termux-doesnt-work)
 - [PDF reading fails ("pdftoppm is not installed")](#pdf-reading-fails-pdftoppm-is-not-installed)
 - [`claude doctor` crashes](#claude-doctor-crashes)
-- [Path C — AVF (Experimental)](#path-c--avf-experimental)
+- [Path C: AVF (Experimental)](#path-c-avf-experimental)
 - [Upstream Issues](#upstream-issues)
 - [ADB Wireless Debugging](#adb-wireless-debugging)
 
@@ -117,11 +117,11 @@ mkdir -p $PREFIX/tmp/claude
 claude
 ```
 
-This avoids proot entirely but only redirects Claude's own temp files — other tools that expect `/tmp` may still fail. The proot approach (shown above) is more comprehensive.
+This avoids proot entirely but only redirects Claude's own temp files; other tools that expect `/tmp` may still fail. The proot approach (shown above) is more comprehensive.
 
 **Cause:** `/tmp` is not writable. Claude Code hardcodes `/tmp` for socket files, IPC, and ephemeral state. On Android, `/tmp` either doesn't exist or isn't writable from Termux's sandbox.
 
-> **Note:** The proot bind mount resolves Claude Code operation including subagent task directories. Verified working with subagents on Android 16 (proot 5.1.107-70). Reports of EACCES on subagent tasks in issue [#15637](https://github.com/anthropics/claude-code/issues/15637) describe the experience *without* proot — the bind mount fixes it.
+> **Note:** The proot bind mount resolves Claude Code operation including subagent task directories. Verified working with subagents on Android 16 (proot 5.1.107-70). Reports of EACCES on subagent tasks in issue [#15637](https://github.com/anthropics/claude-code/issues/15637) describe the experience *without* proot; the bind mount fixes it.
 
 ---
 
@@ -140,11 +140,11 @@ or the platform-native optional dependency was not downloaded
 
 The package installed successfully via npm, but `claude` exits immediately with this error every time. Bare `claude --version` produces the same output.
 
-**Cause:** Upstream regression introduced in `@anthropic-ai/claude-code` 2.1.113. Versions 2.1.113 and later switched from a bundled `cli.js` JavaScript entry point to a platform-native binary (`bin/claude.exe`) wrapped by an optional-dependency dispatcher (`cli-wrapper.cjs`). The PLATFORMS map in the dispatcher includes darwin / linux (glibc + musl) / win32 — **android-arm64 is not in the list**. On native Termux, the postinstall script finds no matching platform package, leaves `bin/claude.exe` as the 500-byte error stub it ships with, and every subsequent `claude` invocation prints the message above.
+**Cause:** Upstream regression introduced in `@anthropic-ai/claude-code` 2.1.113. Versions 2.1.113 and later switched from a bundled `cli.js` JavaScript entry point to a platform-native binary (`bin/claude.exe`) wrapped by an optional-dependency dispatcher (`cli-wrapper.cjs`). The PLATFORMS map in the dispatcher includes darwin / linux (glibc + musl) / win32. **android-arm64 is not in the list.** On native Termux, the postinstall script finds no matching platform package, leaves `bin/claude.exe` as the 500-byte error stub it ships with, and every subsequent `claude` invocation prints the message above.
 
 Tracked upstream at [anthropics/claude-code#50270](https://github.com/anthropics/claude-code/issues/50270).
 
-**Fix (Path A — pin to last working version):**
+**Fix (Path A, pin to last working version):**
 
 ```bash
 chmod -R u+w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/ 2>/dev/null
@@ -154,7 +154,7 @@ echo 'export DISABLE_AUTOUPDATER=1' >> ~/.bashrc
 claude --version    # → 2.1.112 (Claude Code)
 ```
 
-The `chmod -R a-w` is load-bearing. The in-process auto-updater inside running Claude Code sessions re-fetches `latest` on a timer and silently overwrites the install dir. Locking the directory read-only blocks the overwrite. The `DISABLE_AUTOUPDATER=1` env reduces the attempt rate but is insufficient alone — the `chmod` is what holds.
+The `chmod -R a-w` is load-bearing. The in-process auto-updater inside running Claude Code sessions re-fetches `latest` on a timer and silently overwrites the install dir. Locking the directory read-only blocks the overwrite. The `DISABLE_AUTOUPDATER=1` env reduces the attempt rate but is insufficient alone; the `chmod` is what holds.
 
 Or rerun the [`install.sh`](../install.sh) which does this idempotently.
 
@@ -164,7 +164,7 @@ Also add `"env": {"DISABLE_AUTOUPDATER": "1"}` to `~/.claude/settings.json` so t
 jq '.env = ((.env // {}) + {"DISABLE_AUTOUPDATER":"1"})' ~/.claude/settings.json > /tmp/s.json && mv /tmp/s.json ~/.claude/settings.json
 ```
 
-**Fix (Path B — proot-distro Ubuntu):** unaffected. Inside the Ubuntu guest, `process.platform === 'linux'` and `process.arch === 'arm64'` match the upstream `linux-arm64` native binary, so `npm install -g @anthropic-ai/claude-code` (no pin) works normally. If you want to stop tracking the regression, switch to Path B.
+**Fix (Path B, proot-distro Ubuntu):** unaffected. Inside the Ubuntu guest, `process.platform === 'linux'` and `process.arch === 'arm64'` match the upstream `linux-arm64` native binary, so `npm install -g @anthropic-ai/claude-code` (no pin) works normally. If you want to stop tracking the regression, switch to Path B.
 
 **To upgrade Path A later** (when upstream restores android-arm64 support, watch [#50270](https://github.com/anthropics/claude-code/issues/50270)):
 
@@ -192,7 +192,7 @@ Or the auth URL prints to the terminal but nothing happens when you visit it, or
    ```bash
    pkg install termux-tools -y
    ```
-   Then retry `claude` — it should open your system browser for OAuth.
+   Then retry `claude`; it should open your system browser for OAuth.
 
 2. If the browser opens but the redirect fails, copy the auth URL manually from the terminal into your browser.
 
@@ -223,7 +223,7 @@ pkg upgrade proot proot-distro -y
 
 **If it still hangs after updating proot:**
 
-1. Check your proot version — must be 5.1.107-66 or later:
+1. Check your proot version. Must be 5.1.107-66 or later:
    ```bash
    dpkg -s proot | grep Version
    ```
@@ -240,7 +240,7 @@ pkg upgrade proot proot-distro -y
 
 **The warning `can't sanitize binding "/proc/self/fd/1"`** appears during proot-distro login and is harmless. stdout works correctly despite this message.
 
-**Note:** proot-distro is a valid alternative to the native Termux approach. See [INSTALL.md — Path B](install.md#path-b-proot-distro-ubuntu) for the full setup guide. However, for Claude Code alone, the native Termux approach (Path A) is lighter and faster.
+**Note:** proot-distro is a valid alternative to the native Termux approach. See [INSTALL.md, Path B](install.md#path-b-proot-distro-ubuntu) for the full setup guide. However, for Claude Code alone, the native Termux approach (Path A) is lighter and faster.
 
 ---
 
@@ -278,7 +278,7 @@ If `pkg upgrade` doesn't move you to v25, check that your Termux package reposit
 
 ### Process killed randomly
 
-**You see:** Claude Code or its subprocesses die mid-session. No error, no crash — the process just disappears. Your terminal may show:
+**You see:** Claude Code or its subprocesses die mid-session. No error, no crash; the process just disappears. Your terminal may show:
 
 ```
 [Process completed (signal 9) - press Enter]
@@ -298,7 +298,7 @@ Or the Claude Code session simply vanishes and you're back at your shell prompt.
 
 **Cause:** Android's phantom process killer. Android limits background processes to approximately 32 across all apps. When Termux spawns multiple Node.js processes (Claude Code, subagents, language servers), the OS silently kills excess processes.
 
-**Session persistence with tmux:** Install tmux (`pkg install tmux`) and run Claude Code inside a tmux session (`tmux new -s claude`). If Android kills the Termux app, your session survives — reopen Termux and run `tmux attach -t claude` to resume.
+**Session persistence with tmux:** Install tmux (`pkg install tmux`) and run Claude Code inside a tmux session (`tmux new -s claude`). If Android kills the Termux app, your session survives. Reopen Termux and run `tmux attach -t claude` to resume.
 
 ---
 
@@ -318,7 +318,7 @@ Error: EMFILE, too many open files
 
 **Fix:**
 
-- Check your limit: `ulimit -n` (varies by device — measured 32,768 on Android 16 / kernel 6.12, may be lower on older devices)
+- Check your limit: `ulimit -n` (varies by device; measured 32,768 on Android 16 / kernel 6.12, may be lower on older devices)
 - Avoid spawning unnecessary background processes.
 - Close unused terminal sessions.
 - If running multiple tools simultaneously, reduce parallelism.
@@ -447,7 +447,7 @@ There is no error message. You will see files simply missing from `/tmp` after a
 
 **Fix:** Never store important state in `/tmp`. Treat it as disposable. Write anything you need to keep into your project directory or another persistent path under `$HOME`.
 
-**Cause:** The proot bind mount is not a real filesystem mount — it's syscall interception. If proot crashes or the session ends, the mapping disappears. `/tmp` under proot is ephemeral.
+**Cause:** The proot bind mount is not a real filesystem mount; it's syscall interception. If proot crashes or the session ends, the mapping disappears. `/tmp` under proot is ephemeral.
 
 ---
 
@@ -543,7 +543,7 @@ Known issues filed against the Claude Code repository that affect Android/Termux
 | Issue | Description | Status | Workaround |
 |-------|-------------|--------|------------|
 | [#15637](https://github.com/anthropics/claude-code/issues/15637) | Hardcoded `/tmp/claude` paths | Open | proot bind mount |
-| [#16615](https://github.com/anthropics/claude-code/issues/16615) | Platform detection — `android` not recognized | Closed (not planned) | cli.js patching |
+| [#16615](https://github.com/anthropics/claude-code/issues/16615) | Platform detection: `android` not recognized | Closed (not planned) | cli.js patching |
 | [#9435](https://github.com/anthropics/claude-code/issues/9435) | Missing arm64-android ripgrep binary | Closed | System ripgrep + symlink |
 | [PR #31701](https://github.com/anthropics/claude-code/pull/31701) | Fix: respect `$TMPDIR` instead of hardcoding `/tmp` | Closed (not merged) | -- |
 
@@ -554,18 +554,18 @@ Known issues filed against the Claude Code repository that affect Android/Termux
 ### "error: protocol fault (couldn't read status message): Success" during pairing
 
 This is a known bug in ADB 35.x (Google Issue Tracker #329947334). The error message
-is misleading — it can appear even when the pairing partially or fully succeeds.
+is misleading; it can appear even when the pairing partially or fully succeeds.
 
 **Workaround:**
 1. If you see this error, try running `adb connect 127.0.0.1:<connection-port>`
    immediately after, using the port shown in the wireless debugging settings screen
-   (not the pairing port — the main connection port).
+   (not the pairing port; the main connection port).
 2. If that fails, close and reopen the "Pair device with pairing code" dialog in
    Developer Options to get a new code, then retry `adb pair`.
 3. The second pairing attempt typically succeeds. If it does not, restart the ADB
    server (`adb kill-server && adb start-server`) and try once more.
 
-Once successfully connected, run `adb devices` to confirm — the device should appear
+Once successfully connected, run `adb devices` to confirm; the device should appear
 as `127.0.0.1:<port> device`.
 
 ---
@@ -580,7 +580,7 @@ or background Termux. Reconnect with `adb connect` before issuing further ADB co
 
 **Device reboot:** The connection does not survive reboot. After reboot, you must
 run `adb connect 127.0.0.1:<port>` again. The connection port changes on each
-wireless debugging restart — it is assigned dynamically by Android. Check the
+wireless debugging restart; it is assigned dynamically by Android. Check the
 current port in Developer Options → Wireless debugging → the port shown on the main
 wireless debugging screen (not the pairing dialog).
 
@@ -593,7 +593,7 @@ from scratch.
 Termux startup script, but be aware the port changes on each wireless debugging
 restart. A more robust approach is to check the current port from Developer Options
 and reconnect manually when needed. Boot automation for dynamic ports is not yet
-solved cleanly — contributions welcome.
+solved cleanly. Contributions welcome.
 
 ---
 

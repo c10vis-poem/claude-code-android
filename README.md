@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <strong>Run Claude Code natively on Android — no root, no emulator, no cloud VM.</strong>
+  <strong>Run Claude Code natively on Android. No root, no emulator, no cloud VM.</strong>
 </p>
 
 <p align="center">
-  <strong>Claude Code</strong> is Anthropic's AI coding assistant that runs in your terminal. It reads files, writes code, runs commands, and manages projects — all through conversation. This repo gets it running on an Android phone.
+  <strong>Claude Code</strong> is Anthropic's AI coding assistant that runs in your terminal. It reads files, writes code, runs commands, and manages projects, all through conversation. This repo gets it running on an Android phone.
 </p>
 
 <p align="center">
@@ -46,17 +46,17 @@
 
 ## Prerequisites
 
-You need **Termux** installed from **F-Droid** (not the Play Store — the Play Store version hasn't been updated since 2020 and will not work).
+You need **Termux** installed from **F-Droid** (not the Play Store; the Play Store version hasn't been updated since 2020 and will not work).
 
-> **Architecture check first.** Open any terminal and run `uname -m`. You need `aarch64` (64-bit ARM). If you see `armv7l` or `armv8l`, your device runs a 32-bit OS and Claude Code cannot work — no workaround exists. Some budget phones (Galaxy A13, A02S, M13) ship 32-bit Android on 64-bit hardware. See [Troubleshooting](docs/troubleshooting.md#unsupported-architecture-armhf).
+> **Architecture check first.** Open any terminal and run `uname -m`. You need `aarch64` (64-bit ARM). If you see `armv7l` or `armv8l`, your device runs a 32-bit OS and Claude Code cannot work; no workaround exists. Some budget phones (Galaxy A13, A02S, M13) ship 32-bit Android on 64-bit hardware. See [Troubleshooting](docs/troubleshooting.md#unsupported-architecture-armhf).
 
 ### Install Termux
 
-1. Download F-Droid from [f-droid.org](https://f-droid.org/en/). F-Droid is an app store for open-source Android apps — it's where the maintained version of Termux lives.
+1. Download F-Droid from [f-droid.org](https://f-droid.org/en/). F-Droid is an app store for open-source Android apps; it's where the maintained version of Termux lives.
 2. Open the downloaded APK. Android will block it. Go to **Settings → allow "install unknown apps"** from your browser.
 3. After installing F-Droid, go back to Settings and **disable "install unknown apps"** from your browser. Keep it enabled only for F-Droid (it needs it to install apps).
 4. Open F-Droid, search for **Termux**, install it.
-5. Android may warn "unsafe app — built for an older version." Tap **More details → Install anyway**. This is safe — Termux targets an older API level for broader compatibility.
+5. Android may warn "unsafe app, built for an older version." Tap **More details → Install anyway**. This is safe; Termux targets an older API level for broader compatibility.
 
 ### Install Required Packages
 
@@ -85,7 +85,7 @@ There are three ways to install Claude Code on Android. All require a [Claude Pr
 
 ### Path B -- Recommended (Full Linux Environment)
 
-The cleanest setup. Installs Ubuntu inside Termux using proot-distro — think of it as a lightweight Linux environment running inside your phone's terminal. Claude Code runs in a standard Linux environment with no workarounds needed.
+The cleanest setup. Installs Ubuntu inside Termux using proot-distro; think of it as a lightweight Linux environment running inside your phone's terminal. Claude Code runs in a standard Linux environment with no workarounds needed.
 
 ```bash
 proot-distro install ubuntu
@@ -105,7 +105,7 @@ Storage requirement: approximately 2 GB for the Ubuntu environment plus Claude C
 
 > **Why `pkg upgrade` and `apt upgrade` first?** Without updated SSL libraries, the Claude Code installer returns 403. Both upgrades are required.
 
-### Path A — Native Termux (pinned)
+### Path A: Native Termux (pinned)
 
 Faster setup (~2 min), less disk space, but **must pin** to the last working upstream version (see callout below).
 
@@ -130,7 +130,7 @@ Also add `"env": {"DISABLE_AUTOUPDATER": "1"}` to `~/.claude/settings.json` so t
 
 > **Scripted install:** The [one-command installer](install.sh) does all of this (pin + chmod + bashrc + settings.json merge) idempotently. Re-run it any time to recover or reapply.
 
-#### April 18 upstream regression — Path A recovery
+#### April 18 upstream regression: Path A recovery
 
 `@anthropic-ai/claude-code` versions **2.1.113 and later** ship the CLI as platform-specific native binaries instead of bundled JavaScript. android-arm64 is not in the published platforms list, so on native Termux the postinstall does nothing and `bin/claude.exe` stays as the 500-byte stub that prints `Error: claude native binary not installed`. This is tracked upstream at [anthropics/claude-code#50270](https://github.com/anthropics/claude-code/issues/50270).
 
@@ -270,7 +270,7 @@ These work alongside Termux API features (camera, TTS, clipboard, GPS, SMS, noti
 pkg install android-tools -y
 
 # On your phone: Settings → Developer Options → Wireless Debugging → ON
-# Tap "Pair device with pairing code" — note the IP:port and pairing code
+# Tap "Pair device with pairing code", note the IP:port and pairing code
 
 adb pair 127.0.0.1:<pairing-port> <pairing-code>
 adb connect 127.0.0.1:<connection-port>
@@ -313,8 +313,8 @@ If you have a desktop or laptop running Claude Code, [Remote Control](https://co
 | Item | What It Does |
 |------|-------------|
 | **[install.sh](install.sh)** | One-command installer for Path A |
-| **[.claude/skills/](.claude/skills/)** | 8 Claude Code skills — Android diagnostics and workflow tools |
-| **[tests/](tests/)** | Verification suite — tests documentation claims against your device |
+| **[.claude/skills/](.claude/skills/)** | 8 Claude Code skills: Android diagnostics and workflow tools |
+| **[tests/](tests/)** | Verification suite: tests documentation claims against your device |
 
 ### Project
 
@@ -335,9 +335,9 @@ If you have a desktop or laptop running Claude Code, [Remote Control](https://co
 | Google Pixel 10 Pro | 16 | Works | Works | Untested | Untested | 2026-03-19 |
 | Google Pixel 10 Pro (AVF) | 16 | N/A | N/A | Untested | Works (experimental) | 2026-04-01 |
 | Samsung Galaxy S23+ | 15 | Untested | Works | Untested | Untested | 2026-03-19 |
-| Samsung Galaxy S24/S25 | 15-16 | Untested | Untested | Untested | Untested | — |
-| Google Pixel 8/9 | 15-16 | Untested | Untested | Untested | Untested | — |
-| OnePlus 12/13 | 14-15 | Untested | Untested | Untested | Untested | — |
+| Samsung Galaxy S24/S25 | 15-16 | Untested | Untested | Untested | Untested | n/a |
+| Google Pixel 8/9 | 15-16 | Untested | Untested | Untested | Untested | n/a |
+| OnePlus 12/13 | 14-15 | Untested | Untested | Untested | Untested | n/a |
 
 **Verified** means install, authentication, and basic operations tested end-to-end on real hardware. Test results: [tests/results/](tests/results/)
 
@@ -416,14 +416,14 @@ git clone https://github.com/ferrumclaudepilgrim/claude-code-android.git
 mkdir -p ~/.claude/skills
 cp -r claude-code-android/.claude/skills/* ~/.claude/skills/
 ls ~/.claude/skills/
-rm -rf claude-code-android   # Clean up — phone storage is finite
+rm -rf claude-code-android   # Clean up; phone storage is finite
 ```
 
 ---
 
 ## The CLAUDE.md Template
 
-Claude Code reads a CLAUDE.md file from your project root for persistent rules. The [template](docs/constitution-template.md) in this repo is designed for Android and Termux — it includes platform constraints, safety rules, and agent configuration for up to 6 concurrent agents.
+Claude Code reads a CLAUDE.md file from your project root for persistent rules. The [template](docs/constitution-template.md) in this repo is designed for Android and Termux: it includes platform constraints, safety rules, and agent configuration for up to 6 concurrent agents.
 
 ---
 

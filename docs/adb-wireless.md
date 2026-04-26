@@ -1,6 +1,6 @@
 # ADB Wireless Self-Connect on Android
 
-Connect your phone to itself over ADB. No computer. No USB cable. One device — and it unlocks most of what SELinux blocks from Termux.
+Connect your phone to itself over ADB. No computer. No USB cable. One device, and it unlocks most of what SELinux blocks from Termux.
 
 ---
 
@@ -65,15 +65,15 @@ Install `android-tools` in Termux:
 pkg install android-tools
 ```
 
-### Step 1 — Enable developer options
+### Step 1: Enable developer options
 
 Go to **Settings → About phone → Software information**, tap **Build number** 7 times. Developer options is now unlocked.
 
-### Step 2 — Enable wireless debugging
+### Step 2: Enable wireless debugging
 
-Go to **Settings → Developer options → Wireless debugging** and toggle it on. You'll see a confirmation dialog — accept it.
+Go to **Settings → Developer options → Wireless debugging** and toggle it on. You'll see a confirmation dialog. Accept it.
 
-### Step 3 — Open the pairing dialog
+### Step 3: Open the pairing dialog
 
 Inside Wireless debugging, tap **Pair device with pairing code**. A dialog appears with:
 - A 6-digit pairing code
@@ -83,13 +83,13 @@ The pairing port and connection port are different numbers. Note both.
 
 **The dialog closes if you switch away from Settings.** To work around this:
 
-1. Take a screenshot of the dialog before switching apps (use your phone's screenshot gesture — volume down + power, or the status bar shortcut).
+1. Take a screenshot of the dialog before switching apps (use your phone's screenshot gesture: volume down + power, or the status bar shortcut).
 2. Switch to Termux.
 3. Open your Gallery or Files app in split-screen, or just remember the numbers.
 
 Alternatively: keep Settings open in the background and use split-screen or pop-up view if your device supports it.
 
-### Step 4 — Pair
+### Step 4: Pair
 
 In Termux, run:
 
@@ -109,7 +109,7 @@ Successfully paired to 127.0.0.1:41823
 
 **If you get `error: protocol fault (couldn't read status message): Success`:** This is a known bug in ADB 35.x. Run the same command again. It usually succeeds on the second attempt.
 
-### Step 5 — Connect
+### Step 5: Connect
 
 After pairing, tap back in the Wireless debugging screen to see the main port (labeled "IP address & Port"). This is a different port from the pairing port.
 
@@ -193,7 +193,7 @@ adb shell input swipe 540 1800 540 900 300
 
 ## Connection Persistence
 
-The ADB connection drops on screen lock, app switch, and reboot. The pairing, however, persists — you only pair once. After a reboot:
+The ADB connection drops on screen lock, app switch, and reboot. The pairing, however, persists; you only pair once. After a reboot:
 
 1. Re-enable Wireless debugging (it toggles off on reboot on some devices).
 2. Note the new connection port (it changes on each enable).
@@ -212,30 +212,30 @@ A boot script can attempt to reconnect, but the port is only stable within a ses
 
 ## Without WiFi
 
-ADB wireless debugging requires WiFi association. Android checks whether the wifi radio is connected to an access point — not whether the internet is reachable. A router with no internet connection works.
+ADB wireless debugging requires WiFi association. Android checks whether the wifi radio is connected to an access point, not whether the internet is reachable. A router with no internet connection works.
 
 **What works without WiFi (Termux API, no ADB required):**
 
-- Battery status — `termux-battery-status`
-- Camera capture — `termux-camera-photo`
-- TTS — `termux-tts-speak`
-- Clipboard — `termux-clipboard-get` / `termux-clipboard-set`
-- GPS location — `termux-location`
-- SMS (read/send) — `termux-sms-list` / `termux-sms-send`
-- Notifications — `termux-notification-list`
-- Background scheduling — `crond` or `termux-job-scheduler`
-- Volume — `termux-volume`
-- Vibration — `termux-vibrate`
-- WiFi info — `termux-wifi-connectioninfo`
-- Sensors — `termux-sensor`
+- Battery status: `termux-battery-status`
+- Camera capture: `termux-camera-photo`
+- TTS: `termux-tts-speak`
+- Clipboard: `termux-clipboard-get` / `termux-clipboard-set`
+- GPS location: `termux-location`
+- SMS (read/send): `termux-sms-list` / `termux-sms-send`
+- Notifications: `termux-notification-list`
+- Background scheduling: `crond` or `termux-job-scheduler`
+- Volume: `termux-volume`
+- Vibration: `termux-vibrate`
+- WiFi info: `termux-wifi-connectioninfo`
+- Sensors: `termux-sensor`
 
 **Approaches for ADB without a router:**
 
-1. **Phone hotspot** — enable your phone's mobile hotspot. The AP interface typically gets a static IP (often `192.168.43.1`). `adbd` binds to all interfaces. After enabling hotspot, pair and connect using that IP rather than `127.0.0.1`. Untested across all devices — your AP interface IP may differ.
+1. **Phone hotspot:** enable your phone's mobile hotspot. The AP interface typically gets a static IP (often `192.168.43.1`). `adbd` binds to all interfaces. After enabling hotspot, pair and connect using that IP rather than `127.0.0.1`. Untested across all devices; your AP interface IP may differ.
 
-2. **Session persistence after WiFi drop** — some users report that an established ADB connection survives a WiFi drop in the same session (the radio goes down but the TCP connection stays alive briefly). Not reliable across reboots or long gaps.
+2. **Session persistence after WiFi drop:** some users report that an established ADB connection survives a WiFi drop in the same session (the radio goes down but the TCP connection stays alive briefly). Not reliable across reboots or long gaps.
 
-3. **`adb tcpip` mode** — if you have a computer nearby, you can set `adb tcpip 5555` once over USB, then disconnect and connect wirelessly on port 5555. Doesn't help in a WiFi-free scenario, but keeps the connection available without re-pairing each session.
+3. **`adb tcpip` mode:** if you have a computer nearby, you can set `adb tcpip 5555` once over USB, then disconnect and connect wirelessly on port 5555. Doesn't help in a WiFi-free scenario, but keeps the connection available without re-pairing each session.
 
 ---
 
@@ -247,12 +247,12 @@ Wireless debugging enabled means your device is listening for ADB connections on
 
 **Mitigations Android provides:**
 - Pairing requires a code displayed on-screen. Remote attackers cannot see your screen.
-- Each pairing is explicit — you approve it by opening the pairing dialog.
+- Each pairing is explicit; you approve it by opening the pairing dialog.
 - The connection is tied to the paired key. Without pairing first, a connection attempt fails.
 
 **What to watch for:**
-- Public WiFi networks (cafes, hotels, airports) — disable Wireless debugging when you're on networks you don't control. Anyone on the same subnet could attempt to pair.
-- Shared home networks with untrusted devices — same consideration.
+- Public WiFi networks (cafes, hotels, airports): disable Wireless debugging when you're on networks you don't control. Anyone on the same subnet could attempt to pair.
+- Shared home networks with untrusted devices: same consideration.
 - The connection port changes on each session, which slightly reduces attack surface, but determined local network attackers can scan for it.
 
 ### Practical security posture
@@ -281,7 +281,7 @@ Run the `adb pair` command again. Known bug in ADB 35.x (reports as version 1.0.
 Wireless debugging may have toggled off (happens on some devices after screen lock). Go back to Developer options, toggle it back on, get the new port, reconnect.
 
 **Pairing dialog dismissed before you got the port**
-Open the dialog again — a new code and port will be generated. The old pairing (if you had one) is not affected.
+Open the dialog again. A new code and port will be generated. The old pairing (if you had one) is not affected.
 
 **`adb shell screencap` returns empty or corrupted file**
 Some devices need the path specified differently:
@@ -296,4 +296,4 @@ Android may be toggling WiFi sleep. Go to **Developer options → WiFi scan thro
 
 ## Summary
 
-ADB wireless self-connect gives Termux-based tools access to Android system APIs that SELinux blocks from the Termux app sandbox. Setup takes about 5 minutes. Once paired, reconnecting is a single command. The 12 Termux API features continue to work regardless of ADB state — ADB adds on top of them, it doesn't replace them.
+ADB wireless self-connect gives Termux-based tools access to Android system APIs that SELinux blocks from the Termux app sandbox. Setup takes about 5 minutes. Once paired, reconnecting is a single command. The 12 Termux API features continue to work regardless of ADB state; ADB adds on top of them, it doesn't replace them.
