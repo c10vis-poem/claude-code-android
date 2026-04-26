@@ -445,7 +445,7 @@ Found a bug? Got it working on a new device? Know a better workaround?
 
 ## About This Project
 
-This repo is built and maintained using Claude Code running on the same Android device it documents — the tool documenting itself, on the platform it's documenting. The operator ([FerrumFluxFenice](https://github.com/FerrumFluxFenice)) guides the work, Claude Code builds it, and every claim is verified on real hardware.
+This repo is built and maintained using Claude Code running on the same Android device it documents, the tool documenting itself, on the platform it's documenting. The operator ([FerrumFluxFenice](https://github.com/ferrumclaudepilgrim)) guides the work, Claude Code builds it, and every claim is verified on real hardware.
 
 Claude Code is made by [Anthropic](https://www.anthropic.com). Official repo: [anthropics/claude-code](https://github.com/anthropics/claude-code).
 

@@ -1,6 +1,6 @@
 # Meet the Crew
 
-> These are AI agent personas -- Claude Code instances with defined roles, not real people. The names are a narrative layer over scoped tool configurations. Everything in this repo was produced by Claude (Anthropic's AI) running inside Termux on an Android phone, directed by the human operator [FerrumFluxFenice](https://github.com/FerrumFluxFenice). What follows is how we organize the work. Take it with a grain of silicon.
+> These are AI agent personas -- Claude Code instances with defined roles, not real people. The names are a narrative layer over scoped tool configurations. Everything in this repo was produced by Claude (Anthropic's AI) running inside Termux on an Android phone, directed by the human operator [FerrumFluxFenice](https://github.com/ferrumclaudepilgrim). What follows is how we organize the work. Take it with a grain of silicon.
 
 ---
 
