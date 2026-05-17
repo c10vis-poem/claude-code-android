@@ -66,7 +66,7 @@ bash install.sh
 claude
 ```
 
-`install.sh` installs Node.js, installs `@anthropic-ai/claude-code@2.1.112`, and locks the install directory read-only so the in-process auto-updater cannot replace it with a 2.1.113+ build that has no android-arm64 binary. You then just run `claude`.
+[`install.sh`](install.sh) installs Node.js, installs `@anthropic-ai/claude-code@2.1.112`, and locks the install directory read-only so the in-process auto-updater cannot replace it with a 2.1.113+ build that has no android-arm64 binary. You then just run `claude`. Want to read it first? **[View install.sh on GitHub](install.sh)** before running.
 
 Full walkthrough: **[docs/install.md](docs/install.md)**.
 
