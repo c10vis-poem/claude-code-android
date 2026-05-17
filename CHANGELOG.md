@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.8.1] - 2026-05-17
+
+Hotfix. The v2.8.0 install was empirically broken: the `chmod -R a-w` lock on the install dir is necessary but not sufficient. Within minutes of starting a real claude session on a fresh v2.8.0 install (verified on Pixel 6 / Android 13), the in-process auto-updater chmod'd the dir writable and clobbered the 2.1.112 pin with 2.1.143 -- the broken android-arm64 version. claude then exited with `Error: claude native binary not installed`.
+
+The v2.7.0 install kept two additional layers that v2.8.0 incorrectly removed as "belt-and-braces": `DISABLE_AUTOUPDATER=1` in `~/.bashrc` (every shell that launches claude inherits the env) and merged into `~/.claude/settings.json` (inside a running claude session this is what stops the in-process updater from firing). Empirically those layers were load-bearing. v2.8.1 restores them. The chmod still matters as a final defense, but every layer is needed.
+
+### Fixed
+- `install.sh` writes `export DISABLE_AUTOUPDATER=1` to `~/.bashrc` (idempotent: only if not already present; creates the file if missing)
+- `install.sh` merges `"env": {"DISABLE_AUTOUPDATER": "1"}` into `~/.claude/settings.json` using Node (preserves all existing keys including hooks; no jq dependency needed since Node is already installed)
+- v2.8.0 CHANGELOG framing on which layers were load-bearing was empirically wrong. v2.8.0 entry left as-is per CHANGELOG-history convention; this entry corrects the framing.
+
+### Added
+- `docs/install.md` "Recommended Common Packages" section: one-liner `pkg install` for the 17 packages Claude Code typically reaches for that vanilla Termux + `install.sh` does not provide (`git`, `gh`, `jq`, `python`, `openssh`, `tree`, `proot`, `termux-api`, `proot-distro`, `make`, `clang`, `file`, `xxd`, `htop`, `bat`, `fzf`, `wget`). What's already in vanilla Termux is listed too (`rg`, `curl`, `unzip`, `tar`, `gzip`, `less`, `nano`) so the user knows which holes are real.
+- README callout after Path A pointing users to the common-packages section -- a "vanilla Claude Code in an environment it is not used to" warning that also recommends injecting the list into `CLAUDE.md` or an environment hook to prevent recurring tool failures.
+- `docs/faq.md` "Which packages should I install after `install.sh`?" entry pointing to the install.md section.
+- `docs/troubleshooting.md` "Claude can't find a tool (jq / git / python / ...)" entry covering the symptom-shaped path to the install.md section.
+
+### Notes
+- A backup tag `backup/pre-v2.8.1` was created on `main` before this release for rollback
+- The bare-minimum `pkg install` principle still holds: `install.sh` still only installs `nodejs`. The added layers are file edits in `$HOME`, not new system packages.
+
 ## [2.8.0] - 2026-05-16
 
 Audit-driven cleanup release. Documentation tightened to match empirical device behavior. Test suite rewritten to produce deterministic PASS/FAIL/SKIP verdicts; verified end to end on four lab devices spanning Android 8, 10, 13, and 17 Beta. FAQ added for decision-shaped questions; troubleshooting refined for symptom-shaped entries with cross-links between the two. The Path A pin to 2.1.112 against upstream regression [#50270](https://github.com/anthropics/claude-code/issues/50270) remains in effect. Path B continues to install upstream-latest claude inside proot-Ubuntu cleanly.

@@ -12,6 +12,7 @@ If you haven't installed yet, see [INSTALL.md](install.md) first.
 - [Unsupported architecture: armhf](#unsupported-architecture-armhf)
 - [Claude Code won't start, no error](#claude-code-wont-start-no-error)
 - [Claude Code exits: "native binary not installed"](#claude-code-exits-native-binary-not-installed)
+- [Claude can't find a tool (jq / git / python / ...)](#claude-cant-find-a-tool-jq--git--python-)
 - [OAuth / authentication fails on first launch](#oauth--authentication-fails-on-first-launch)
 - [proot-distro issues](#proot-distro-issues)
 - [Node.js v24 hangs](#nodejs-v24-hangs)
@@ -154,6 +155,16 @@ chmod -R u+w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
 npm install -g @anthropic-ai/claude-code@<new-version>
 chmod -R a-w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
 ```
+
+---
+
+### Claude can't find a tool (jq / git / python / ...)
+
+**You see:** Claude tries to run `jq`, `git`, `python`, `gh`, `openssh`, `tree`, etc. and the command fails with `command not found`. Tool calls fail repeatedly with the same kind of error.
+
+**Cause:** This is a vanilla Claude Code in an environment it is not used to. Vanilla Termux + `install.sh` only gives you `nodejs` + Claude Code plus what Termux core ships (`rg`, `curl`, `unzip`, `tar`, `gzip`, `less`, `nano`). Most other developer tools Claude reaches for are not present.
+
+**Fix:** Install the **[Recommended Common Packages](install.md#recommended-common-packages)** in install.md (one `pkg install` line). Also consider injecting them into your `CLAUDE.md` or an environment hook so Claude knows what's available -- without that, expect recurring tool failures and barriers.
 
 ---
 

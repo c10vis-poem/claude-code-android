@@ -55,6 +55,10 @@ To handle this non-interactively and keep all local config files unchanged:
 DEBIAN_FRONTEND=noninteractive pkg upgrade -y -o Dpkg::Options::="--force-confold"
 ```
 
+### Which packages should I install after `install.sh`?
+
+`install.sh` is bare-minimum -- only `nodejs` and Claude Code itself. Vanilla Termux gives you `rg`, `curl`, `unzip`, `tar`, `gzip`, `less`, `nano` already. Everything else Claude Code typically reaches for (`git`, `gh`, `jq`, `python`, `openssh`, `tree`, `clang`, `htop`, etc.) is not present. See **[Recommended Common Packages](install.md#recommended-common-packages)** in install.md for the one-liner that adds what's commonly needed and prevents recurring tool failures.
+
 ---
 
 ## Choosing a path

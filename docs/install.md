@@ -173,6 +173,38 @@ This tests all documentation claims against your actual device. Results are save
 
 ---
 
+## Recommended Common Packages
+
+This is a vanilla Claude Code in an environment it is not used to. I highly recommend adding the packages below to make first-time use easier. I also recommend injecting them into your `CLAUDE.md` or an environment hook in some way -- they can cause recurring tool failures and barriers if missing.
+
+What vanilla Termux + `install.sh` already gives you: `rg` (ripgrep), `curl`, `unzip`, `tar`, `gzip`, `less`, `nano`, `node`, `pkg`. Everything below is what Claude Code typically reaches for and isn't present out of the box (empirically verified on a fresh Termux + `install.sh` run, 2026-05-17):
+
+```bash
+pkg install git gh wget jq python openssh tree proot termux-api proot-distro make clang file xxd htop bat fzf -y
+```
+
+| Package | What it's for |
+|---|---|
+| `git` | Repo operations |
+| `gh` | GitHub CLI (issues, PRs, releases) |
+| `wget` | HTTP downloads (some scripts assume it; `curl` is already present) |
+| `jq` | JSON parsing in scripts |
+| `python` | Python scripting and tools |
+| `openssh` | SSH client (and server, if you want it) |
+| `tree` | Directory visualization |
+| `proot` | Bind mounts for tools that hardcode `/tmp` |
+| `termux-api` | Device APIs (camera, GPS, TTS, fingerprint, battery) -- pair with the Termux:API companion app from F-Droid |
+| `proot-distro` | Required for Path B (Ubuntu install) |
+| `make` | Build automation |
+| `clang` | C/C++ compiler |
+| `file` | File-type identifier (`file path/to/x`) |
+| `xxd` | Hex dump utility |
+| `htop` | Interactive process monitor |
+| `bat` | `cat` with syntax highlighting and paging |
+| `fzf` | Fuzzy finder |
+
+---
+
 ## Tested On
 
 The canonical device compatibility matrix lives in the **[main README](../README.md#device-compatibility)**. As of 2026-05-16, verified end-to-end across:

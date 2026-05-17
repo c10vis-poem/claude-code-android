@@ -24,8 +24,8 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/Android-8%2B-brightgreen.svg" alt="Android 8+">
-  <img src="https://img.shields.io/badge/Version-2.8.0-blue.svg" alt="Version 2.8.0">
-  <img src="https://img.shields.io/badge/Last%20Verified-2026--05--16-lightgrey.svg" alt="Last Verified 2026-05-16">
+  <img src="https://img.shields.io/badge/Version-2.8.1-blue.svg" alt="Version 2.8.1">
+  <img src="https://img.shields.io/badge/Last%20Verified-2026--05--17-lightgrey.svg" alt="Last Verified 2026-05-17">
 </p>
 
 <p align="center">
@@ -69,6 +69,8 @@ claude
 [`install.sh`](install.sh) installs Node.js, installs `@anthropic-ai/claude-code@2.1.112`, and locks the install directory read-only so the in-process auto-updater cannot replace it with a 2.1.113+ build that has no android-arm64 binary. You then just run `claude`. Want to read it first? **[View install.sh on GitHub](install.sh)** before running.
 
 Full walkthrough: **[docs/install.md](docs/install.md)**.
+
+> **After Path A, read this:** This is a vanilla Claude Code in an environment it is not used to. I highly recommend adding the [common packages](docs/install.md#recommended-common-packages) to make first-time use easier, and injecting them into your `CLAUDE.md` or an environment hook in some way -- they can cause recurring tool failures and barriers if missing.
 
 ### Path C -- AVF Linux VM (Pixel 6+, experimental)
 
@@ -131,7 +133,7 @@ Authentication may fail to open a browser on Android 8 (and possibly 9). Copy th
 
 | | |
 |----------|---------------|
-| [CHANGELOG.md](CHANGELOG.md) | Version history from 0.1.0 to 2.8.0 |
+| [CHANGELOG.md](CHANGELOG.md) | Version history from 0.1.0 to 2.8.1 |
 | [CONTRIBUTING.md](.github/CONTRIBUTING.md) | How to contribute, report bugs, submit device reports |
 
 ---

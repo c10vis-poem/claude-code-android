@@ -67,13 +67,43 @@ CLAUDE_VER=$(claude --version 2>/dev/null | head -1 || true)
 ok "Claude Code installed: $CLAUDE_VER"
 
 # --- Lock against the in-process auto-updater ---
-# Without this, the running claude session re-fetches 'latest' (no android-arm64
-# binary in 2.1.113+; upstream #50270) within minutes and overwrites this install.
-# The chmod is what actually holds; DISABLE_AUTOUPDATER alone is not sufficient.
+# Three layers, all needed empirically:
+#  1. chmod -R a-w on the install dir (slows the updater; insufficient alone
+#     because the updater can chmod +w before writing)
+#  2. DISABLE_AUTOUPDATER=1 in ~/.bashrc (every shell that launches claude
+#     inherits the env)
+#  3. env.DISABLE_AUTOUPDATER=1 in ~/.claude/settings.json (inside a running
+#     claude session this is what stops the in-process updater from firing)
+#
+# v2.7.0 had layers 2+3. v2.8.0 dropped them as "belt-and-braces" and the
+# pin was clobbered within minutes of a real claude session starting. v2.8.1
+# restores them. The CHANGELOG framing in [2.8.0] was empirically wrong.
 
 info "Locking install directory against the auto-updater..."
 chmod -R a-w "$CC_DIR"
-ok "Install directory is read-only. Re-run this script to upgrade later."
+ok "Install directory is read-only."
+
+info "Persisting DISABLE_AUTOUPDATER=1 to ~/.bashrc..."
+BASHRC="$HOME/.bashrc"
+[ -f "$BASHRC" ] || touch "$BASHRC"
+if ! grep -q '^export DISABLE_AUTOUPDATER=1' "$BASHRC" 2>/dev/null; then
+    echo 'export DISABLE_AUTOUPDATER=1' >> "$BASHRC"
+fi
+ok "DISABLE_AUTOUPDATER=1 in ~/.bashrc"
+
+info "Merging env.DISABLE_AUTOUPDATER into ~/.claude/settings.json..."
+mkdir -p "$HOME/.claude"
+SETTINGS="$HOME/.claude/settings.json"
+node -e "
+const fs = require('fs');
+const p = '$SETTINGS';
+let s = {};
+try { s = JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) {}
+s.env = s.env || {};
+s.env.DISABLE_AUTOUPDATER = '1';
+fs.writeFileSync(p, JSON.stringify(s, null, 2));
+" || fail "settings.json merge failed."
+ok "env.DISABLE_AUTOUPDATER=1 in ~/.claude/settings.json"
 
 # --- Done ---
 
