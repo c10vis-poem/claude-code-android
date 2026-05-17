@@ -47,7 +47,16 @@ Latest Claude Code, no version pin, no workarounds.
 ```bash
 pkg install proot-distro -y
 proot-distro install ubuntu && proot-distro login ubuntu
-# Prompt changes to root@localhost. Inside Ubuntu:
+```
+
+This may take a few minutes depending on connection speed.
+
+Upon completion the prompt changes to:
+```
+root@localhost.
+``` 
+Inside Ubuntu:
+```
 apt update && apt upgrade -y
 curl -fsSL https://claude.ai/install.sh | bash
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
