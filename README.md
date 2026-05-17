@@ -196,7 +196,7 @@ If you are reading this and enjoy the repo I thank you for your time. I don't kn
 
 MIT. See [LICENSE](LICENSE).
 
-## Built On
+## Built on and assisted by:
 
 - **Claude Code** by [Anthropic](https://www.anthropic.com) -- official repo: [anthropics/claude-code](https://github.com/anthropics/claude-code)
 - **Termux** -- the Android terminal that makes all of this possible: [termux/termux-app](https://github.com/termux)
