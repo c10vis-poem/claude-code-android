@@ -41,7 +41,7 @@ ADB wireless debugging runs commands as Android's `shell` user -- a system-level
 | Full process list | `adb shell ps -A` | Lists every running process on the device |
 | System logs | `adb logcat` | May contain authentication tokens, URLs, and debug data from other apps |
 | Installed apps | `adb shell pm list packages` | Complete list of every app installed on the device |
-| Hardware sensors | `adb shell dumpsys sensorservice` | Full hardware sensor inventory (42 sensor types observed in our testing) |
+| Hardware sensors | `adb shell dumpsys sensorservice` | Full hardware sensor inventory (42 sensor types observed in my testing) |
 | Device properties | `adb shell getprop` | Hardware identifiers, build info, carrier info |
 
 ---
@@ -94,7 +94,7 @@ These gaps exist by default in the current setup:
 - **No ADB command restriction.** Once ADB is connected, the full set of `adb shell` commands is available. There is no built-in way to allow screencap but deny input injection.
 - **No outbound data exfiltration boundary.** Claude Code can run `curl`, `wget`, or any network command via the Bash tool. There is no default firewall or egress filter preventing data from being sent to external servers.
 - **No MCP data boundary.** Data flowing to MCP servers is not filtered or restricted. Any data Claude Code can access may appear in MCP tool responses.
-- **No session-level tool scoping for interactive use.** The `--tools` and `--disallowedTools` flags work for headless (`claude -p`) sessions, but interactive sessions do not currently support runtime tool restriction beyond hooks.
+- **No session-level tool scoping for interactive use.** The `--tools` and `--disallowedTools` flags work for headless (`claude -p`) sessions, but interactive sessions have no runtime tool restriction beyond hooks.
 
 ---
 
@@ -113,4 +113,4 @@ These gaps exist by default in the current setup:
 
 ---
 
-Last updated: 2026-04-18.
+Last updated: 2026-05-16.

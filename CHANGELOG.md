@@ -1,5 +1,48 @@
 # Changelog
 
+## [2.8.0] - 2026-05-16
+
+Audit-driven cleanup release. Documentation tightened to match empirical device behavior. Test suite rewritten to produce deterministic PASS/FAIL/SKIP verdicts; verified end to end on four lab devices spanning Android 8, 10, 13, and 17 Beta. FAQ added for decision-shaped questions; troubleshooting refined for symptom-shaped entries with cross-links between the two. The Path A pin to 2.1.112 against upstream regression [#50270](https://github.com/anthropics/claude-code/issues/50270) remains in effect. Path B continues to install upstream-latest claude inside proot-Ubuntu cleanly.
+
+This change is a major shift to `install.sh` and the user-facing instructions around it. The goal is to bring the install down to the bare minimum needed for Claude Code to run successfully without persistent error inside Termux. It does not install packages or dependencies a standard Claude Code user would use -- common ones like `git`, GitHub CLI (`gh`), `curl`, `ripgrep`, `termux-api`, and `jq` are NOT installed. Install whatever you need yourself with `pkg install <name>`. After running `install.sh`, you type `claude` -- the same command you would on a PC. If you have an error with this update, please [open an issue](https://github.com/ferrumclaudepilgrim/claude-code-android/issues/new?template=bug_report.md) immediately. The previous v2.7.0 `install.sh` is preserved at [v2.7.0/install.sh](https://github.com/ferrumclaudepilgrim/claude-code-android/blob/v2.7.0/install.sh) for comparison.
+
+### Added
+- `docs/faq.md` covering install gotchas (Play Protect on Termux APK install, mirror selection, the `Y/I/N/O/D/Z` dpkg prompt), path-choice decisions, and the Android-version OAuth auto-open cutoff (verified on Android 8 / 10 / 13 / 17 Beta)
+- `scripts/` directory with three deterministic bash diagnostics: `check-termux-env.sh` (full environment probe, 13 checks), `fix-ripgrep.sh` (recovery for the missing arm64-android ripgrep binary), `config-validator.sh` (audit a `.claude/` directory)
+- `.gitattributes` pinning `*.md`, `*.txt`, `*.yml`, `*.yaml`, `*.json`, `LICENSE` to LF; image assets explicitly marked binary
+- `tests/results/` device files written by the new `verify-claims.sh` on Pixel 10 Pro (Android 17 Beta), Pixel 6 (Android 13), Moto G7 Power (Android 10), Galaxy S7 (Android 8)
+- `release-check.sh` at repo root: mechanical pre-release sanity checks (VERSION / CHANGELOG / README / SECURITY consistency, backup-tag presence, em-dash absence, current-tag absence). Exit 0 on PASS, non-zero on FAIL. Run before every release push
+
+### Changed
+- `tests/verify-claims.sh` rewritten: 13 deterministic claims, each returning PASS, FAIL, or SKIP only. Methodology corrected for `/tmp` writability tests, proot bind-mount roundtrip, and doc-existence checks. Output format intended for end-user contribution
+- `README.md` restructured for scannability: Quick Install moved to the top of the page; verbose sections relocated to `docs/`; April-18 recovery banner kept above the fold with a deep link
+- `docs/install.md` -- Path C added as a third column in the path-comparison table; April-18 recovery procedure consolidated here; OAuth section captures the empirical Android-version auto-open cutoff; Step 1 distinguishes MVP-required packages from the recommended general kit
+- `docs/skills.md` -- reflects current set: one Android-specific skill (`termux-safe`) and two workflow skills (`minimum-viable`, `scope-framing`); deterministic checks now live under `scripts/`
+- `docs/troubleshooting.md` -- Hooks-section anchor corrected in the table of contents; OAuth entry gains the Android-version auto-open cutoff and a cross-link to the FAQ
+- `docs/faq.md` Path B size and native-binary detail (no Node required) clarified
+- `docs/avf-guide.md` Android 17 Beta status note refreshed
+- `docs/adb-wireless.md` gains a decision table for "When to use ADB vs Termux:API"
+- `docs/fingerprint-gate.md` adds a callout on case-pattern bypass vectors and safer-shape alternatives for biometric gate scripts
+- `install.sh` header documents scope and package set
+- `.github/CONTRIBUTING.md` example-skill reference updated to point at a current skill
+- `assets/logo.jpg` replaced with `assets/logo.png` (transparent PNG)
+
+### Fixed
+- `tests/verify-claims.sh` no longer returns `CANNOT TEST` for claims that the test methodology was failing to exercise; the rewrite uses appropriate proot-wrapped subshells and repo-rooted doc-path checks
+- README maintenance row in the path-comparison table no longer references the obsolete ripgrep symlink re-fix step; the env var `CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1` (which users can set in their own `~/.bashrc`) makes the symlink unnecessary anyway
+- README docs-table skill-count drift removed
+
+### Removed
+
+- `install.sh` no longer installs `git`, `curl`, `proot`, `ripgrep`, `termux-api`, or `jq`; only `nodejs` is installed. Users who want those packages can `pkg install` them directly. The full kit is recommended in `docs/install.md` Step 1 for general use.
+- `install.sh` no longer writes a `claude-android` alias, no longer exports `TMPDIR` / `CLAUDE_CODE_USE_NATIVE_FILE_SEARCH` / `DISABLE_AUTOUPDATER` to `~/.bashrc`, no longer creates the ripgrep symlink, and no longer merges `~/.claude/settings.json`. The load-bearing protection is the `chmod -R a-w` on the install directory; the rest were belt-and-braces in earlier versions.
+- The `claude-android` alias is no longer the documented launch command. Users run bare `claude` (empirically verified across Android 8 / 10 / 13 / 17 Beta on 2026-05-16). If you used the alias in a prior version, remove it from `~/.bashrc` to avoid drift.
+
+### Notes
+- A backup tag `backup/pre-v2.8.0` was created on `main` before this release for rollback
+- Disk-usage numbers in path-comparison tables are approximate ranges, not freshly measured; a follow-up release may refresh them with on-device `du -sh` data
+- Upstream Termux issues referenced in docs (proot-distro #567, termux-packages #29319) are not re-verified in this release
+
 ## [2.7.0] - 2026-04-18
 
 Emergency release pinning Path A (native Termux) install to `@anthropic-ai/claude-code@2.1.112`, the last upstream version that ships the bundled `cli.js` JavaScript entry point. Versions 2.1.113 and later switched to a platform-native binary distribution that excludes android-arm64; on native Termux those versions install but `claude` exits immediately with `Error: claude native binary not installed`. Tracked upstream at [anthropics/claude-code#50270](https://github.com/anthropics/claude-code/issues/50270). The in-process auto-updater also re-fetches `latest` on a timer **inside running sessions**, so the pin must be defended with `DISABLE_AUTOUPDATER=1` plus a load-bearing `chmod -R a-w` on the install directory. Path B (proot-distro Ubuntu) is unaffected: `process.platform === 'linux'` matches the published `linux-arm64` native binary. Path C (AVF) is unaffected for the same reason.

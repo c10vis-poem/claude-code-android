@@ -1,1 +1,18 @@
-*.sh text eol=lf
+# Force LF line endings for text files. CRLF would break shell scripts on
+# Termux (bash errors on $'\r' at end of lines) and create noisy diffs when
+# Windows contributors check out a repo with core.autocrlf=true.
+
+*.sh   text eol=lf
+*.md   text eol=lf
+*.txt  text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+LICENSE text eol=lf
+
+# Binary assets (no text conversion).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary

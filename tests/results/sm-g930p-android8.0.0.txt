@@ -1,0 +1,107 @@
+╔══════════════════════════════════════════════════════╗
+║  claude-code-android : Claims Verification           ║
+║  Date: 2026-05-16 17:22:58                           ║
+║  Kernel: 3.18.71-13955230                            ║
+╚══════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 1: /tmp is not writable in plain Termux; proot bind mount makes it writable
+  Test:  touch /tmp/x directly (expect fail), then via proot -b $PREFIX/tmp:/tmp (expect pass if proot installed)
+  Direct (plain Termux): writable=false
+  Via proot bind mount: visible-in-$PREFIX/tmp=true
+  Result: /tmp NOT writable directly; IS writable via proot bind mount
+  Verdict: PASS
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 2: Claude Code does not bundle a native arm64-android ripgrep binary
+  Test:  Inspect vendor/ripgrep/arm64-android/rg -- should be missing or a user-created symlink
+  Platform dirs present:
+    COPYING
+    arm64-android
+    arm64-darwin
+    arm64-linux
+    arm64-win32
+    x64-darwin
+    x64-linux
+    x64-win32
+  Result: arm64-android/rg is a symlink → /data/data/com.termux/files/usr/bin/rg (user-supplied recovery)
+  Verdict: PASS
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 3: File descriptor limits are queryable on this device (varies by device/Android)
+  Test:  ulimit -n (soft) and ulimit -Hn (hard) both return positive integers
+  Evidence: soft=1024  hard=4096
+  Verdict: PASS
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 4: install.sh locks the Claude Code install directory read-only (auto-updater protection)
+  Test:  Inspect permissions on the install dir; expect dr-x------ (no write bit)
+  Permissions: dr-x------
+  Result: directory is read-only; auto-updater cannot overwrite the pinned install
+  Verdict: PASS
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 5: Path B: Anthropic install.sh inside proot-distro Ubuntu installs claude binary
+  Test:  If Ubuntu rootfs present, look for claude binary in standard paths
+  Verdict: SKIP. proot-distro Ubuntu not installed (this is fine for Path A users)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 6: claude CLI accepts --tools for restricting tool access (cron safety)
+  Test:  claude --help should mention --tools
+  --tools flag present in help output
+  Verdict: PASS
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 7: termux-sensor lists device sensors when Termux:API is functional
+  Test:  Run 'termux-sensor -l' with 5s timeout; expect JSON output
+  Output: Terminated
+Caught interrupt.. Finishing...
+No cleanup necessary
+  Verdict: SKIP. termux-sensor returned no JSON (Termux:API companion app may not be running)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 8: docs/ssrf-guard.md exists and is non-empty in this repo
+  docs/ssrf-guard.md: 118 lines
+  Verdict: PASS
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 9: docs/agent-permissions.md exists and is non-empty in this repo
+  docs/agent-permissions.md: 124 lines
+  Verdict: PASS
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 10: termux-battery-status returns valid JSON (Termux:API companion working)
+  Test:  Run termux-battery-status with 8s timeout; expect JSON with 'percentage'
+  Output: 
+  Verdict: SKIP. no JSON returned (Termux:API companion app must be installed AND open at least once)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 11: xdg-open is a symlink to termux-open (OAuth/browser-launch compatibility)
+  /data/data/com.termux/files/usr/bin/xdg-open → termux-open
+  Verdict: PASS
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 12: termux-fingerprint is available on PATH for biometric authentication
+  Found: /data/data/com.termux/files/usr/bin/termux-fingerprint
+  Verdict: PASS
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM 13: Device architecture is aarch64 (Claude Code requirement)
+  uname -m: aarch64
+  Verdict: PASS
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PASS: 10/13
+  FAIL: 0/13
+  SKIP: 3/13
+
+Results saved to tests/results/sm-g930p-android8.0.0.txt
+
+Notes:
+  PASS -- claim empirically verified on this device.
+  FAIL -- claim empirically does not hold on this device. Either the device differs
+         from the doc's assumptions, or the doc is wrong. Submit a device report.
+  SKIP -- precondition not met (e.g., optional package not installed, companion app
+         not running). Re-run after installing the relevant package to test.

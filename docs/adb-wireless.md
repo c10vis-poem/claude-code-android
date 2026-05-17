@@ -267,6 +267,27 @@ For public WiFi: disable Wireless debugging. Re-enable when you're back on a tru
 
 ---
 
+## When to use ADB vs Termux:API
+
+These are different access mechanisms with different security postures. Pick the lighter-weight one when it's enough.
+
+| You want to... | Use | Why |
+|---|---|---|
+| Battery status, notifications, clipboard, vibration, TTS, GPS, camera | **Termux:API** | App-level permission, per-permission grants, no network-accessible port |
+| Read SMS or contacts | **Termux:API** (with explicit Android permission grant) | ADB also works but requires the wireless port to be open |
+| Take a screenshot of any app | **ADB** | Termux can't screencap outside its own UI |
+| Inject touch/swipe/text into other apps | **ADB** | Termux can't input outside its own UI |
+| Query `dumpsys`, full process list, system settings | **ADB** | Termux's app sandbox blocks these |
+| Read system logs (logcat) | **ADB** | Same reason |
+| Read calendar events | **ADB** content-provider query (Termux:API does not expose calendar) | -- |
+| Run cron-style automation without UI access | Either, neither requires UI | -- |
+
+If you only need the Termux:API category, do not enable wireless debugging. The pairing-code requirement provides reasonable protection on trusted networks, but the simplest security posture is "the port is closed." Pair only when you actually need the ADB-only capabilities.
+
+If you need both: enable ADB only while you're actively using its capabilities, then toggle it off in Developer Options.
+
+---
+
 ## Troubleshooting
 
 **`adb: command not found`**
@@ -297,3 +318,7 @@ Android may be toggling WiFi sleep. Go to **Developer options → WiFi scan thro
 ## Summary
 
 ADB wireless self-connect gives Termux-based tools access to Android system APIs that SELinux blocks from the Termux app sandbox. Setup takes about 5 minutes. Once paired, reconnecting is a single command. The 12 Termux API features continue to work regardless of ADB state; ADB adds on top of them, it doesn't replace them.
+
+---
+
+*Last updated: 2026-05-16.*

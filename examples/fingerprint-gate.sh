@@ -36,10 +36,10 @@ require_fingerprint() {
 # Other hooks can check this file to skip re-prompting within a window.
 #
 # Usage:
-#   require_fingerprint && write_sentinel "/tmp/fp-approved"
+#   require_fingerprint && write_sentinel "$PREFIX/tmp/fp-approved"
 #
 # Then in another hook:
-#   if [ -f "/tmp/fp-approved" ] && [ "$(find /tmp/fp-approved -mmin -5)" ]; then
+#   if [ -f "$PREFIX/tmp/fp-approved" ] && [ "$(find $PREFIX/tmp/fp-approved -mmin -5)" ]; then
 #     echo "Recently approved, skipping fingerprint." >&2
 #   else
 #     require_fingerprint || exit 1

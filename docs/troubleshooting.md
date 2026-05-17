@@ -1,6 +1,6 @@
 # Troubleshooting Claude Code on Android
 
-This guide covers problems specific to running Claude Code on **Android 14+ with Termux** (aarch64/ARM64). Each entry starts with the error you see, then the fix, then the explanation.
+This guide covers problems specific to running Claude Code on **aarch64/ARM64 Android 8+ with Termux**. Android 8 / 9 have OAuth caveats -- see [FAQ](faq.md#claude-prints-a-url-but-my-browser-doesnt-open). Each entry starts with the error you see, then the fix, then the explanation.
 
 If you haven't installed yet, see [INSTALL.md](install.md) first.
 
@@ -21,7 +21,7 @@ If you haven't installed yet, see [INSTALL.md](install.md) first.
 - [Grep/Glob/slash commands fail with ENOENT](#grepglobslash-commands-fail-with-enoent)
 - [Custom agents fail to load (same root cause)](#custom-agents-also-affected)
 - [Voice mode not functional](#voice-mode-not-functional)
-- [Hooks not firing (platform detection issue)](#hooks-not-firing-platform-detection-issue)
+- [Hooks on Termux native](#hooks-on-termux-native)
 - [/tmp data lost](#tmp-data-lost)
 - [Play Store Termux doesn't work](#play-store-termux-doesnt-work)
 - [PDF reading fails ("pdftoppm is not installed")](#pdf-reading-fails-pdftoppm-is-not-installed)
@@ -93,35 +93,16 @@ $ claude
 $
 ```
 
-There is no error message. You will see the command exit silently and return to your prompt.
-
-**Fix:** Launch Claude Code through `proot` with a bind mount:
+**Fix:** Re-run `install.sh`. The most common cause is the in-process auto-updater having replaced the working 2.1.112 install with a 2.1.113+ build that has no android-arm64 binary. The installer reinstalls 2.1.112 and re-locks the install directory read-only so it cannot happen again.
 
 ```bash
-pkg install proot -y
-proot -b $PREFIX/tmp:/tmp claude
+curl -fsSL https://raw.githubusercontent.com/ferrumclaudepilgrim/claude-code-android/main/install.sh -o install.sh
+bash install.sh
 ```
 
-Create an alias so you don't have to type it every time:
+**Cause:** Historically, claude on native Termux hung at startup because it hardcoded `/tmp` for IPC sockets and `/tmp` is not writable from the Termux sandbox. As of claude 2.1.112 (the pinned version in `install.sh`), this hang does not reproduce on aarch64 Android 8 / 10 / 13 / 17 Beta -- bare `claude` launches and reaches OAuth without a proot bind mount. Verified empirically 2026-05-16 across four lab devices.
 
-```bash
-echo "alias claude-android='proot -b \$PREFIX/tmp:/tmp claude'" >> ~/.bashrc
-source ~/.bashrc
-```
-
-**Alternative fix (no proot):** Set `CLAUDE_CODE_TMPDIR` to redirect Claude Code's temp files:
-
-```bash
-export CLAUDE_CODE_TMPDIR=$PREFIX/tmp/claude
-mkdir -p $PREFIX/tmp/claude
-claude
-```
-
-This avoids proot entirely but only redirects Claude's own temp files; other tools that expect `/tmp` may still fail. The proot approach (shown above) is more comprehensive.
-
-**Cause:** `/tmp` is not writable. Claude Code hardcodes `/tmp` for socket files, IPC, and ephemeral state. On Android, `/tmp` either doesn't exist or isn't writable from Termux's sandbox.
-
-> **Note:** The proot bind mount resolves Claude Code operation including subagent task directories. Verified working with subagents on Android 16 (proot 5.1.107-70). Reports of EACCES on subagent tasks in issue [#15637](https://github.com/anthropics/claude-code/issues/15637) describe the experience *without* proot; the bind mount fixes it.
+If bare `claude` still exits silently after a fresh `install.sh` run, the install dir was probably not chmod'd read-only -- check `ls -la $PREFIX/lib/node_modules/@anthropic-ai/claude-code` and confirm it shows `dr-x------`. Re-run `install.sh` to restore.
 
 ---
 
@@ -202,6 +183,8 @@ Or the auth URL prints to the terminal but nothing happens when you visit it, or
    ```
 
 **Cause:** Termux has no system browser integration by default. The OAuth redirect URL may not reach Termux because `localhost` inside Termux and `localhost` from the Android browser are not always the same network context.
+
+**Android-version note:** Auto-open behavior varies by Android version. Verified 2026-05-16: Pixel 10 Pro (A17 Beta), Pixel 6 (A13), and Moto G7 Power (A10) auto-open Chrome when claude triggers OAuth from inside proot-Ubuntu. Galaxy S7 (A8) does NOT auto-open. If you're on Android 8 or 9, copy the URL from the terminal and paste it into your phone's browser manually. See [FAQ: Claude prints a URL but my browser doesn't open](faq.md#claude-prints-a-url-but-my-browser-doesnt-open).
 
 ---
 
@@ -364,31 +347,21 @@ spawn /data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code
 
 Search tools (Grep, Glob) and slash commands that depend on them crash immediately. Claude Code may fall back to slower methods or simply fail the operation.
 
-**Fix:** Install system ripgrep and symlink it into Claude Code's vendor directory:
+**Fix:** Install system ripgrep and add an env var to your `~/.bashrc` so Claude Code uses it:
 
 ```bash
 pkg install ripgrep -y
-VENDOR_DIR="$(dirname "$(command -v claude)")/../lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep"
-mkdir -p "$VENDOR_DIR/arm64-android"
-ln -sf "$(command -v rg)" "$VENDOR_DIR/arm64-android/rg"
+echo 'export CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1' >> ~/.bashrc
+source ~/.bashrc
 ```
 
-**Important:** This symlink breaks on Claude Code updates. Re-run the `mkdir` and `ln` commands after every `npm update -g @anthropic-ai/claude-code`.
+One-time. Persists across Claude Code updates.
 
-**Cause:** Claude Code bundles platform-specific ripgrep binaries but does not include an `arm64-android` build. The binary path it expects simply doesn't exist.
+**Cause:** Claude Code bundles platform-specific ripgrep binaries but does not include an `arm64-android` build. The binary path it expects simply doesn't exist. The env var tells Claude Code to use the system-installed `rg` instead.
 
 ### Custom agents also affected
 
-If custom agents defined in `.claude/agents/` fail to load, it is the same root cause -- Claude Code's file search cannot find the agent definition files on `arm64-android`. The symlink fix above resolves agent loading as well.
-
-**Permanent fix:** Instead of (or in addition to) the symlink, set this environment variable in your `~/.bashrc`:
-
-```bash
-export CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1
-echo 'export CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1' >> ~/.bashrc
-```
-
-This tells Claude Code to use the system-installed ripgrep and file search tools instead of its bundled binaries. It fixes Grep, Glob, slash commands, and custom agent loading in one setting. The symlink approach still works but must be re-applied after every Claude Code update; this environment variable persists.
+If custom agents defined in `.claude/agents/` fail to load, it is the same root cause -- Claude Code's file search cannot find the agent definition files on `arm64-android`. The `CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1` env var above resolves agent loading as well.
 
 ---
 
@@ -532,7 +505,7 @@ If you are running it from inside a Claude Code session via the Bash tool, that 
 
 **Cause:** The `claude doctor` command uses the Ink library to render its output. Ink requires raw mode stdin. Termux provides raw mode in interactive sessions but not in piped or backgrounded contexts.
 
-**Status:** Cosmetic -- `doctor` is a diagnostic tool, not required for normal Claude Code operation. All the checks it runs can also be done manually (see the `/doctor` skill).
+**Status:** Cosmetic -- `claude doctor` is a diagnostic tool, not required for normal Claude Code operation. This repo ships an equivalent set of Termux/Android-specific checks as a bash script: [`scripts/check-termux-env.sh`](../scripts/check-termux-env.sh).
 
 ---
 
@@ -543,8 +516,8 @@ Known issues filed against the Claude Code repository that affect Android/Termux
 | Issue | Description | Status | Workaround |
 |-------|-------------|--------|------------|
 | [#15637](https://github.com/anthropics/claude-code/issues/15637) | Hardcoded `/tmp/claude` paths | Open | proot bind mount |
-| [#16615](https://github.com/anthropics/claude-code/issues/16615) | Platform detection: `android` not recognized | Closed (not planned) | cli.js patching |
-| [#9435](https://github.com/anthropics/claude-code/issues/9435) | Missing arm64-android ripgrep binary | Closed | System ripgrep + symlink |
+| [#16615](https://github.com/anthropics/claude-code/issues/16615) | Platform detection: `android` not recognized | Closed (not planned) | cli.js patching (historic; no longer needed -- hooks fire correctly on current Termux native, see "Hooks not firing on Termux native" above) |
+| [#9435](https://github.com/anthropics/claude-code/issues/9435) | Missing arm64-android ripgrep binary | Closed | `CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1` in `~/.bashrc` |
 | [PR #31701](https://github.com/anthropics/claude-code/pull/31701) | Fix: respect `$TMPDIR` instead of hardcoding `/tmp` | Closed (not merged) | -- |
 
 ---
@@ -597,7 +570,7 @@ solved cleanly. Contributions welcome.
 
 ---
 
-## Path C -- AVF (Experimental)
+## Path C: AVF (Experimental)
 
 ### Android Virtualization Framework (AVF) -- Experimental, Tested on Pixel
 
@@ -606,17 +579,17 @@ Android 16 includes a built-in Linux VM via the Android Virtualization Framework
 See **[AVF-GUIDE.md](avf-guide.md)** for the full setup checklist, VM configuration, ADB hardware bridge setup, security defaults, and comparison with Path A and Path B.
 
 **What works:**
-- Claude Code installs via the official Anthropic installer and completed real tasks during our testing
+- Claude Code installs via the official Anthropic installer and completed real tasks during my testing
 - `process.platform === "linux"` -- no platform detection issues
 - Native `/tmp` -- no bind mounts or TMPDIR workarounds
 - Standard `apt` package management, including systemd updates
-- RAM allocation is configurable via the `memory_mib` field in `/mnt/internal/linux/vm_config.json` (default 4 GB, we changed this to 8 GB on our test device)
+- RAM allocation is configurable via the `memory_mib` field in `/mnt/internal/linux/vm_config.json` (default 4 GB, I changed this to 8 GB on my test device)
 - ADB wireless debugging from inside the VM provides access to 42 phone sensors, GPS, camera, screenshots, screen recording, input injection, battery state, and WiFi info
 - Audio playback and recording (PulseAudio + VirtIO SoundCard)
 - Headless GUI rendering (Firefox screenshots, automated browser tasks)
 
 **What doesn't work well (yet):**
-- **VM killed when screen turns off** -- the most-reported AVF issue. ADB whitelist commands improved stability in our testing (the VM survived screen-off and always-on-display-off) but this is a semi-fix -- the Terminal app Activity can still get recreated, disrupting the session even though the VM itself may survive. Google acknowledged the issue at LPC 2025.
+- **VM killed when screen turns off** -- the most-reported AVF issue. ADB whitelist commands improved stability in my testing (the VM survived screen-off and always-on-display-off) but this is a semi-fix -- the Terminal app Activity can still get recreated, disrupting the session even though the VM itself may survive. Google acknowledged the issue at LPC 2025.
 - **SysV IPC disabled in kernel** -- fio and some Python multiprocessing features do not work (CONFIG_SYSVIPC not set). Hard wall.
 - **nftables non-functional** -- use iptables-legacy instead
 - **`apt upgrade` can hang** -- whiptail TUI dialogs block non-interactive sessions. Use `DEBIAN_FRONTEND=noninteractive` or kill the blocking process.
@@ -630,4 +603,8 @@ See **[AVF-GUIDE.md](avf-guide.md)** for the full setup checklist, VM configurat
 
 **Networking fix:** Cellular data requires enabling "Unrestricted mobile data usage" in the Terminal app's settings, then restarting the device. WiFi works without this step. (Google Issue Tracker #402523629)
 
-**Using AVF?** [Open an issue](https://github.com/ferrumclaudepilgrim/claude-code-android/issues/new?template=device_report.md) with your findings -- we're tracking stability reports across devices.
+**Using AVF?** [Open an issue](https://github.com/ferrumclaudepilgrim/claude-code-android/issues/new?template=device_report.md) with your findings -- I'm tracking stability reports across devices.
+
+---
+
+*Last updated: 2026-05-16.*

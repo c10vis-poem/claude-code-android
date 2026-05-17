@@ -1,7 +1,9 @@
 ---
 name: termux-safe
-description: Auto-loaded Android/Termux constraints. Prevents Claude from suggesting commands that fail silently on Android.
+description: Android/Termux constraints reference. Prevents Claude Code from suggesting commands that fail silently on Android (sudo, systemd, /tmp without proot, etc.).
 user-invocable: false
+disable-model-invocation: false
+# No allowed-tools field: this skill is content-only and grants no additional tool access.
 ---
 
 # Android / Termux Environment Constraints
@@ -25,9 +27,9 @@ You are running inside Termux on Android (aarch64). These constraints produce **
 
 ## Silent Failure Modes
 
-- **`/tmp` is not writable** without proot. Claude Code requires: `proot -b $PREFIX/tmp:/tmp claude`
+- **`/tmp` is not writable from plain Termux.** Tools that hardcode `/tmp` for IPC may need a `proot -b $PREFIX/tmp:/tmp <cmd>` wrapper, or to honor a `TMPDIR` / tool-specific `_TMPDIR` environment variable. Claude Code 2.1.112 itself does not need the wrapper (empirically verified Android 8 / 10 / 13 / 17 Beta 2026-05-16).
 - **`TMPDIR` must be set** before npm operations: `export TMPDIR=$PREFIX/tmp`
-- **Node.js v24 had a startup hang** on ARM64 under native Termux (resolved in v25). Require v25+. If users are stuck on v24, suggest CLAUDE_CODE_TMPDIR workaround or Path B.
+- **Node.js v24 had a startup hang** on ARM64 under native Termux (resolved in v25). Require v25+.
 - **File descriptor limits vary by device.** Check with `ulimit -n`. Avoid spawning many concurrent processes.
 - **Android phantom process killer** limits background processes to ~32 across all apps. If "Disable child process restrictions" is enabled in Developer Options, this limit is lifted and up to 6 concurrent subagents are safe. Otherwise limit to 2-3.
 - **proot crash = /tmp mount gone.** Never store persistent state in `/tmp`.

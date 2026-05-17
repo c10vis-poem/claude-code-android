@@ -43,4 +43,4 @@ bash tests/verify-claims.sh
 
 This tests documented claims against your actual device. Submit the output file (saved to `tests/results/`) alongside your PR so reviewers can see your device's results.
 
-See `.claude/skills/doctor/` for an example of a well-structured skill with YAML frontmatter.
+See `.claude/skills/scope-framing/` for an example of a well-structured skill with YAML frontmatter, or `scripts/check-termux-env.sh` for an example of a deterministic check that lives as a bash script rather than a skill.

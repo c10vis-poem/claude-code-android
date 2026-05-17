@@ -1,8 +1,8 @@
 # Android Virtualization Framework (AVF) -- Path C
 
-> **Experimental.** AVF support is new. Claude Code has been installed, configured, and used for real work inside an AVF VM on our test device (Pixel 10 Pro, Android 16). This guide documents what we observed, including capabilities that exceeded expectations and limitations that remain. Google's documentation of AVF is extremely limited -- most of what follows was discovered through hands-on testing.
+> **Experimental.** AVF support is new. Claude Code has been installed, configured, and used for real work inside an AVF VM on my test device (Pixel 10 Pro, Android 16). This guide documents what I observed, including capabilities that exceeded expectations and limitations that remain. Google's documentation of AVF is extremely limited -- most of what follows was discovered through hands-on testing.
 
-> **Android 17 Beta status (2026-04-18):** This guide reflects testing on Android 16. Android 17 Beta has not been re-verified end-to-end. Schema fields in `vm_config.json`, paths under `/mnt/internal/linux/`, GPU acceleration scope, and crosvm launch flags may have changed. Treat the specifics in this guide as a baseline to compare against, not as a current-on-A17 spec.
+> **Android 17 Beta status (last reviewed 2026-05-16):** This guide reflects testing on Android 16. Android 17 Beta has not been re-verified end-to-end for the AVF path. Pixel 10 Pro on Android 17 was tested against Path A (native Termux) and Path B (proot-Ubuntu) on 2026-05-16 -- both worked -- but Path C (AVF) was not re-run. Schema fields in `vm_config.json`, paths under `/mnt/internal/linux/`, GPU acceleration scope, and crosvm launch flags may have changed in Android 17. Treat the specifics in this guide as a baseline to compare against, not as a current-on-A17 spec.
 
 ![Status: Experimental](https://img.shields.io/badge/Status-Experimental-orange.svg)
 
@@ -65,7 +65,7 @@ These settings help prevent Android from killing the VM in the background:
 
 The VM may be killed when the screen turns off. This is the most-reported AVF issue across all platforms.
 
-In our testing, the following ADB commands improved screen-off stability but did not fully solve the problem. The Terminal app Activity can still get recreated by Android (for example, when another app triggers a configuration change), which disrupts the terminal session even though the VM itself may survive. These commands are run from inside the VM after establishing an ADB connection to the host (see the [ADB From Inside the VM](#adb-wireless-from-inside-the-vm) section):
+In my testing, the following ADB commands improved screen-off stability but did not fully solve the problem. The Terminal app Activity can still get recreated by Android (for example, when another app triggers a configuration change), which disrupts the terminal session even though the VM itself may survive. These commands are run from inside the VM after establishing an ADB connection to the host (see the [ADB From Inside the VM](#adb-wireless-from-inside-the-vm) section):
 
 ```bash
 # Add Terminal app to deviceidle whitelist (prevents doze killing)
@@ -83,8 +83,8 @@ adb shell cmd appops set com.android.virtualization.terminal SYSTEM_EXEMPT_FROM_
 ```
 
 **Important caveats:**
-- These commands improved stability in our testing but are **not a complete fix**. The Terminal app Activity can still get recreated by Android (for example, when another app triggers a configuration change), which disrupts the terminal session even though the VM itself survives.
-- We observed the VM surviving screen-off and even always-on-display-off after applying these commands, but this was on a single device during a single session. Longer-term stability is unconfirmed.
+- These commands improved stability in my testing but are **not a complete fix**. The Terminal app Activity can still get recreated by Android (for example, when another app triggers a configuration change), which disrupts the terminal session even though the VM itself survives.
+- I observed the VM surviving screen-off and even always-on-display-off after applying these commands, but this was on a single device during a single session. Longer-term stability is unconfirmed.
 - These settings may need to be reapplied after a device reboot.
 
 If ADB is not available, set your screen timeout as long as possible, or keep the screen on during active sessions.
@@ -93,14 +93,14 @@ If ADB is not available, set your screen timeout as long as possible, or keep th
 
 ## VM Configuration
 
-The VM's configuration file is located at `/mnt/internal/linux/vm_config.json` inside the VM, and is writable with sudo. In our testing, we observed the following fields and their effects:
+The VM's configuration file is located at `/mnt/internal/linux/vm_config.json` inside the VM, and is writable with sudo. In my testing, I observed the following fields and their effects:
 
 | Field | Default | Observed Effect |
 |-------|---------|-----------------|
-| `memory_mib` | 4096 | Controls RAM allocation. We changed this to 8192 on a device with 16 GB total RAM, and the VM booted successfully with ~7.7 GB available. Edit this field and restart the VM to apply. |
-| `auto_memory_balloon` | true | When true, Android can dynamically reclaim VM RAM. Setting to false prevented this in our testing. |
-| `boot_timeout_secs` | 20 | How long Android waits for the VM to boot before giving up. We increased to 60 for extra margin. |
-| `protected` | false | The VM runs without verified boot. This means custom kernel loading is theoretically possible, though we did not test it. |
+| `memory_mib` | 4096 | Controls RAM allocation. I changed this to 8192 on a device with 16 GB total RAM, and the VM booted successfully with ~7.7 GB available. Edit this field and restart the VM to apply. |
+| `auto_memory_balloon` | true | When true, Android can dynamically reclaim VM RAM. Setting to false prevented this in my testing. |
+| `boot_timeout_secs` | 20 | How long Android waits for the VM to boot before giving up. I increased to 60 for extra margin. |
+| `protected` | false | The VM runs without verified boot. This means custom kernel loading is theoretically possible, though I did not test it. |
 | `name` | "crosvm_debian" | Display name. Cosmetic. |
 
 To edit:
@@ -111,7 +111,7 @@ sudo nano /mnt/internal/linux/vm_config.json
 
 Changes take effect on the next VM restart (close and reopen the Terminal app).
 
-**Note:** When we doubled RAM from 4096 to 8192, the zram swap also scaled automatically from ~977 MB to ~1.9 GB (roughly RAM/4). The VM reported 7.7 GB total RAM with 7.0 GB available after boot. zram swap is configured by default -- no manual setup is needed.
+**Note:** When I doubled RAM from 4096 to 8192, the zram swap also scaled automatically from ~977 MB to ~1.9 GB (roughly RAM/4). The VM reported 7.7 GB total RAM with 7.0 GB available after boot. zram swap is configured by default -- no manual setup is needed.
 
 ---
 
@@ -143,9 +143,9 @@ Authenticate via OAuth as normal.
 
 ---
 
-## What We Observed Working
+## What I Observed Working
 
-These capabilities were confirmed through direct testing on our Pixel 10 Pro. Results on other devices may vary.
+These capabilities were confirmed through direct testing on my Pixel 10 Pro. Results on other devices may vary.
 
 ### Core Environment
 - **Real Linux kernel (6.12.60).** No syscall translation, no proot overhead. `process.platform === "linux"`.
@@ -154,10 +154,10 @@ These capabilities were confirmed through direct testing on our Pixel 10 Pro. Re
 - **Claude Code installs via official installer.** No npm, no Node.js version management, no ripgrep symlink needed.
 - **Python 3.13.5 pre-installed.** Node.js, GCC, and make are NOT pre-installed but can be installed via apt.
 - **SSH running by default** on port 22.
-- **systemd fully functional.** Service management, timers, and journals all work. Updating systemd via apt worked without issues in our testing.
+- **systemd fully functional.** Service management, timers, and journals all work. Updating systemd via apt worked without issues in my testing.
 
 ### Hardware and Performance
-- **8 CPU cores visible** (1x Cortex-X4, 2x Cortex-A725, 5x Cortex-A520 on our Tensor G5 test device). Full big.LITTLE topology exposed via `--host-cpu-topology`.
+- **8 CPU cores visible** (1x Cortex-X4, 2x Cortex-A725, 5x Cortex-A520 on my Tensor G5 test device). Full big.LITTLE topology exposed via `--host-cpu-topology`.
 - **103 GB root disk.** Observed 552 MB/s sequential write and 4.2 GB/s sequential read using dd with default flags; the read figure includes page cache, so real disk throughput is lower. The original disk benchmark tool (fio) could not run due to a kernel limitation (see Known Issues).
 - **zram swap** configured by default, scales proportionally with RAM allocation. No manual setup needed.
 
@@ -170,7 +170,7 @@ These capabilities were confirmed through direct testing on our Pixel 10 Pro. Re
 - **Mesa/OpenGL/EGL stack pre-installed.** GPU device at `/dev/dri/card0` via virtio-gpu (PCI ID 1AF4:1050). Pixel 10 has gfxstream GPU acceleration; older Pixels use Lavapipe (CPU software rendering).
 
 ### Networking and Kernel Features
-- **All 41 Linux capabilities present** in our testing (unrestricted VM).
+- **All 41 Linux capabilities present** in my testing (unrestricted VM).
 - **iptables works** via `iptables-legacy` (not nftables -- see Known Issues).
 - **FUSE, OverlayFS, BPF, seccomp** all functional.
 - **systemd-nspawn available** for lightweight containerization.
@@ -186,9 +186,9 @@ These capabilities were confirmed through direct testing on our Pixel 10 Pro. Re
 
 ## ADB Wireless From Inside the VM
 
-In our testing, ADB wireless debugging worked from inside the VM, connecting to the host phone. This provides access to battery status, thermal data, display info, logcat, dumpsys, and device management -- capabilities not otherwise available from inside the isolated VM.
+In my testing, ADB wireless debugging worked from inside the VM, connecting to the host phone. This provides access to battery status, thermal data, display info, logcat, dumpsys, and device management -- capabilities not otherwise available from inside the isolated VM.
 
-**How it worked in our testing:**
+**How it worked in my testing:**
 
 1. Enable Wireless Debugging on the phone (Settings > Developer options > Wireless debugging)
 2. Tap "Pair device with pairing code" to get the pairing port and code
@@ -206,10 +206,10 @@ adb connect <phone-wifi-ip>:<connection-port>
 
 **Pairing tip:** Use split-screen mode with Settings and Terminal side by side. The pairing code and port disappear when you leave the Wireless Debugging screen in Settings, so you need both visible simultaneously to enter the code before it expires.
 
-**What we observed:**
+**What I observed:**
 - The connection uses the phone's Wi-Fi IP address, not `127.0.0.1` or the virtual network gateway
 - Pairing codes expire quickly -- pair immediately after opening the dialog
-- ADB pairing survived VM restarts in our testing -- only the connection needed to be re-established (with a new port scan)
+- ADB pairing survived VM restarts in my testing -- only the connection needed to be re-established (with a new port scan)
 - The connection port rotates each Wireless Debugging session
 - Once connected, commands like `adb shell dumpsys battery`, `adb shell dumpsys thermalservice`, and `adb logcat` all worked
 
@@ -226,7 +226,7 @@ adb connect <phone-wifi-ip>:<connection-port>
 
 ## ADB Hardware Access
 
-With ADB connected from inside the VM to the Android host, we tested access to phone hardware. This was observed in our testing on a single device.
+With ADB connected from inside the VM to the Android host, I tested access to phone hardware. This was observed in my testing on a single device.
 
 ### Sensor Inventory
 
@@ -264,7 +264,7 @@ adb shell screencap -p /sdcard/shot.png && adb pull /sdcard/shot.png
 adb shell screenrecord --time-limit 3 /sdcard/vid.mp4 && adb pull /sdcard/vid.mp4
 ```
 
-Both worked reliably in our testing. Screenshots ranged from 202KB to 777KB depending on content. Screen recordings transferred at ~80 MB/s to the VM.
+Both worked reliably in my testing. Screenshots ranged from 202KB to 777KB depending on content. Screen recordings transferred at ~80 MB/s to the VM.
 
 ### Input Injection
 
@@ -274,7 +274,7 @@ adb shell input tap 500 1000         # Tap screen coordinates
 adb shell input swipe 100 500 100 100  # Swipe gesture
 ```
 
-All input injection commands worked in our testing. The device reported multitouch support with 10 touch slots and pressure sensitivity.
+All input injection commands worked in my testing. The device reported multitouch support with 10 touch slots and pressure sensitivity.
 
 ### Battery and WiFi
 
@@ -288,7 +288,7 @@ adb shell dumpsys wifi | grep mWifiInfo
 # Returns: frequency, link speed, signal strength, security type
 ```
 
-Both returned detailed real-time data in our testing. Battery data included charge level, voltage, and temperature. WiFi data included connection frequency, link speeds (TX/RX), signal strength in dBm, and security protocol.
+Both returned detailed real-time data in my testing. Battery data included charge level, voltage, and temperature. WiFi data included connection frequency, link speeds (TX/RX), signal strength in dBm, and security protocol.
 
 ### Needs Pipeline Work
 
@@ -333,7 +333,7 @@ adb shell dumpsys wifi | grep mWifiInfo
 |-------|--------|------------|--------|
 | VM killed when screen off | Session lost, unsaved work gone | ADB whitelist commands (see Setup); keep screen on as fallback | ADB commands improved stability but are a semi-fix only. Terminal Activity can still get recreated. Google acknowledged at LPC 2025. |
 | Terminal Activity recreation | Terminal UI disrupted even when VM survives | Avoid triggering Android configuration changes (rotation, accessibility overlays) while the terminal is active | Observed when enabling Voice Access accessibility service; the VM survived but the terminal session was lost |
-| ~4 GB default RAM allocation | Limits what can run concurrently | Edit `memory_mib` in `/mnt/internal/linux/vm_config.json` (see VM Configuration section) | We successfully changed this to 8192 on a 16 GB device |
+| ~4 GB default RAM allocation | Limits what can run concurrently | Edit `memory_mib` in `/mnt/internal/linux/vm_config.json` (see VM Configuration section) | I successfully changed this to 8192 on a 16 GB device |
 | Cellular data doesn't work by default | No network on mobile data | Settings > Apps > Terminal > enable "Unrestricted mobile data usage" > restart device. WiFi works without this step. | Google Issue Tracker #402523629 |
 | Copy-paste unreliable | Multi-line commands break when pasted | Type manually or verify character by character | No fix known |
 | `apt upgrade` can hang on TUI dialogs | Upgrade appears stuck indefinitely | Run with `DEBIAN_FRONTEND=noninteractive` or kill the blocking whiptail process | Observed during openssh-server post-install; whiptail required interactive input in a non-interactive shell |
@@ -351,7 +351,7 @@ adb shell dumpsys wifi | grep mWifiInfo
 
 ## Security Defaults -- Users Should Be Aware
 
-The VM ships with defaults that prioritize convenience over security. In our testing, we observed the following. Users should consider whether hardening is appropriate for their use case.
+The VM ships with defaults that prioritize convenience over security. In my testing, I observed the following. Users should consider whether hardening is appropriate for their use case.
 
 | Default | Detail | Suggested Hardening |
 |---------|--------|---------------------|
@@ -387,15 +387,15 @@ The VM is on a virtual network not directly reachable from the internet. Only th
 |---|---|---|---|
 | **Setup time** | ~2 min (experienced) | ~10-15 min (experienced) | ~20 min (experienced) |
 | **Disk usage** | Minimal | ~2 GB | ~2 GB (Debian image) |
-| **Install method** | npm | Official Anthropic installer | Official Anthropic installer |
+| **Install method** | npm (via install.sh, pinned to 2.1.112) | Official Anthropic installer | Official Anthropic installer |
 | **Linux kernel** | No (Android kernel + syscall translation) | No (proot syscall translation) | Yes (real VM kernel) |
 | **`/tmp` workaround** | Required every launch | Not needed | Not needed |
 | **Ripgrep fix** | Required, breaks on updates | Not needed | Not needed |
 | **`process.platform`** | `"android"` (causes issues) | `"linux"` | `"linux"` |
 | **RAM** | Shares device RAM | Shares device RAM | Configurable (default 4 GB, adjustable via config) |
 | **Termux API access** | Full (camera, TTS, GPS, SMS, sensors) | Full (via PATH extension) | None directly (extensive access via ADB bridge -- 42 sensors, GPS, camera, screenshots, input) |
-| **ADB self-connect** | Works (127.0.0.1) | Works (127.0.0.1) | Works (via Wi-Fi IP, observed in our testing) |
-| **Device support** | Any ARM64 Android 14+ | Any ARM64 Android 14+ | Pixel 6+ with Android 16+ only |
+| **ADB self-connect** | Works (127.0.0.1) | Works (127.0.0.1) | Works (via Wi-Fi IP, observed in my testing) |
+| **Device support** | Any aarch64 Android 8+ (Android 8 / 9 have OAuth caveats -- see FAQ) | Any aarch64 Android 8+ (Android 8 / 9 have OAuth caveats -- see FAQ) | Pixel 6+ with Android 16+ only |
 | **Stability** | Stable | Stable | Experimental -- VM may be killed |
 | **Ongoing maintenance** | Re-fix after each update | Just update normally | Just update normally (if VM survives) |
 | **Audio** | Via Termux API | Via Termux API | Native (PulseAudio + VirtIO) |
@@ -416,7 +416,7 @@ The VM is on a virtual network not directly reachable from the internet. Only th
 - You want the cleanest Claude Code install experience (official installer, no workarounds)
 
 **Use Path A or B (Termux) when:**
-- You have any ARM64 Android 14+ device (Samsung, OnePlus, Pixel, etc.)
+- You have any ARM64 Android 8+ device (Android 8 / 9 have OAuth caveats -- see [FAQ](faq.md#claude-prints-a-url-but-my-browser-doesnt-open)) (Samsung, OnePlus, Pixel, etc.)
 - You need Termux API features
 - You need stability -- Termux doesn't get killed by Android's memory management the same way
 - You want a proven path that has been tested across multiple devices and Android versions
@@ -442,11 +442,13 @@ The VM is on a virtual network not directly reachable from the internet. Only th
 | [Google source: AVF architecture](https://source.android.com/docs/core/virtualization/architecture) | Official AVF architecture documentation |
 | [LPC 2025: "A Linux VM on Android via AVF"](https://news.ycombinator.com/item?id=46262802) | Most detailed technical presentation on AVF internals (Linux Plumbers Conference, Dec 2025) |
 
+*Star counts captured 2026-05-16; check the linked repos for current state.*
+
 ---
 
 ## Technical Details (For the Curious)
 
-These details were observed during our testing session. They may be useful for advanced users or anyone trying to understand the VM's architecture.
+These details were observed during my testing session. They may be useful for advanced users or anyone trying to understand the VM's architecture.
 
 ### Virtual Hardware Inventory
 
@@ -500,4 +502,4 @@ Key flags: `--host-cpu-topology` exposes all CPU cores with their real frequency
 
 ---
 
-*Last updated: 2026-04-18. Tested on Pixel 10 Pro, Android 16; Android 17 Beta status note added 2026-04-18. This is a single-device test -- your experience may differ. Google's AVF documentation remains extremely limited; most findings here were discovered empirically. If you test on a different device, please [open an issue](https://github.com/ferrumclaudepilgrim/claude-code-android/issues/new?template=device_report.md) with your results.*
+*Last updated: 2026-05-16. Originally tested on Pixel 10 Pro, Android 16 (2026-04-01). Pixel 10 Pro running Android 17 was tested against Path A and Path B on 2026-05-16, but Path C (AVF) was not re-run -- the Android 17 status note at the top of this guide remains current. Google's AVF documentation remains limited; most findings here were discovered empirically. If you test on a different device or on Android 17 directly, please [open an issue](https://github.com/ferrumclaudepilgrim/claude-code-android/issues/new?template=device_report.md) with your results.*

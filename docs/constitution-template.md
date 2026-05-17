@@ -30,7 +30,7 @@ I operate on files within `~/repos/YOUR_REPO/` and its worktrees. Nothing else.
 
 These produce silent failures, not errors. Every decision must account for them.
 
-1. **Handle the /tmp problem.** `/tmp` is not natively writable in Termux. Options: (a) launch via `proot -b $PREFIX/tmp:/tmp claude`, (b) set `export CLAUDE_CODE_TMPDIR=$HOME/tmp` in your shell profile (create the directory first), or (c) use Path B (proot-distro Ubuntu) where `/tmp` works natively. Option (b) avoids proot entirely but only redirects Claude Code's own temp files.
+1. **`/tmp` is not natively writable in Termux.** Claude Code 2.1.112 itself launches fine on bare `claude` without a wrapper (empirically verified Android 8 / 10 / 13 / 17 Beta 2026-05-16). For other tools that hardcode `/tmp` for IPC, either (a) wrap them in `proot -b $PREFIX/tmp:/tmp <cmd>`, (b) set a tool-specific `_TMPDIR` env var if the tool supports one, or (c) use Path B (proot-distro Ubuntu) where `/tmp` works natively.
 2. **No root exists.** No `sudo`, `systemctl`, `chown`, or ports below 1024. Suggest none of these.
 3. **No systemd.** Persistence options: `~/.bashrc`, `crond`, or the repo itself.
 4. **proot-distro works but is unnecessary for Claude Code.** A TCGETS2 ioctl bug that broke proot-distro on kernel 6.12 was fixed in proot 5.1.107-66 (October 2025). Guest distros install and run correctly with current proot versions. However, Claude Code only needs a writable `/tmp`, which a single proot bind mount provides without the overhead of a full guest OS. Native Termux packages remain the simpler, lighter approach.

@@ -1,7 +1,7 @@
 # Claude Code on Android
 
 <p align="center">
-  <img src="assets/logo.jpg" alt="Claude Code on Android" width="200">
+  <img src="assets/logo.png" alt="Claude Code on Android" width="200">
 </p>
 
 <p align="center">
@@ -13,282 +13,89 @@
 </p>
 
 <p align="center">
-  <img src="assets/screenshot-s26ultra.jpg" alt="Samsung Galaxy S26 Ultra running Claude Code" width="260">
+  <img src="assets/screenshot-s26ultra.jpg" alt="Samsung Galaxy S26 Ultra running Claude Code" width="280">
   &nbsp;&nbsp;&nbsp;
-  <img src="assets/screenshot-s23plus.jpg" alt="Samsung Galaxy S23+ running Claude Code" width="260">
-  &nbsp;&nbsp;&nbsp;
-  <img src="assets/screenshot-pixel10pro.png" alt="Google Pixel 10 Pro running Claude Code" width="260">
+  <img src="assets/screenshot-pixel10pro.png" alt="Google Pixel 10 Pro running Claude Code" width="280">
 </p>
 <p align="center">
-  <em>S26 Ultra (Android 16) · S23+ (Android 15) · Pixel 10 Pro (Android 16) · <a href="assets/">more screenshots</a></em>
+  <em>S26 Ultra (Android 16) · Pixel 10 Pro (Android 17) · <a href="assets/">more screenshots</a></em>
 </p>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <img src="https://img.shields.io/badge/Android-14%2B-brightgreen.svg" alt="Android 14+">
-  <img src="https://img.shields.io/badge/Version-2.7.0-blue.svg" alt="Version 2.7.0">
-  <img src="https://img.shields.io/badge/Last%20Verified-2026--04--18-lightgrey.svg" alt="Last Verified 2026-04-18">
+  <img src="https://img.shields.io/badge/Android-8%2B-brightgreen.svg" alt="Android 8+">
+  <img src="https://img.shields.io/badge/Version-2.8.0-blue.svg" alt="Version 2.8.0">
+  <img src="https://img.shields.io/badge/Last%20Verified-2026--05--16-lightgrey.svg" alt="Last Verified 2026-05-16">
 </p>
 
 <p align="center">
-  <a href="docs/install.md">Install Guide</a> · <a href="docs/security-model.md">Security Model</a> · <a href="docs/troubleshooting.md">Troubleshooting</a> · <a href="docs/adb-wireless.md">ADB Wireless</a> · <a href="docs/constitution-template.md">CLAUDE.md Template</a> · <a href="docs/agents.md">Meet the Crew</a>
+  <a href="docs/install.md">Install Guide</a> · <a href="docs/faq.md">FAQ</a> · <a href="docs/troubleshooting.md">Troubleshooting</a> · <a href="docs/security-model.md">Security Model</a> · <a href="docs/adb-wireless.md">ADB Wireless</a> · <a href="docs/avf-guide.md">AVF (Path C)</a> · <a href="docs/constitution-template.md">CLAUDE.md Template</a>
 </p>
 
-> ⚠️ **Hit by the April 18 upstream regression?** `@anthropic-ai/claude-code` 2.1.113+ broke native Termux installs by switching to native binaries with no android-arm64 build. v2.7.0 of this guide pins to the last working version and disables the in-process auto-updater that would otherwise re-break the install. **[Recovery instructions →](#april-18-upstream-regression-path-a-recovery)**
-
-> **From the developer:** This guide looks long because we document every edge case we hit. The actual install is about 5 commands. If you just want to get started, jump straight to [Path B Quick Start](#path-b----recommended-full-linux-environment) and come back here when something breaks.
-
-> Using ADB wireless debugging? Read the [security considerations](#adb-wireless-self-connect) first.
+> ⚠️ **Path A users:** Upstream `@anthropic-ai/claude-code` 2.1.113+ has no android-arm64 build. The Quick Install below pins Path A to 2.1.112 and locks it against the in-process auto-updater. Path B (proot-Ubuntu) is unaffected. [Recovery for a broken install →](docs/install.md#recovery-from-the-april-18-upstream-regression)
 
 ---
 
-> **Security notice:** This guide contains walkthroughs and features that can only be accessed using Termux:API and/or ADB. These features are optional but powerful -- covering device sensors, location, screen capture, and more. If you plan to use them, read the [Security Model](docs/security-model.md) first to understand what each one opens up.
+## Quick Install
 
-## Prerequisites
+Pick a path. Run the commands.
 
-You need **Termux** installed from **F-Droid** (not the Play Store; the Play Store version hasn't been updated since 2020 and will not work).
+### Path B -- Recommended (proot-Ubuntu)
 
-> **Architecture check first.** Open any terminal and run `uname -m`. You need `aarch64` (64-bit ARM). If you see `armv7l` or `armv8l`, your device runs a 32-bit OS and Claude Code cannot work; no workaround exists. Some budget phones (Galaxy A13, A02S, M13) ship 32-bit Android on 64-bit hardware. See [Troubleshooting](docs/troubleshooting.md#unsupported-architecture-armhf).
-
-### Install Termux
-
-1. Download F-Droid from [f-droid.org](https://f-droid.org/en/). F-Droid is an app store for open-source Android apps; it's where the maintained version of Termux lives.
-2. Open the downloaded APK. Android will block it. Go to **Settings → allow "install unknown apps"** from your browser.
-3. After installing F-Droid, go back to Settings and **disable "install unknown apps"** from your browser. Keep it enabled only for F-Droid (it needs it to install apps).
-4. Open F-Droid, search for **Termux**, install it.
-5. Android may warn "unsafe app, built for an older version." Tap **More details → Install anyway**. This is safe; Termux targets an older API level for broader compatibility.
-
-### Install Required Packages
-
-Once Termux is open:
+Latest Claude Code, no version pin, no workarounds.
 
 ```bash
-pkg upgrade -y
-pkg install proot-distro -y          # Required for Path B (recommended)
-pkg install android-tools -y         # Required for ADB self-connect
-pkg install termux-api -y            # Required for device API access
-```
-
-Then install the **Termux:API** companion app from F-Droid (search "Termux:API"). Both the `termux-api` package and the companion app are required -- the package provides the commands (`termux-battery-status`, `termux-tts-speak`, `termux-notification`, etc.) and the companion app provides the Android permissions bridge. Without both, API calls fail silently.
-
-> **Source matching rule:** Termux and Termux:API must come from the same source (both F-Droid or both GitHub releases). Mixing sources causes silent permission failures that are difficult to diagnose.
-
-> **Already have Termux from F-Droid with packages installed?** Skip to Quick Start.
-
----
-
-## Quick Start
-
-There are three ways to install Claude Code on Android. All require a [Claude Pro, Max, Team, or Enterprise subscription](https://claude.com/pricing) (or a Console/API account).
-
-**Most users should start here.**
-
-### Path B -- Recommended (Full Linux Environment)
-
-The cleanest setup. Installs Ubuntu inside Termux using proot-distro; think of it as a lightweight Linux environment running inside your phone's terminal. Claude Code runs in a standard Linux environment with no workarounds needed.
-
-```bash
-proot-distro install ubuntu
-proot-distro login ubuntu
-```
-
-Inside Ubuntu:
-
-```bash
+pkg install proot-distro -y
+proot-distro install ubuntu && proot-distro login ubuntu
+# Prompt changes to root@localhost. Inside Ubuntu:
 apt update && apt upgrade -y
 curl -fsSL https://claude.ai/install.sh | bash
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
 claude
 ```
 
-Storage requirement: approximately 2 GB for the Ubuntu environment plus Claude Code.
+Full walkthrough: **[docs/install.md#path-b-proot-distro-ubuntu](docs/install.md#path-b-proot-distro-ubuntu)**.
 
-> **Why `pkg upgrade` and `apt upgrade` first?** Without updated SSL libraries, the Claude Code installer returns 403. Both upgrades are required.
+### Path A -- Native Termux (pinned to 2.1.112)
 
-### Path A: Native Termux (pinned)
-
-Faster setup (~2 min), less disk space, but **must pin** to the last working upstream version (see callout below).
+Lightweight footprint. One-line installer handles the version pin and the `chmod` lock that defends it against the auto-updater.
 
 ```bash
-pkg install nodejs git curl proot ripgrep jq -y
-export TMPDIR=$PREFIX/tmp   # Critical: npm fails silently without this
-DISABLE_AUTOUPDATER=1 npm install -g @anthropic-ai/claude-code@2.1.112
-chmod -R a-w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
-proot -b $PREFIX/tmp:/tmp claude
-```
-
-Add this to `~/.bashrc` so it persists:
-
-```bash
-echo 'export TMPDIR=$PREFIX/tmp' >> ~/.bashrc
-echo 'export DISABLE_AUTOUPDATER=1' >> ~/.bashrc
-echo "alias claude-android='proot -b \$PREFIX/tmp:/tmp claude'" >> ~/.bashrc
-source ~/.bashrc
-```
-
-Also add `"env": {"DISABLE_AUTOUPDATER": "1"}` to `~/.claude/settings.json` so the auto-updater stays disabled inside running sessions, not just at shell launch.
-
-> **Scripted install:** The [one-command installer](install.sh) does all of this (pin + chmod + bashrc + settings.json merge) idempotently. Re-run it any time to recover or reapply.
-
-#### April 18 upstream regression: Path A recovery
-
-`@anthropic-ai/claude-code` versions **2.1.113 and later** ship the CLI as platform-specific native binaries instead of bundled JavaScript. android-arm64 is not in the published platforms list, so on native Termux the postinstall does nothing and `bin/claude.exe` stays as the 500-byte stub that prints `Error: claude native binary not installed`. This is tracked upstream at [anthropics/claude-code#50270](https://github.com/anthropics/claude-code/issues/50270).
-
-The in-process auto-updater also re-fetches `latest` on a timer **inside running sessions**, so a manual downgrade gets silently clobbered minutes later unless the install dir is locked read-only.
-
-**If your install is broken:**
-
-```bash
-# Restore write permission, uninstall the broken version, reinstall pinned, lock it
-chmod -R u+w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/ 2>/dev/null
-DISABLE_AUTOUPDATER=1 npm install -g @anthropic-ai/claude-code@2.1.112
-chmod -R a-w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
-echo 'export DISABLE_AUTOUPDATER=1' >> ~/.bashrc
-claude --version    # → 2.1.112 (Claude Code)
-```
-
-Or just rerun the [install script](install.sh) which does this idempotently.
-
-**To upgrade Path A later** (when upstream restores android-arm64 support, watch [#50270](https://github.com/anthropics/claude-code/issues/50270)):
-
-```bash
-chmod -R u+w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
-npm install -g @anthropic-ai/claude-code@<new-version>
-chmod -R a-w $PREFIX/lib/node_modules/@anthropic-ai/claude-code/
-```
-
-**Path B (proot-distro Ubuntu) is unaffected.** Inside the Ubuntu guest, `process.platform === 'linux'` and `process.arch === 'arm64'` match the upstream `linux-arm64` native binary, so `npm install -g @anthropic-ai/claude-code` (no pin) works normally. If the regression is a deal-breaker for you, Path B is the cleaner answer.
-
-### Which Path Should I Use?
-
-| | Path A (Native Termux) | Path B (Ubuntu in Termux) | Path C (AVF VM) |
-|---|---|---|---|
-| Setup time | ~2 min (experienced) | ~10-15 min (experienced) | ~20 min (experienced) |
-| Disk usage | Minimal | ~2 GB | ~2 GB |
-| Install method | npm | Official Anthropic installer | Official Anthropic installer |
-| Node.js required | Yes | No | No |
-| /tmp workaround | Required every launch | Not needed | Not needed |
-| Ripgrep fix | Required, breaks on updates | Not needed | Not needed |
-| Ongoing maintenance | Re-fix after each update | Just update normally | Just update normally |
-| Device support | Any ARM64 Android 14+ | Any ARM64 Android 14+ | Pixel 6+ Android 16+ only |
-| RAM | Shared with Android | Shared with Android | Configurable (default 4 GB) |
-| Termux API access | Full | Full | None (partial via ADB bridge -- 42 sensors, GPS, camera, input) |
-| ADB hardware bridge | N/A | N/A | 42 sensors, GPS, camera, screenshots, screen recording, input injection, battery, WiFi |
-| Audio | Via Termux API | Via Termux API | Native (PulseAudio + VirtIO) |
-| Stability | Stable | Stable | Experimental |
-| Best for | Experienced users, light usage | Everyone else | Experimenters with Pixel devices |
-
-> **First timer?** Use Path B. Fewer things break.
-
-### Path C -- Experimental (AVF Linux VM)
-
-Android 16 on Pixel 6+ devices includes a built-in Linux VM via the Android Virtualization Framework (AVF). This gives you a real Linux kernel, native `/tmp`, and `process.platform === "linux"` -- no proot, no workarounds. RAM allocation is configurable via `vm_config.json`, ADB wireless debugging from inside the VM provides access to 42 phone sensors, GPS, camera, screen capture, and input injection. Headless GUI rendering is possible with native audio.
-
-```bash
-# Enable in: Settings > System > Developer Options > Linux development environment
-# Open the Terminal app, wait for Debian image download (~761 MB)
-# Inside the VM:
-curl -fsSL https://claude.ai/install.sh | bash
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+curl -fsSL https://raw.githubusercontent.com/ferrumclaudepilgrim/claude-code-android/main/install.sh -o install.sh
+bash install.sh
 claude
 ```
 
-**Limitations:** VM may be killed when screen turns off (ADB whitelist commands improved stability in our testing but are not a complete fix). No Termux API access (camera, TTS, GPS, SMS). Samsung/Snapdragon devices not supported. See **[AVF-GUIDE.md](docs/avf-guide.md)** for the full setup, VM configuration, ADB hardware bridge, security defaults, and three-path comparison.
+`install.sh` installs Node.js, installs `@anthropic-ai/claude-code@2.1.112`, and locks the install directory read-only so the in-process auto-updater cannot replace it with a 2.1.113+ build that has no android-arm64 binary. You then just run `claude`.
 
-> **This is experimental.** Tested on a single Pixel 10 Pro. If you need stability, use Path A or B.
+Full walkthrough: **[docs/install.md](docs/install.md)**.
 
-### Your First Session
+### Path C -- AVF Linux VM (Pixel 6+, experimental)
 
-Once you've installed Claude Code and authenticated:
+Real Linux kernel via Android Virtualization Framework. Enable in Developer Options → Linux development environment. Setup + ADB hardware bridge details: **[docs/avf-guide.md](docs/avf-guide.md)**.
+
+### Not sure which path?
+
+**[docs/install.md#choose-your-path](docs/install.md#choose-your-path)** has a side-by-side comparison. Default: Path B.
+
+---
+
+## Prerequisites
+
+You need **Termux** from **F-Droid** (not Play Store; that version is from 2020 and will not work). Architecture must be aarch64 -- run `uname -m` to confirm. Full prerequisites including the Termux:API source-matching rule: **[docs/install.md#prerequisites](docs/install.md#prerequisites)**.
+
+---
+
+## Your First Session
+
+After install + authentication:
 
 1. Create a project folder: `mkdir ~/myproject && cd ~/myproject`
 2. Launch: `claude`
 3. Try: "What files are in this directory?"
 4. Type `/help` to see available commands
-5. If you install the skills below, the `/doctor` skill (not the built-in `claude doctor`, which doesn't work in Termux) verifies your setup
 
----
-
-## Why This Is Hard
-
-Running Claude Code on Android means solving problems that don't exist on desktop. Quick summary:
-
-- **/tmp does not exist.** Claude Code needs `/tmp` for sockets. Android has none. Path A uses `proot -b $PREFIX/tmp:/tmp`; Path B has `/tmp` natively. You can also set `CLAUDE_CODE_TMPDIR` to any writable directory.
-- **Node.js v24 may hang.** Specific to v24 on native Termux (aarch64). v25+ resolves it. Path B avoids Node entirely.
-- **Missing ripgrep binary.** Claude Code ships no ARM64 Android build. Path A needs a symlink workaround (`/fix-ripgrep` skill). Path B uses Ubuntu's ripgrep.
-- **Platform detection mismatch.** Native Termux reports `android`; proot-distro Ubuntu reports `linux`. Some tools behave differently or fail depending on which they detect.
-- **File paths vary by manufacturer.** External storage paths, sdcard symlinks, and `/proc` layouts differ across Samsung, Pixel, OnePlus, and others. Test file operations on your specific device rather than assuming paths from documentation.
-
----
-
-
-## MCP (Model Context Protocol)
-
-Two of three MCP transport types work on Android:
-
-- **Remote HTTP servers** (e.g., Cloudflare) -- connect over HTTPS, zero local install. Best option for mobile.
-- **Local stdio servers** (e.g., `npx -y @modelcontextprotocol/server-memory`) -- spawns child processes via npx. Tested with Node.js v25.8.1.
-- **OAuth-based MCP servers** -- expected to fail. Termux provides `xdg-open` (symlink to `termux-open`) so browsers can launch, but OAuth redirect callbacks to `localhost` still fail because Termux has no loopback HTTP listener. Use token-based auth instead.
-
-To add a remote MCP server:
-```
-claude mcp add --transport http <name> <url>
-```
-
-To add a local stdio server:
-```
-claude mcp add <name> -- npx -y <package>
-```
-
----
-
-## ADB Wireless Self-Connect
-
-By connecting your phone to itself over ADB wireless debugging, Claude Code gains access to system capabilities that Android normally blocks from Termux. No root required. No computer needed.
-
-### What ADB Unlocks
-
-| Capability | Without ADB | With ADB |
-|------------|------------|----------|
-| Screenshots | Blocked | `adb shell screencap` |
-| System settings (brightness, DND) | Blocked | `adb shell settings get/put` |
-| Calendar events | Blocked | `adb shell content query` |
-| Installed apps list | Blocked | `adb shell pm list packages` |
-| Touch and gesture injection | Blocked | `adb shell input tap/swipe/text` |
-| Process inspection | Termux processes only | `adb shell ps -A` (all processes) / `dumpsys` |
-| Launch/stop apps | Partial | `adb shell am start/force-stop` |
-| Device properties | Blocked | `adb shell getprop` |
-
-These work alongside Termux API features (camera, TTS, clipboard, GPS, SMS, notifications, sensors, vibration) which don't need ADB at all.
-
-> **Security warning:** ADB wireless debugging opens a network-accessible port on your device. Any device on the same WiFi network can attempt to pair. ADB requires a pairing code for every new connection, but the port is still exposed. **Enable wireless debugging only when you need it. Disable it when you're done. On public WiFi, it must be off.** The connection from Termux is localhost-only (`127.0.0.1`), so the ADB server itself does not listen on external interfaces from the Termux side, but the Android wireless debugging daemon does. This is the same risk every Android developer accepts when using wireless debugging. See [ADB-WIRELESS.md](docs/adb-wireless.md) for full security details.
-
-### Quick Setup
-
-```bash
-# In Termux (not inside Ubuntu):
-pkg install android-tools -y
-
-# On your phone: Settings → Developer Options → Wireless Debugging → ON
-# Tap "Pair device with pairing code", note the IP:port and pairing code
-
-adb pair 127.0.0.1:<pairing-port> <pairing-code>
-adb connect 127.0.0.1:<connection-port>
-adb devices   # Should show your device
-```
-
-ADB works from inside the Ubuntu guest too. Setup takes about 5 minutes. See **[ADB-WIRELESS.md](docs/adb-wireless.md)** for the complete guide, security details, and persistence notes.
-
-> **Requires WiFi.** Android checks for a WiFi association (not internet access). ADB wireless disables automatically on mobile data.
-
----
-
-## Alternative: Remote Control
-
-If you have a desktop or laptop running Claude Code, [Remote Control](https://code.claude.com/docs/en/remote-control) lets you control it from your phone via QR code. No Termux needed.
-
-**Use Remote Control** when you have a desktop nearby and want quick mobile access.
-**Use this repo's approach** when you want Claude Code running locally on your phone with no desktop dependency.
+Authentication may fail to open a browser on Android 8 (and possibly 9). Copy the URL from the terminal and open it manually. [FAQ entry](docs/faq.md#claude-prints-a-url-but-my-browser-doesnt-open).
 
 ---
 
@@ -296,140 +103,70 @@ If you have a desktop or laptop running Claude Code, [Remote Control](https://co
 
 ### Guides
 
-| Document | What It Covers |
+| Document | Covers |
 |----------|---------------|
-| **[INSTALL.md](docs/install.md)** | Full step-by-step setup for both paths, verification, maintenance |
-| **[TROUBLESHOOTING.md](docs/troubleshooting.md)** | 20+ common failures with symptoms, causes, and fixes |
-| **[ADB-WIRELESS.md](docs/adb-wireless.md)** | ADB self-connect setup, security model, capability table |
-| **[CONSTITUTION-TEMPLATE.md](docs/constitution-template.md)** | CLAUDE.md template with Android/Termux constraints baked in |
-| **[SENSORS.md](docs/sensors.md)** | NDK sensor access from Termux -- 9 of 11 standard types confirmed, plus Samsung vendor sensors |
-| **[SSRF-GUARD.md](docs/ssrf-guard.md)** | WebFetch safety hook blocking private/reserved IP ranges |
-| **[AGENT-PERMISSIONS.md](docs/agent-permissions.md)** | Permission separation guide -- no agent gets both web and write access |
-| **[FINGERPRINT-GATE.md](docs/fingerprint-gate.md)** | Biometric approval gate for sensitive operations using `termux-fingerprint` |
-| **[AVF-GUIDE.md](docs/avf-guide.md)** | Android Virtualization Framework setup, VM configuration, ADB hardware bridge, security defaults, Path A/B/C comparison |
+| [docs/install.md](docs/install.md) | Full step-by-step setup for all three paths, verification, maintenance |
+| [docs/faq.md](docs/faq.md) | Install gotchas, path-choice questions, Android-version-specific behavior |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | Symptom-shaped entries: errors, hangs, failures with their fixes |
+| [docs/skills.md](docs/skills.md) | Claude Code skills shipped in `.claude/skills/` and scripts under `scripts/` |
+| [docs/adb-wireless.md](docs/adb-wireless.md) | ADB self-connect: setup, security model, capability table |
+| [docs/security-model.md](docs/security-model.md) | Threat model: Termux:API permissions, ADB escalation, mitigations |
+| [docs/agent-permissions.md](docs/agent-permissions.md) | No-agent-with-both-web-and-write permission matrix |
+| [docs/ssrf-guard.md](docs/ssrf-guard.md) | WebFetch safety hook blocking private/reserved IPs |
+| [docs/fingerprint-gate.md](docs/fingerprint-gate.md) | Biometric approval gate using `termux-fingerprint` |
+| [docs/constitution-template.md](docs/constitution-template.md) | CLAUDE.md template with Android/Termux constraints baked in |
+| [docs/avf-guide.md](docs/avf-guide.md) | AVF setup, VM configuration, ADB hardware bridge |
+| [docs/sensors.md](docs/sensors.md) | NDK sensor access from Termux |
 
-### Tools & Config
+### Tools
 
-| Item | What It Does |
+| Item | Does |
 |------|-------------|
-| **[install.sh](install.sh)** | One-command installer for Path A |
-| **[.claude/skills/](.claude/skills/)** | 8 Claude Code skills: Android diagnostics and workflow tools |
-| **[tests/](tests/)** | Verification suite: tests documentation claims against your device |
+| [install.sh](install.sh) | One-command Path A installer |
+| [scripts/](scripts/) | `check-termux-env.sh`, `fix-ripgrep.sh`, `config-validator.sh` |
+| [.claude/skills/](.claude/skills/) | `minimum-viable`, `scope-framing`, `termux-safe` |
+| [tests/](tests/) | `verify-claims.sh` (13 PASS/FAIL/SKIP claims); `ssrf-guard-tests.sh` |
 
 ### Project
 
-| Document | What It Covers |
+| | |
 |----------|---------------|
-| **[CHANGELOG.md](CHANGELOG.md)** | Version history from 0.1.0 to 2.7.0 |
-| **[CONTRIBUTING.md](.github/CONTRIBUTING.md)** | How to contribute, report bugs, submit device reports |
-| **[AGENTS.md](docs/agents.md)** | The 6 AI agents that build and maintain this repo |
-| **[STORY.md](docs/story.md)** | How this project came together |
+| [CHANGELOG.md](CHANGELOG.md) | Version history from 0.1.0 to 2.8.0 |
+| [CONTRIBUTING.md](.github/CONTRIBUTING.md) | How to contribute, report bugs, submit device reports |
 
 ---
 
 ## Device Compatibility
 
-| Device | Android | Path A | Path B | ADB | Path C | Last Verified |
-|--------|---------|--------|--------|-----|--------|---------------|
-| Samsung Galaxy S26 Ultra | 16 | Works | Works | Works | Untested | 2026-03-19 |
-| Google Pixel 10 Pro | 16 | Works | Works | Untested | Untested | 2026-03-19 |
-| Google Pixel 10 Pro (AVF) | 16 | N/A | N/A | Untested | Works (experimental) | 2026-04-01 |
-| Samsung Galaxy S23+ | 15 | Untested | Works | Untested | Untested | 2026-03-19 |
-| Samsung Galaxy S24/S25 | 15-16 | Untested | Untested | Untested | Untested | n/a |
-| Google Pixel 8/9 | 15-16 | Untested | Untested | Untested | Untested | n/a |
-| OnePlus 12/13 | 14-15 | Untested | Untested | Untested | Untested | n/a |
+Per-device last-verified dates below. Most recent verification cycle: 2026-05-16.
 
-**Verified** means install, authentication, and basic operations tested end-to-end on real hardware. Test results: [tests/results/](tests/results/)
+| Device | Android | Path A | Path B | Last Verified |
+|--------|---------|--------|--------|---------------|
+| Samsung Galaxy S26 Ultra | 16 | ✅ | ✅ | 2026-03-19 |
+| Google Pixel 10 Pro | 17 Beta | ✅ | ✅ | 2026-05-16 |
+| Google Pixel 6 | 13 | ✅ | ✅ | 2026-05-16 |
+| Motorola Moto G7 Power | 10 | ✅ | ✅ | 2026-05-16 |
+| Samsung Galaxy S7 (SM-G930P) | 8 | ✅ | ✅ (manual URL paste) | 2026-05-16 |
+| Samsung Galaxy S23+ | 15 | n/a | ✅ | 2026-03-19 |
 
-**Tested on your device?** [Submit a device report](https://github.com/ferrumclaudepilgrim/claude-code-android/issues/new?template=device_report.md) to help fill in the gaps.
-
----
-
-## PDF Reading
-
-### PDF reading requires `which` shim
-
-Claude Code's PDF reader checks for `pdftoppm` using `which`, but Termux doesn't ship a `which` binary.
-
-See [Troubleshooting: PDF reading](docs/troubleshooting.md#pdf-reading-fails-pdftoppm-is-not-installed) for the fix.
+Full per-device test output: **[tests/results/](tests/results/)**. AVF tested on Pixel 10 Pro (Android 16) 2026-04-01; see [docs/avf-guide.md](docs/avf-guide.md). [Submit a device report](https://github.com/ferrumclaudepilgrim/claude-code-android/issues/new?template=device_report.md) if you've tested on hardware not listed.
 
 ---
 
-## Audio: /voice mode and the chain underneath
+## Alternative: Remote Control
 
-`/voice` mode in Claude Code records via SoX, which feeds PulseAudio, which uses an audio backend (SLES, AAudio, or Oboe) to reach the microphone. On Android vendor devices where the OpenSL ES backend fails, the chain breaks at the backend layer: SoX records silence, and `/voice` receives nothing. Reports of this pattern in termux-packages: termux/termux-packages#28861 (Xiaomi Poco F8 Ultra), termux/termux-packages#27978 (Redmi A3), termux/termux-packages#27367 (OnePlus 12 / Nord 3), termux/termux-packages#26871 (Realme P3 Ultra).
-
-A fix is in flight upstream: termux-packages [PR #29319](https://github.com/termux/termux-packages/pull/29319) adds Google's Oboe library as a package and wires it into PulseAudio as opt-in modules. After it merges and lands in your Termux install:
-
-```bash
-pkg upgrade pulseaudio
-# Edit $PREFIX/etc/pulse/default.pa, uncomment:
-#   load-module module-oboe-source
-pulseaudio -k && pulseaudio --start
-```
-
-`/voice` mode should then reach the microphone on previously broken devices. SLES remains the default backend; the Oboe modules are opt-in, so installs that already work are unaffected.
-
-Caveat: Claude Code's own SoX detection on Termux has had separate Android-specific limitations. The fix above addresses the audio backend layer; if SoX detection itself blocks `/voice` on your device, this PR alone will not resolve that.
+If you have a desktop or laptop running Claude Code, [Remote Control](https://code.claude.com/docs/en/remote-control) lets you control it from your phone via QR code. Use Remote Control when you have a desktop nearby; use this repo when you want Claude Code running locally on your phone.
 
 ---
 
-## Known Constraints
+## MCP, Voice, PDF, ADB
 
-Running on a phone means real limits. Path B (Ubuntu) resolves some of them.
+These features work on Android with specifics covered in their own docs.
 
-| Constraint | Impact | Workaround |
-|-----------|--------|-----------|
-| No root | No `sudo`, no ports below 1024 | Use ports 1024+, skip anything needing root |
-| No systemd | No system services manager. `crond` works in both native Termux and Ubuntu for scheduled tasks. Termux:Boot runs scripts at device startup. Shell scripts and `termux-job-scheduler` provide additional automation. | Use `crond`, Termux:Boot, or shell scripts |
-| ~512MB Node.js heap | Large datasets must stream | Process incrementally, don't buffer |
-| File descriptor limits | Heavy I/O can hit limits on some devices | Limit concurrent processes. Check with `ulimit -n` |
-| Phantom process killer | Android may kill excess background processes | Disable in Developer Options if available, or limit background processes |
-| /tmp is volatile (Path A) | proot crash = mount gone | Path B avoids this. Don't store persistent state in /tmp |
-| WiFi required for ADB | ADB wireless disables on mobile data | Re-connect when back on WiFi |
-
-See [TROUBLESHOOTING.md](docs/troubleshooting.md) for detailed fixes.
-
----
-
-## Skills
-
-This repo includes [Claude Code skills](https://code.claude.com/docs/en/skills) for Android and general-purpose workflow.
-
-### Android / Termux
-
-| Skill | What It Does |
-|-------|-------------|
-| `/doctor` | Diagnose your full Termux + Claude Code setup in one pass (not `claude doctor`, which doesn't work in Termux) |
-| `/fix-ripgrep` | Fix broken search tools (missing ARM64 Android binary) |
-| `termux-safe` | Auto-loaded rules preventing `sudo`, wrong paths, silent failures |
-
-See [all skills](docs/skills.md) including workflow tools that work in any environment.
-
-### Installing Skills
-
-Copy them to your home directory so they work in any project:
-
-```bash
-cd ~
-git clone https://github.com/ferrumclaudepilgrim/claude-code-android.git
-mkdir -p ~/.claude/skills
-cp -r claude-code-android/.claude/skills/* ~/.claude/skills/
-ls ~/.claude/skills/
-rm -rf claude-code-android   # Clean up; phone storage is finite
-```
-
----
-
-## The CLAUDE.md Template
-
-Claude Code reads a CLAUDE.md file from your project root for persistent rules. The [template](docs/constitution-template.md) in this repo is designed for Android and Termux: it includes platform constraints, safety rules, and agent configuration for up to 6 concurrent agents.
-
----
-
-## The Agents
-
-This repo is built and maintained by 6 specialized AI agents running concurrently on a single phone. See [Meet the Crew](docs/agents.md) for the full roster and how they work.
+- **MCP:** Remote HTTP and local stdio transports work on both Path A and Path B. OAuth-based servers depend on the Android browser being able to reach a localhost callback; reliability varies by path and device. See [troubleshooting](docs/troubleshooting.md).
+- **Voice mode:** SoX → PulseAudio → backend chain works on most devices; some vendor builds break at the SLES backend. Mic input is in flight via [termux-packages#29319](https://github.com/termux/termux-packages/pull/29319).
+- **PDF reading:** Requires a `which` shim; see [troubleshooting](docs/troubleshooting.md#pdf-reading-fails-pdftoppm-is-not-installed).
+- **ADB wireless self-connect:** Pair the phone to itself for system-level capabilities (screen capture, input injection, content queries). Full guide: [docs/adb-wireless.md](docs/adb-wireless.md).
 
 ---
 
@@ -443,32 +180,25 @@ Found a bug? Got it working on a new device? Know a better workaround?
 
 ---
 
-## About This Project
+## From the Maintainer
 
-This repo is built and maintained using Claude Code running on the same Android device it documents, the tool documenting itself, on the platform it's documenting. The operator ([FerrumFluxFenice](https://github.com/ferrumclaudepilgrim)) guides the work, Claude Code builds it, and every claim is verified on real hardware.
+Erin here. I have seen a noticeable uptick in traffic lately. While this update did not ADD much I did make significant changes. My goal is a repository that will help those who want to run Claude Code on their Android device. The same way they could on their PC. That is what I wanted when I did it. I know their are other information sources out there and I say never treat anything as canonical. Verify everything.
 
-Claude Code is made by [Anthropic](https://www.anthropic.com). Official repo: [anthropics/claude-code](https://github.com/anthropics/claude-code).
+If you find something that doesn't work for you, is factually incorrect, or anything other of note. Open an issue, tell me in some way. My goal is to help, learn, and grow. My presence is only for positive. I am not a lot of things. I do not have a fancy piece of paper, CompTIA certifications, or 5+ years ML experience. I am a truly curious, excited, and tech-forward guy who loves the grunt work and what AI can do, computing and how its done in general, networking and the security behind it and more.
+
+If you are reading this and enjoy the repo I thank you for your time. I don't know exactly what 55 stars means or the 10 forks as of the time I am writing this but I do know one thing. My GitHub profile isn't going silent anytime soon. I am going to keep maintaining this and working on other projects along the way to grow myself into the best I can be.
+
+[@ferrumclaudepilgrim](https://github.com/ferrumclaudepilgrim)  ·  Ferrum_Flux_Fenice  ·  Erin
+
+---
 
 ## License
 
 MIT. See [LICENSE](LICENSE).
 
----
+## Built On
 
-**A note from the developer:**
+- **Claude Code** by [Anthropic](https://www.anthropic.com) -- official repo: [anthropics/claude-code](https://github.com/anthropics/claude-code)
+- **Termux** -- the Android terminal that makes all of this possible: [termux/termux-app](https://github.com/termux)
 
-Thank you to anybody reading this. I hope you enjoy my repo and have success utilizing it. I am exploring the intricacies of development, GitHub (and git in general), learning and growing. This is a passion project of mine and I update it regularly as I plan to further my usage of Claude Code on Android and in the process contribute back to Termux, which is what made all of this possible. I am a 100% part-time indie doing this because I enjoy it.
-
-If you find something broken, have a question, or want to contribute, [open an issue](https://github.com/ferrumclaudepilgrim/claude-code-android/issues) or submit a PR. Every bit helps.
-
-Built on [Termux](https://github.com/termux).
-
-[@ferrumclaudepilgrim](https://github.com/ferrumclaudepilgrim)
-
----
-
-<p align="center">
-  <em>Built on a phone, in Termux, on ARM64, on Android.</em><br>
-  <em>By a human and an AI, working together.</em><br>
-  <em>v2.7.0</em>
-</p>
+Maintained by [@ferrumclaudepilgrim](https://github.com/ferrumclaudepilgrim). Issues and pull requests welcome.

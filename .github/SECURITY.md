@@ -4,9 +4,9 @@
 
 | Version | Supported |
 |---------|-----------|
-| 2.5.x   | Yes       |
-| 2.4.x   | Security fixes only |
-| < 2.4   | No        |
+| 2.8.x   | Yes       |
+| 2.7.x   | Security fixes only |
+| < 2.7   | No        |
 
 Only the latest release receives active updates. The previous minor version receives critical security fixes for 30 days after the new release.
 

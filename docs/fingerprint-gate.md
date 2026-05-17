@@ -104,7 +104,7 @@ require_fingerprint() {
 
 Create a hook that sources the gate and checks for sensitive operations. This example blocks `git push` to public repos and destructive git commands:
 
-**`~/.claude/hooks/pre-tool-use-git-safety.sh`**
+**`~/.claude/hooks/pre-tool-use-fingerprint-gate.sh`**
 
 ```sh
 #!/usr/bin/env bash
@@ -114,9 +114,12 @@ Create a hook that sources the gate and checks for sensitive operations. This ex
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/fingerprint-gate.sh"
 
-# Read the tool name and input from Claude Code's hook interface
-TOOL_NAME="$CLAUDE_TOOL_NAME"
-INPUT="$CLAUDE_TOOL_INPUT"
+# Read the JSON payload Claude Code sends on stdin
+INPUT=$(cat)
+
+# Extract tool name and command from JSON
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""')
+COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // ""')
 
 # Only gate Bash tool calls
 if [ "$TOOL_NAME" != "Bash" ]; then
@@ -124,7 +127,7 @@ if [ "$TOOL_NAME" != "Bash" ]; then
 fi
 
 # Check for sensitive git operations
-case "$INPUT" in
+case "$COMMAND" in
   *"git push"*|*"git push --force"*|*"git reset --hard"*|*"git branch -D"*|*"gh pr create"*)
     echo "Sensitive operation detected: requesting fingerprint approval..." >&2
     if require_fingerprint; then
@@ -144,8 +147,20 @@ Make it executable:
 
 ```sh
 chmod +x ~/.claude/hooks/fingerprint-gate.sh
-chmod +x ~/.claude/hooks/pre-tool-use-git-safety.sh
+chmod +x ~/.claude/hooks/pre-tool-use-fingerprint-gate.sh
 ```
+
+> **Bypass vectors to be aware of:** The `case "$COMMAND"` pattern matching above operates on the raw command string and is illustrative rather than airtight. Predictable ways for a malicious or careless prompt to slip past it:
+> - **Variable interpolation:** `cmd="git push"; $cmd` -- the raw command contains the variable assignment, not the literal substring `"git push"`, so the case pattern doesn't fire.
+> - **Subshell expansion:** `$(echo git push)` -- the raw command contains the subshell expression, not the resulting command.
+> - **Whitespace tricks:** `git$'\t'push` or `git  push` (double space) -- glob `*"git push"*` requires the exact single-space substring.
+> - **Aliased forms:** `gp` (shell alias for `git push`), or any user-defined script that calls git push.
+>
+> If your threat model includes a prompt-injection attacker who knows how this hook is wired, build the check on a parsed view of the command. Two safer shapes:
+> - Tokenize `$COMMAND` with `set --` and inspect `$1`/`$2` against an allowlist.
+> - Configure git itself to require a credential helper that triggers the fingerprint prompt -- moves the gate inside git, where command-line tricks don't help.
+>
+> The example here is good for "I want a fingerprint nag before destructive operations during normal use." It is not a security boundary against an adversary who can run arbitrary shell from inside a Claude Code session.
 
 ### Step 3 -- Register the hook in Claude Code settings
 
@@ -159,7 +174,7 @@ Add the hook to your Claude Code settings so it runs before tool use:
     "PreToolUse": [
       {
         "matcher": "Bash",
-        "hook": "~/.claude/hooks/pre-tool-use-git-safety.sh"
+        "hook": "~/.claude/hooks/pre-tool-use-fingerprint-gate.sh"
       }
     ]
   }
@@ -210,7 +225,7 @@ You can register multiple hooks for the same event. Claude Code runs them in ord
     "PreToolUse": [
       {
         "matcher": "Bash",
-        "hook": "~/.claude/hooks/pre-tool-use-git-safety.sh"
+        "hook": "~/.claude/hooks/pre-tool-use-fingerprint-gate.sh"
       },
       {
         "matcher": "Write",
@@ -242,7 +257,8 @@ pkg install jq
 **Hook doesn't fire**
 Check that `settings.json` is valid JSON and the hook path is correct. Test the hook directly:
 ```sh
-CLAUDE_TOOL_NAME=Bash CLAUDE_TOOL_INPUT="git push origin main" bash ~/.claude/hooks/pre-tool-use-git-safety.sh
+echo '{"tool_name":"Bash","tool_input":{"command":"git push origin main"}}' \
+  | bash ~/.claude/hooks/pre-tool-use-fingerprint-gate.sh
 ```
 
 **Fingerprint works in terminal but not in hooks**
@@ -256,3 +272,7 @@ Hooks run in a subprocess. Ensure the `termux-fingerprint` binary is on PATH in 
 - `termux-fingerprint` uses Android's BiometricPrompt API, the same system used by banking apps and password managers.
 - The gate is only as strong as your hook configuration. If a command can bypass the hook (e.g., by not matching the `case` pattern), it won't be gated.
 - This is a speed bump for autonomous AI operations, not a security boundary. A determined attacker with device access has other vectors. Its purpose is ensuring the device owner approves consequential actions before they happen.
+
+---
+
+*Last updated: 2026-05-16.*

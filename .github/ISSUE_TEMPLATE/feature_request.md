@@ -1,7 +1,7 @@
 ---
 name: Feature Request
 about: Suggest a feature, workaround, or improvement
-title: ''
+title: '[FEATURE] '
 labels: enhancement
 assignees: ''
 ---
@@ -15,7 +15,7 @@ assignees: ''
 ## Your environment
 - **Device:**
 - **Android version:**
-- **Install path:** (A: native Termux / B: proot-distro Ubuntu)
+- **Install path:** (A: native Termux / B: proot-distro Ubuntu / C: Android Virtualization Framework -- AVF)
 
 ## Have you checked existing resources?
 - [ ] Searched [existing issues](https://github.com/ferrumclaudepilgrim/claude-code-android/issues)

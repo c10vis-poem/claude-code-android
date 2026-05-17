@@ -4,12 +4,19 @@
 # Blocks requests targeting internal, private, loopback, link-local,
 # and reserved IP ranges. Only http:// and https:// schemes are allowed.
 #
-# Uses Node's URL parser for RFC 3986-compliant parsing and hostname
+# Uses Node's URL parser for WHATWG-compliant parsing and hostname
 # normalization. This matters because Claude Code's WebFetch uses the
-# same URL parser, so short-form IPs (127.1), hex forms (0x7f000001),
-# and decimal forms (2130706433) that Node normalizes to 127.0.0.1 at
-# parse time are caught here with the same normalization the actual
-# fetch will apply.
+# same URL parser, so the following IPv4 encoding bypasses are all
+# normalized to dotted-quad at parse time (empirically verified
+# 2026-05-16 on Node v25):
+#   - short-form  127.1        -> 127.0.0.1
+#   - hex         0x7f000001   -> 127.0.0.1
+#   - decimal     2130706433   -> 127.0.0.1
+#   - octal       0177.0.0.1   -> 127.0.0.1
+#   - combined    017700000001 -> 127.0.0.1
+# Range checks below run against the normalized dotted-quad, so all
+# five encoding forms are blocked the same way the actual fetch sees
+# them.
 #
 # Known limitations:
 # - Does NOT perform DNS resolution. A hostname that resolves to a

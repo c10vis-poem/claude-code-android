@@ -1,46 +1,57 @@
-# Claude Code Skills for Android
+# Skills and Scripts for Claude Code on Android
 
-Reusable [Claude Code skills](https://code.claude.com/docs/en/skills) shipped with this repo. Copy them to `~/.claude/skills/` to use in any project.
+[Claude Code skills](https://code.claude.com/docs/en/skills) shipped in this repo, plus the scripts that handle deterministic checks and recoveries.
 
----
+## Skills (`.claude/skills/`)
 
-## Android / Termux
+Skills are loaded by Claude Code when you place them under `~/.claude/skills/` (or the `.claude/skills/` of a project root). They appear as slash commands and can be invoked by the model when context matches the skill's description.
 
-These skills address platform constraints specific to Termux on Android. They handle issues that do not exist on desktop.
-
-
-| Skill | What It Does |
-|-------|-------------|
-| `/doctor` | Diagnose your full Termux + Claude Code setup in one pass (not `claude doctor`, which doesn't work in Termux) |
-| `/fix-ripgrep` | Fix broken search tools (missing ARM64 Android binary) |
-| `termux-safe` | Auto-loaded rules preventing `sudo`, wrong paths, silent failures |
-
----
-
-## Workflow
-
-These skills work in any Claude Code environment -- desktop, server, or mobile. They are general-purpose workflow tools included as a starting point.
-
+### Android / Termux
 
 | Skill | What It Does |
 |-------|-------------|
-| `/audience-first` | Define your audience before publishing |
-| `/scope-framing` | Frame research before starting -- what decision does this serve? |
-| `/config-validator` | Audit `.claude/` directory for consistency |
-| `/minimum-viable` | Justify tool choices -- can a shell script do this? |
-| `/search-optimized-writing` | Write docs that are findable -- error messages, searchable headings |
+| `termux-safe` | Termux constraints: no sudo, no systemd, paths under `$PREFIX`. Some tools that hardcode `/tmp` need a `proot` wrapper; claude itself does not. |
 
----
+### Workflow (general-purpose, not Android-specific)
 
-## Installing Skills
+| Skill | What It Does |
+|-------|-------------|
+| `/minimum-viable` | Before building anything, justify the complexity. Could a shell script do this? Does it need Node? A full app? Prevents over-engineering. |
+| `/scope-framing` | Before doing research, write a brief scope document. Names the decision the research serves, who acts on findings, and what counts as "done." |
 
-Copy them to your home directory so they work in any project:
+## Scripts (`scripts/`)
+
+Scripts are deterministic checks and recoveries. They are bash scripts you run directly, not skills the model invokes. The previous `/doctor`, `/fix-ripgrep`, and `/config-validator` skills were deterministic in shape (no LLM judgment required); they live here as scripts you can run from any shell.
+
+| Script | What It Does |
+|--------|-------------|
+| [`scripts/check-termux-env.sh`](../scripts/check-termux-env.sh) | Run 13 environment checks: Node version, Claude Code install, proot, TMPDIR, ripgrep, Termux:API, fd limit, process headroom, storage. Reports PASS/WARN/FAIL with fix recommendations. Renamed from the `doctor` skill to avoid collision with the upstream `claude doctor` command. |
+| [`scripts/fix-ripgrep.sh`](../scripts/fix-ripgrep.sh) | Recovery for Claude Code's missing arm64-android ripgrep binary. Note: setting `CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1` in `~/.bashrc` makes this script unnecessary in most cases. Run it only if you see `spawn .../ripgrep/arm64-android/rg ENOENT`. |
+| [`scripts/config-validator.sh`](../scripts/config-validator.sh) | Audit a `.claude/` directory: frontmatter fidelity, file/dir naming, settings.json JSON validity, hook script existence, agent → skill cross-references. Useful after adding new agents, skills, or hooks. |
+
+Usage:
 
 ```bash
-cd ~
+bash scripts/check-termux-env.sh
+bash scripts/fix-ripgrep.sh
+bash scripts/config-validator.sh        # against current working dir
+bash scripts/config-validator.sh /path/to/some-repo
+```
+
+## Installing Skills Globally
+
+To use these skills in every project on this device, copy them to your home directory:
+
+```bash
 git clone https://github.com/ferrumclaudepilgrim/claude-code-android.git
 mkdir -p ~/.claude/skills
 cp -r claude-code-android/.claude/skills/* ~/.claude/skills/
 ls ~/.claude/skills/
-rm -rf claude-code-android   # Clean up -- phone storage is finite
+rm -rf claude-code-android   # clean up; phone storage is finite
 ```
+
+The scripts under `scripts/` are independent of skill installation; just run them directly from a checkout of the repo.
+
+---
+
+*Last updated: 2026-05-16.*

@@ -6,6 +6,12 @@ Thumbs.db
 *.swp
 *~
 
+# Editor / IDE artifacts
+.vscode/
+.idea/
+*.bak
+*.orig
+
 # Environment and secrets
 .env*
 *.pem

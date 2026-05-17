@@ -9,7 +9,7 @@ allowed-tools: Read, Bash, Glob, Grep
 
 # Scope Framing
 
-Answer every question before starting research. Write the answers into a brief scope document: one paragraph or a short list per question. Then proceed. If you cannot answer question 1, ask the operator before starting.
+Answer every question before starting research. Write the answers into a brief scope document: one paragraph or a short list per question. Then proceed. If you cannot answer question 1, ask the user before starting.
 
 ## Required Questions
 
@@ -17,7 +17,7 @@ Answer every question before starting research. Write the answers into a brief s
 One sentence. Name the decision that will change based on what you find. If no decision is downstream of this research, the research has no purpose. Example: "Whether to use package X or build a custom implementation."
 
 **2. Who will act on the findings?**
-Name the actor: the operator, an agent, a user. Different actors need different formats and levels of detail. An agent needs a recommendation. An operator making a judgment call needs tradeoffs. A user needs steps.
+Name the actor: a user, an agent, or another system. Different actors need different formats and levels of detail. An agent needs a recommendation. A decision-maker needs tradeoffs. Someone following instructions needs steps.
 
 **3. What does "done" look like?**
 Name the specific deliverable that closes this research. Not "I understand the topic" but "a one-page comparison of options A, B, and C with a recommendation." Research without a defined end state expands forever.
@@ -30,4 +30,4 @@ Identify failure modes before you start. Common causes: wrong scope (you answere
 
 ## Output
 
-Write the scope document before doing any research. Save it or include it at the top of your research output. If scope cannot be defined (if question 1 has no answer), stop and ask the operator to clarify the decision before you proceed.
+Write the scope document before doing any research. Save it or include it at the top of your research output. If scope cannot be defined (if question 1 has no answer), stop and ask the user to clarify the decision before you proceed.

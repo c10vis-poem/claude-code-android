@@ -14,7 +14,9 @@ Native Android sensor access from Termux using the NDK ASensorManager API -- no 
 
 ## Hardware Inventory
 
-45 sensors detected via ASensorManager on the test device. Key sensors:
+45 sensors detected via ASensorManager on the test device (Samsung S26 Ultra, Android 16). Counts vary by device and enumeration API: `docs/avf-guide.md` reports 42 sensors on Pixel 10 Pro via `dumpsys sensorservice`. Different devices, different APIs -- both numbers are accurate for their respective contexts.
+
+Key sensors:
 
 | Type | Sensor | Status |
 |------|--------|--------|
@@ -157,3 +159,5 @@ The Android NDK sensor types are defined in `<android/sensor.h>`. The numeric ty
 ---
 
 *Tested on Android 16 device (ARM64), native Termux, March 2026.*
+
+*Last updated: 2026-05-16.*
