@@ -8,7 +8,9 @@ Common questions and gotchas for Claude Code on Android.
 
 ### "Unsafe app blocked" when installing the Termux APK
 
-On Android 11 and newer, Google Play Protect flags the F-Droid Termux APK (which targets SDK 28) as "built for an older version of Android." This is a Play Protect warning, not a real safety issue: the APK is signed by Termux's maintainers and works correctly.
+Termux is a terminal-emulator app for Android. Its APK is distributed through F-Droid, an open-source Android app store.
+
+On Android 11 and newer, Google Play Protect flags the F-Droid Termux APK (which targets SDK 28) as "built for an older version of Android." This is a Play Protect warning about the SDK target level, not a malware flag. The APK is signed by Termux's maintainers; in my testing it installs and runs without issues.
 
 To proceed:
 
@@ -19,7 +21,7 @@ Or install Termux through the F-Droid app instead of side-loading the APK direct
 
 ### install.sh hangs or fails with "Failed to fetch"
 
-Termux's `pkg update` picks a mirror automatically from a list of about 18 candidates worldwide. The picker is weighted by reachability, but the result is non-deterministic: a fresh Termux on the same device can pick different mirrors on different days. Some mirrors are slow or temporarily unreachable from your network, which can hang `pkg update` or `pkg install` for 10+ minutes before erroring out.
+Termux's `pkg` (the package manager, a wrapper around apt with automatic mirror selection) picks a mirror automatically from a list of about 18 candidates worldwide. The picker is weighted by reachability, but the result is non-deterministic: a fresh Termux on the same device can pick different mirrors on different days. Some mirrors are slow or temporarily unreachable from your network, which can hang `pkg update` or `pkg install` for 10+ minutes before erroring out.
 
 If you see "Failed to fetch" errors or `pkg update` hangs, change the mirror:
 
@@ -42,10 +44,10 @@ Configuration file '/path/to/config'
 
 What the letters mean:
 
-- **Y** or **I** -- install the package maintainer's new version (overwrites your local changes)
-- **N** or **O** -- keep your old (current) version (this is the default)
-- **D** -- show the diff between your version and the new one
-- **Z** -- drop to a shell so you can investigate before deciding
+- **Y** or **I**: install the package maintainer's new version (overwrites your local changes)
+- **N** or **O**: keep your old (current) version (this is the default)
+- **D**: show the diff between your version and the new one
+- **Z**: drop to a shell so you can investigate before deciding
 
 Two letters per choice are historical: `Y/N` is the common convention; `I/O` ("Install" / "Old") was the older dpkg convention. Both still work.
 
@@ -57,7 +59,18 @@ DEBIAN_FRONTEND=noninteractive pkg upgrade -y -o Dpkg::Options::="--force-confol
 
 ### Which packages should I install after `install.sh`?
 
-`install.sh` is bare-minimum -- only `nodejs` and Claude Code itself. Vanilla Termux gives you `rg`, `curl`, `unzip`, `tar`, `gzip`, `less`, `nano` already. Everything else Claude Code typically reaches for (`git`, `gh`, `jq`, `python`, `openssh`, `tree`, `clang`, `htop`, etc.) is not present. See **[Recommended Common Packages](install.md#recommended-common-packages)** in install.md for the one-liner that adds what's commonly needed and prevents recurring tool failures.
+`install.sh` installs what is needed to run claude itself: `curl`, `jq`, `glibc-repo`, `glibc-runner`, `patchelf-glibc`, and the patched linux-arm64 claude binary. It does NOT install `nodejs`; the binary is self-contained. If you answer yes to Q2 (the recommended-packages prompt), it also installs git, gh, wget, jq, python, openssh, tree, proot, termux-api, proot-distro, make, clang, file, xxd, htop, bat, and fzf. If you say no to Q2, vanilla Termux still gives you `rg`, `curl`, `unzip`, `tar`, `gzip`, `less`, and `nano`, but Claude Code typically reaches for the Q2 set as well. See **[Recommended Common Packages](install.md#recommended-common-packages)** in install.md for the canonical list.
+
+### I set up Path A with an older version of this repo. How do I move to v2.9.0?
+
+Use the migration script. It moves a pinned Path A install (Claude Code `2.1.112`, with the auto-updater off) to the v2.9.0 auto-updating architecture without touching your chats, your login, or your settings. It backs everything up first, and it verifies the new binary on disk before removing the old one, so a failure partway leaves your existing install usable.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ferrumclaudepilgrim/claude-code-android/main/migrate.sh -o migrate.sh
+bash migrate.sh
+```
+
+Close any running `claude` sessions before you start; the script refuses to run while one is active. The full list of what it preserves is in **[Upgrading from a pinned install](install.md#upgrading-from-a-pinned-v2x-install)**.
 
 ---
 
@@ -67,36 +80,35 @@ DEBIAN_FRONTEND=noninteractive pkg upgrade -y -o Dpkg::Options::="--force-confol
 
 | If you want | Pick |
 |---|---|
-| The smallest install (Termux core + a few packages) | Path A (native Termux) |
-| The latest Claude Code features | Path B (proot-Ubuntu, ~1-2 GB rootfs; native binary, no Node required) |
-| To avoid managing a version pin | Path B |
-| Fastest first-launch | Path A (Path B carries a proot-distro startup cost) |
+| The smallest install, latest claude, auto-updates | Path A (native Termux, v2.9.0) |
+| A full Ubuntu environment alongside Claude Code | Path B (proot-distro Ubuntu, ~2 GB rootfs) |
+| A real Linux kernel via Android's hypervisor (Pixel 6+ on Android 16+) | Path C (AVF, Android Virtualization Framework) |
 
-Both paths are tested and supported. Path A is the lighter footprint with a version pin; Path B is the heavier footprint that gets you upstream-latest claude.
+All three paths install the latest claude. Path A's wrapper auto-checks once per 24 hours on launch (`claude --update-now` forces immediate). Paths B and C use Anthropic's official installer inside their Linux environments and update through that mechanism.
 
-### Why does Path B install a newer claude than Path A?
+### Why does Path A need patchelf and glibc-runner?
 
-Path A installs via `npm install -g` in native Termux, which links against **bionic** (Android's libc). Anthropic's claude-code binary for android-arm64-bionic was removed in 2.1.113 (see [#50270](https://github.com/anthropics/claude-code/issues/50270)). Path A therefore pins to 2.1.112, the last version that still has a working android-arm64 build.
+Anthropic distributes Claude Code as a glibc-linked Linux binary (as of v2.1.113; the upstream tracking issue is linked below). Termux runs on Android's Bionic C library, not glibc, so the binary cannot run as-is. Path A installs Termux's `glibc-runner` package (a Termux package that provides a glibc-compatible dynamic linker, `ld.so`, for running glibc binaries in Bionic-based environments) and uses `patchelf-glibc` (a Termux-packaged patchelf utility for modifying ELF (Executable and Linkable Format) binary metadata) to rewrite the binary's ELF interpreter (the field in the binary that names which dynamic linker to use) to point at that `ld.so`. The kernel can then exec the binary normally. Path B sidesteps this by running claude inside a proot-distro Ubuntu environment where glibc is already standard.
 
-Path B installs claude inside a proot-Ubuntu environment, which uses **glibc** (standard Linux libc). Anthropic's install.sh inside Ubuntu pulls the linux-arm64 binary (matching your CPU). This binary is current and unaffected by the android-arm64-bionic issue. As of 2026-05-16, Path B installs claude 2.1.143 cleanly.
-
-Net effect: same `claude` tool, different binaries, different versions, both work.
+Tracked upstream at [anthropics/claude-code#50270](https://github.com/anthropics/claude-code/issues/50270). The patched-binary approach was originally described in [a comment on the upstream issue](https://github.com/anthropics/claude-code/issues/50270#issuecomment-4467292215). This repo's install.sh adapts it with empirical verification, an auto-updating wrapper, and the two interactive prompts.
 
 ---
 
 ## OAuth and browsers
 
+OAuth is the browser-based login flow Claude Code uses to authenticate with Anthropic.
+
 ### Claude prints a URL but my browser doesn't open
 
-On Android 8 (and possibly 9), claude cannot auto-open a browser when triggering OAuth -- regardless of whether you are on Path A (native Termux) or Path B (proot-Ubuntu). The URL is printed to the terminal; copy it and paste it into your phone's browser manually.
+On Android 8 (and possibly 9), claude cannot auto-open a browser when triggering OAuth, regardless of whether you are on Path A (native Termux) or Path B (proot-distro Ubuntu). The URL is printed to the terminal; copy it and paste it into your phone's browser manually.
 
 This is a host-Android intent-resolution limitation, not a claude bug. Verified empirically on 2026-05-16:
 
-- Android 17 (Pixel 10 Pro), Android 13 (Pixel 6), Android 10 (Moto G7 Power): browser auto-opens to Chrome
+- Android 17 (Pixel 10 Pro), Android 13 (Pixel 6), Android 10 (Moto G7 Power): browser auto-opens to Chrome (the default browser on my test devices)
 - Android 8 (Galaxy S7): browser does NOT auto-open
 
 If you're on Android 8 or 9, copy the URL from the terminal output and open it in Chrome or Samsung Internet manually. Sign in there; claude in the terminal will pick up the auth state once you complete the flow.
 
 ---
 
-*Last updated: 2026-05-16.*
+*Last updated: 2026-05-29.*

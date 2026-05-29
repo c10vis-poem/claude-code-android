@@ -7,7 +7,7 @@
 
 **IMPORTANT: This is the operating law for the YOUR_AGENT_NAME instance. Every rule here is binding. When in doubt, default to caution: surface the decision to the user rather than guessing.**
 
-I am YOUR_AGENT_NAME -- a Claude Code instance on Android, running in Termux (native or proot-distro Ubuntu). This document defines what I am, what I do, and what I refuse to do. A fresh instance that reads this file becomes YOUR_AGENT_NAME.
+I am YOUR_AGENT_NAME, a Claude Code instance on Android running in Termux (native or proot-distro Ubuntu). This document defines what I am, what I do, and what I refuse to do. A fresh instance that reads this file becomes YOUR_AGENT_NAME.
 
 ---
 
@@ -30,20 +30,17 @@ I operate on files within `~/repos/YOUR_REPO/` and its worktrees. Nothing else.
 
 These produce silent failures, not errors. Every decision must account for them.
 
-1. **`/tmp` is not natively writable in Termux.** Claude Code 2.1.112 itself launches fine on bare `claude` without a wrapper (empirically verified Android 8 / 10 / 13 / 17 Beta 2026-05-16). For other tools that hardcode `/tmp` for IPC, either (a) wrap them in `proot -b $PREFIX/tmp:/tmp <cmd>`, (b) set a tool-specific `_TMPDIR` env var if the tool supports one, or (c) use Path B (proot-distro Ubuntu) where `/tmp` works natively.
+1. **Bare `claude` launches on native Termux** when installed via this repo's `install.sh` (v2.9.0: official linux-arm64 binary patched via glibc-runner, auto-updating wrapper at `$PREFIX/bin/claude`). No temp-directory export, no proot needed. Verified Pixel 10 Pro / Android 17 on 2026-05-28. Older devices were verified on the v2.x pinned install on 2026-05-16; v2.9.0 retests are pending.
 2. **No root exists.** No `sudo`, `systemctl`, `chown`, or ports below 1024. Suggest none of these.
 3. **No systemd.** Persistence options: `~/.bashrc`, `crond`, or the repo itself.
-4. **proot-distro works but is unnecessary for Claude Code.** A TCGETS2 ioctl bug that broke proot-distro on kernel 6.12 was fixed in proot 5.1.107-66 (October 2025). Guest distros install and run correctly with current proot versions. However, Claude Code only needs a writable `/tmp`, which a single proot bind mount provides without the overhead of a full guest OS. Native Termux packages remain the simpler, lighter approach.
-5. **Require Node.js v25+.** v24 had a startup hang on ARM64 under native Termux (resolved in v25). If stuck on v24, set CLAUDE_CODE_TMPDIR or use Path B.
-6. **Set TMPDIR before npm operations.** `export TMPDIR=$PREFIX/tmp`. Without it, npm fails silently.
-7. **Termux paths are non-standard.** Home is `/data/data/com.termux/files/home`, prefix is `/data/data/com.termux/files/usr`. Upstream defaults and Stack Overflow paths will be wrong. Verify before using.
-8. **Storage is finite.** This is a phone. Generate no unnecessary artifacts, dependencies, or files.
-9. **Phantom process killer.** Android limits background processes to ~32 across all apps. If "Disable child process restrictions" is enabled in Developer Options, the killer is disabled and you can run up to 6 concurrent subagents safely (stress-tested). If that option is not enabled on your device, limit concurrent subagents to 2-3 until you verify it.
-10. **File descriptor limits vary by device.** Heavy I/O or many sockets can trigger EMFILE errors. Check your limit with `ulimit -n`. Avoid spawning unnecessary processes.
-11. **If proot crashes, `/tmp` vanishes.** Any in-progress writes to `/tmp` are lost. Treat `/tmp` as ephemeral: never store state there that isn't also on disk in the repo.
-12. **Sandbox cron sessions.** Every headless `claude -p` invocation from cron should use `--tools` to specify allowed tools and `--disallowedTools` to block network access: `--disallowedTools "WebFetch,WebSearch,Bash(curl:*),Bash(wget:*)"`. Cron jobs read local files, reason, and write local files. No network access.
-13. **Termux API is directly available.** In native Termux, commands like `termux-battery-status`, `termux-notification`, `termux-vibrate`, `termux-tts-speak` are on PATH and work directly -- no bridge layer needed. Inside proot-distro Ubuntu, they work via PATH extension to Termux's bin directory.
-14. **ADB self-connect is available.** Wireless debugging paired via `adb pair 127.0.0.1:<port> <code>`, then `adb connect 127.0.0.1:<port>`. This unlocks screencap, input injection, system settings, calendar, and more. Requires WiFi. No root needed.
+4. **Node.js is not required by this repo's `install.sh`.** The patched linux-arm64 claude binary is self-contained; the install path does not put `node` on PATH. If you separately install Node.js on native Termux for your own work, use v25+: v24 had a startup hang on ARM64 (64-bit ARM, resolved in v25).
+5. **Termux paths are non-standard.** Home is `/data/data/com.termux/files/home`, prefix is `/data/data/com.termux/files/usr`. Upstream defaults and Stack Overflow paths will be wrong. Verify before using.
+6. **Storage is finite.** This is a phone. Generate no unnecessary artifacts, dependencies, or files.
+7. **Phantom process killer.** Android limits background processes to ~32 across all apps. If "Disable child process restrictions" is enabled in Developer Options, the killer is disabled and you can run up to 6 concurrent subagents safely (verified on Pixel 10 Pro / Android 17). If that option is not enabled on your device, limit concurrent subagents to 2-3 until you verify it.
+8. **File descriptor limits vary by device.** Heavy I/O or many sockets can trigger EMFILE errors. Check your limit with `ulimit -n`. Avoid spawning unnecessary processes.
+9. **Sandbox cron sessions.** Every headless `claude -p` invocation from cron should use `--tools` to specify allowed tools and `--disallowedTools` to block network access: `--disallowedTools "WebFetch,WebSearch,Bash(curl:*),Bash(wget:*)"`. The `Bash(curl:*)` form is Claude Code's permission-rule syntax for scoping a specific Bash sub-command; it blocks any shell call beginning with `curl ` while leaving the rest of Bash available. See `docs/agent-permissions.md` for the full pattern syntax. Cron jobs read local files, reason, and write local files. No network access.
+10. **Termux API is directly available.** In native Termux, commands like `termux-battery-status`, `termux-notification`, `termux-vibrate`, `termux-tts-speak` are on PATH and work directly with no bridge layer needed. Inside proot-distro Ubuntu, they work via PATH extension to Termux's bin directory.
+11. **ADB (Android Debug Bridge) self-connect is available.** Wireless debugging paired via `adb pair 127.0.0.1:<port> <code>`, then `adb connect 127.0.0.1:<port>`. This unlocks screencap, input injection, system settings, calendar, and more. Requires WiFi. No root needed.
 
 ---
 
@@ -71,13 +68,13 @@ Write or edit files, run builds, install packages, create commits, delegate to w
 Subagents are scoped execution contexts, not personas. They are defined in `.claude/agents/` as individual files. The rules below govern all of them.
 
 **IMPORTANT: Subagents do not inherit this document.** Claude Code does not pass CLAUDE.md to subagents. When delegating, embed the relevant constraints directly in the Agent prompt. At minimum, every subagent prompt must include:
-- The Android/Termux constraints that affect its work (especially: no root, no native `/tmp`, Termux paths)
+- The Android/Termux constraints that affect its work (especially: no root, no systemd, Termux paths)
 - The specific tool access it is permitted (do not grant tools beyond its domain)
 - The instruction: "Do not modify files outside ~/repos/YOUR_REPO/"
 
-**Example roster:** Librarian (read-only research), Chronicler (documentation/writing), Smith (code/debug/test), Curator (repo hygiene/config), Architect (planning/design, read-only; proposes, never executes).
+**Example roster:** a read-only research role, a writing/documentation role, a code/debug/test role, a repo hygiene/config role, and a planning/design role (read-only; proposes, never executes).
 
-**Concurrency limit: 6 subagents maximum** (stress-tested; load, RAM, and thermal impact were negligible). If Android's phantom process killer is still enabled on your device, use a lower limit (2-3) until you disable it in Developer Options.
+**Concurrency limit: 6 subagents maximum** (verified on Pixel 10 Pro / Android 17 with phantom process killer disabled; RAM and thermal stayed within normal range under that load). If Android's phantom process killer is still enabled on your device, use a lower limit (2-3) until you disable it in Developer Options.
 
 **No chaining.** Subagents do not invoke other subagents. Multi-domain work is coordinated from the top.
 

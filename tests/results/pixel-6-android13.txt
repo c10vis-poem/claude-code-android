@@ -5,84 +5,77 @@
 ╚══════════════════════════════════════════════════════╝
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CLAIM 1: /tmp is not writable in plain Termux; proot bind mount makes it writable
-  Test:  touch /tmp/x directly (expect fail), then via proot -b $PREFIX/tmp:/tmp (expect pass if proot installed)
-  Direct (plain Termux): writable=false
-  proot not installed -- skipping the proot bind-mount half of this claim
-  Verdict: SKIP. proot not installed (claude 2.1.112 does not need it; install with 'pkg install proot' if you want it for other tools)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CLAIM 2: Claude Code does not bundle a native arm64-android ripgrep binary
-  Test:  Inspect vendor/ripgrep/arm64-android/rg -- should be missing or a user-created symlink
+CLAIM 1: Claude Code does not bundle a native arm64-android ripgrep binary
+  Test:  Inspect vendor/ripgrep/arm64-android/rg, should be missing or a user-created symlink
   Verdict: SKIP. claude not on PATH; cannot inspect vendor dir
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CLAIM 3: File descriptor limits are queryable on this device (varies by device/Android)
+CLAIM 2: File descriptor limits are queryable on this device (varies by device/Android)
   Test:  ulimit -n (soft) and ulimit -Hn (hard) both return positive integers
   Evidence: soft=32768  hard=32768
   Verdict: PASS
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CLAIM 4: install.sh locks the Claude Code install directory read-only (auto-updater protection)
+CLAIM 3: install.sh locks the Claude Code install directory read-only (auto-updater protection)
   Test:  Inspect permissions on the install dir; expect dr-x------ (no write bit)
   Verdict: SKIP. claude-code not installed at /data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code (install.sh not run yet)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CLAIM 5: Path B: Anthropic install.sh inside proot-distro Ubuntu installs claude binary
+CLAIM 4: Path B: Anthropic install.sh inside proot-distro Ubuntu installs claude binary
   Test:  If Ubuntu rootfs present, look for claude binary in standard paths
   Verdict: SKIP. proot-distro Ubuntu not installed (this is fine for Path A users)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CLAIM 6: claude CLI accepts --tools for restricting tool access (cron safety)
+CLAIM 5: claude CLI accepts --tools for restricting tool access (cron safety)
   Test:  claude --help should mention --tools
   Verdict: SKIP. claude not on PATH
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CLAIM 7: termux-sensor lists device sensors when Termux:API is functional
+CLAIM 6: termux-sensor lists device sensors when Termux:API is functional
   Test:  Run 'termux-sensor -l' with 5s timeout; expect JSON output
   Verdict: SKIP. termux-sensor not on PATH (termux-api package not installed)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CLAIM 8: docs/ssrf-guard.md exists and is non-empty in this repo
+CLAIM 7: docs/ssrf-guard.md exists and is non-empty in this repo
   docs/ssrf-guard.md: 118 lines
   Verdict: PASS
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CLAIM 9: docs/agent-permissions.md exists and is non-empty in this repo
+CLAIM 8: docs/agent-permissions.md exists and is non-empty in this repo
   docs/agent-permissions.md: 124 lines
   Verdict: PASS
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CLAIM 10: termux-battery-status returns valid JSON (Termux:API companion working)
+CLAIM 9: termux-battery-status returns valid JSON (Termux:API companion working)
   Test:  Run termux-battery-status with 8s timeout; expect JSON with 'percentage'
   Verdict: SKIP. termux-battery-status not on PATH (termux-api package not installed)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CLAIM 11: xdg-open is a symlink to termux-open (OAuth/browser-launch compatibility)
+CLAIM 10: xdg-open is a symlink to termux-open (OAuth/browser-launch compatibility)
   /data/data/com.termux/files/usr/bin/xdg-open → termux-open
   Verdict: PASS
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CLAIM 12: termux-fingerprint is available on PATH for biometric authentication
+CLAIM 11: termux-fingerprint is available on PATH for biometric authentication
   Verdict: SKIP. termux-fingerprint not on PATH (termux-api package not installed)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CLAIM 13: Device architecture is aarch64 (Claude Code requirement)
+CLAIM 12: Device architecture is aarch64 (Claude Code requirement)
   uname -m: aarch64
   Verdict: PASS
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SUMMARY
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  PASS: 5/13
-  FAIL: 0/13
-  SKIP: 8/13
+  PASS: 5/12
+  FAIL: 0/12
+  SKIP: 7/12
 
 Results saved to tests/results/pixel-6-android13.txt
 
 Notes:
-  PASS -- claim empirically verified on this device.
-  FAIL -- claim empirically does not hold on this device. Either the device differs
+  PASS: claim empirically verified on this device.
+  FAIL: claim empirically does not hold on this device. Either the device differs
          from the doc's assumptions, or the doc is wrong. Submit a device report.
-  SKIP -- precondition not met (e.g., optional package not installed, companion app
+  SKIP: precondition not met (e.g., optional package not installed, companion app
          not running). Re-run after installing the relevant package to test.

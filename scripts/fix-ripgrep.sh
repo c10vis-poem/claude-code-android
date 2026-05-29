@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# fix-ripgrep.sh -- Recover Claude Code's Grep/Glob tools when the bundled
+# fix-ripgrep.sh: Recover Claude Code's Grep/Glob tools when the bundled
 #                   ripgrep is missing the arm64-android binary.
 #
 # Background: Claude Code bundles platform-specific ripgrep binaries in
@@ -7,18 +7,20 @@
 # This causes the Grep, Glob, and slash-command tools to fail with:
 #
 #     spawn .../vendor/ripgrep/arm64-android/rg ENOENT
+#     (ENOENT = no such file or directory)
 #
 # Two ways to fix this:
 #
 # 1. Add `export CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1` to your ~/.bashrc.
-#    Claude Code will then use your system-installed ripgrep instead of
-#    its bundled vendor binary, and this survives Claude Code updates.
-#    Strongly preferred.
+#    That env var tells Claude Code to use the system ripgrep instead of
+#    its bundled vendor binary. In my testing, this setting persists across
+#    Claude Code updates because ~/.bashrc is not touched by updates.
+#    I prefer this option.
 #
 # 2. Run THIS script. It installs `ripgrep` via pkg if needed and
 #    symlinks the system binary into Claude Code's vendor directory.
-#    The symlink does NOT survive Claude Code updates -- if you upgrade,
-#    re-run this script.
+#    The symlink does not survive Claude Code updates in my testing.
+#    If you upgrade, re-run this script.
 #
 # This script is the recovery path. Option 1 above (the env var) is the
 # permanent solution. Upstream tracking: anthropics/claude-code#9435.
@@ -72,8 +74,9 @@ echo "[ok]    System ripgrep: $RG_PATH"
 
 # --- 4. Restore write permission and create the symlink ---
 
-# install.sh chmods the install dir to -w to block the in-process
-# auto-updater. I need to flip that off briefly to land the symlink.
+# Claude Code's vendor directory may be write-locked (by Claude Code's
+# own installer or a prior run of this script). Flip that off briefly
+# to land the symlink, then re-lock below.
 CC_DIR="$(dirname "$VENDOR_DIR")"
 chmod -R u+w "$CC_DIR" 2>/dev/null || true
 
@@ -86,5 +89,5 @@ chmod -R a-w "$CC_DIR"
 echo "[ok]    Symlink created: $VENDOR_DIR/arm64-android/rg -> $RG_PATH"
 echo ""
 echo "Verify by running the Grep tool inside Claude Code. If you still"
-echo "see ENOENT errors, also add CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1"
-echo "to your ~/.bashrc for a durable fix that survives updates."
+echo "see ENOENT errors, also add CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1 to"
+echo "your ~/.bashrc (tells Claude Code to use the system ripgrep instead)."

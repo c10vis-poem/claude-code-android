@@ -13,7 +13,7 @@ If this change breaks an existing user workflow, document what breaks and what m
 - **Device:**
 - **Android version:**
 - **Node.js version:**
-- **Install path:** (A: native Termux / B: proot-distro Ubuntu / C: Android Virtualization Framework -- AVF)
+- **Install path:** (A: native Termux / B: proot-distro Ubuntu / C: Android Virtualization Framework, AVF)
 
 ## Test scenarios
 

@@ -19,14 +19,14 @@ If the fingerprint check fails or is dismissed, the operation is blocked. Nothin
 
 ## Requirements
 
-1. **Termux:API package** -- install in Termux:
+1. **Termux:API package.** Install in Termux:
    ```sh
    pkg install termux-api
    ```
 
-2. **Termux:API companion app** -- install from F-Droid (search "Termux:API"). The package provides the CLI commands; the companion app provides the Android permissions bridge. Both are required. Without the companion app, `termux-fingerprint` fails silently.
+2. **Termux:API companion app.** Install from F-Droid (search "Termux:API"). The package provides the CLI commands; the companion app provides the Android permissions bridge. Both are required. Without the companion app, `termux-fingerprint` fails silently.
 
-3. **Source matching** -- Termux and Termux:API must come from the same source (both F-Droid or both GitHub releases). Mixing sources causes signature mismatches and silent failures.
+3. **Source matching.** Termux and Termux:API must come from the same source (both F-Droid or both GitHub releases). Mixing sources causes signature mismatches and silent failures.
 
 4. **A registered fingerprint** on the device (Settings > Security > Fingerprint).
 
@@ -34,7 +34,7 @@ If the fingerprint check fails or is dismissed, the operation is blocked. Nothin
 > ```sh
 > termux-fingerprint
 > ```
-> Touch the sensor. You should see JSON output containing `"auth_result": "AUTH_RESULT_SUCCESS"`.
+> Touch the sensor. A working setup returns JSON output containing `"auth_result": "AUTH_RESULT_SUCCESS"`.
 
 ---
 
@@ -65,15 +65,15 @@ A helper function parses `auth_result` and returns exit code 0 (approved) or 1 (
 
 The gate script is also available as [`examples/fingerprint-gate.sh`](../examples/fingerprint-gate.sh) in this repository.
 
-### Step 1 -- Create the gate function
+### Step 1: Create the gate function
 
-Create a file that any hook can source. Put it wherever makes sense for your setup -- `~/.claude/hooks/` is a natural choice if you keep your hooks there.
+Create a file that any hook can source. Put it wherever makes sense for your setup. `~/.claude/hooks/` is a natural choice if you keep your hooks there.
 
 **`~/.claude/hooks/fingerprint-gate.sh`**
 
 ```sh
 #!/usr/bin/env bash
-# Fingerprint biometric gate -- source this file, then call require_fingerprint
+# Fingerprint biometric gate. Source this file, then call require_fingerprint.
 
 require_fingerprint() {
   if ! command -v termux-fingerprint >/dev/null 2>&1; then
@@ -100,7 +100,7 @@ require_fingerprint() {
 
 > **Dependency:** This uses `jq` to parse JSON. Install it with `pkg install jq` if you don't have it.
 
-### Step 2 -- Create a hook script
+### Step 2: Create a hook script
 
 Create a hook that sources the gate and checks for sensitive operations. This example blocks `git push` to public repos and destructive git commands:
 
@@ -151,18 +151,18 @@ chmod +x ~/.claude/hooks/pre-tool-use-fingerprint-gate.sh
 ```
 
 > **Bypass vectors to be aware of:** The `case "$COMMAND"` pattern matching above operates on the raw command string and is illustrative rather than airtight. Predictable ways for a malicious or careless prompt to slip past it:
-> - **Variable interpolation:** `cmd="git push"; $cmd` -- the raw command contains the variable assignment, not the literal substring `"git push"`, so the case pattern doesn't fire.
-> - **Subshell expansion:** `$(echo git push)` -- the raw command contains the subshell expression, not the resulting command.
-> - **Whitespace tricks:** `git$'\t'push` or `git  push` (double space) -- glob `*"git push"*` requires the exact single-space substring.
+> - **Variable interpolation:** `cmd="git push"; $cmd`: the raw command contains the variable assignment, not the literal substring `"git push"`, so the case pattern doesn't fire.
+> - **Subshell expansion:** `$(echo git push)`: the raw command contains the subshell expression, not the resulting command.
+> - **Whitespace tricks:** `git$'\t'push` or `git  push` (double space): glob `*"git push"*` requires the exact single-space substring.
 > - **Aliased forms:** `gp` (shell alias for `git push`), or any user-defined script that calls git push.
 >
 > If your threat model includes a prompt-injection attacker who knows how this hook is wired, build the check on a parsed view of the command. Two safer shapes:
 > - Tokenize `$COMMAND` with `set --` and inspect `$1`/`$2` against an allowlist.
-> - Configure git itself to require a credential helper that triggers the fingerprint prompt -- moves the gate inside git, where command-line tricks don't help.
+> - Configure git itself to require a credential helper that triggers the fingerprint prompt. This moves the gate inside git, where command-line tricks don't help.
 >
 > The example here is good for "I want a fingerprint nag before destructive operations during normal use." It is not a security boundary against an adversary who can run arbitrary shell from inside a Claude Code session.
 
-### Step 3 -- Register the hook in Claude Code settings
+### Step 3: Register the hook in Claude Code settings
 
 Add the hook to your Claude Code settings so it runs before tool use:
 
@@ -206,18 +206,18 @@ Check the remote URL before requiring fingerprint:
 REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
 case "$REMOTE_URL" in
   *"github.com"*)
-    # Public repo -- require fingerprint
+    # Public repo. Require fingerprint.
     require_fingerprint || exit 1
     ;;
   *)
-    # Private or no remote -- allow
+    # Private or no remote. Allow.
     ;;
 esac
 ```
 
 ### Multiple hooks
 
-You can register multiple hooks for the same event. Claude Code runs them in order -- if any hook blocks, the operation stops:
+You can register multiple hooks for the same event. Claude Code runs them in order; if any hook blocks, the operation stops:
 
 ```json
 {
@@ -262,7 +262,7 @@ echo '{"tool_name":"Bash","tool_input":{"command":"git push origin main"}}' \
 ```
 
 **Fingerprint works in terminal but not in hooks**
-Hooks run in a subprocess. Ensure the `termux-fingerprint` binary is on PATH in that context. Try using the full path: `/data/data/com.termux/files/usr/bin/termux-fingerprint`.
+Hooks run in a subprocess. The `termux-fingerprint` binary needs to be on PATH in that context. Try using the full path: `/data/data/com.termux/files/usr/bin/termux-fingerprint`.
 
 ---
 
@@ -275,4 +275,4 @@ Hooks run in a subprocess. Ensure the `termux-fingerprint` binary is on PATH in 
 
 ---
 
-*Last updated: 2026-05-16.*
+*Last updated: 2026-05-29.*

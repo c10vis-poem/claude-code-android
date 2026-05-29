@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# config-validator.sh -- Validate the .claude/ directory of a Claude Code
-#                        repo for internal consistency.
+# config-validator.sh: Validate the .claude/ directory of a Claude Code
+#                      repo for internal consistency.
 #
 # Checks agent definitions, skill files, hook registrations, settings.json
 # JSON validity, cross-references between them, and naming conventions.

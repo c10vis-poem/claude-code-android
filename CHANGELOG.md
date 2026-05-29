@@ -1,5 +1,71 @@
 # Changelog
 
+## [2.9.0] - 2026-05-29
+
+Path A architectural switch from the pinned 2.1.112 npm install to a patched native linux-arm64 binary with an auto-updating wrapper. Also rolls up the Path C (Android Virtualization Framework, AVF) refresh for Android 17 and a Path B walk-through clarification originally drafted under [Unreleased].
+
+The Path A change is empirically motivated. The v2.x install pinned `@anthropic-ai/claude-code@2.1.112` (the last upstream version to ship a JS entry point) and defended that pin with `chmod -R a-w` on the install directory plus `DISABLE_AUTOUPDATER=1` in shell env and `~/.claude/settings.json`. Tracking upstream at [anthropics/claude-code#50270](https://github.com/anthropics/claude-code/issues/50270). The v2.9.0 install runs the same linux-arm64 native binary that PC users run, by patching the binary's ELF interpreter via Termux's `glibc-runner` and `patchelf-glibc`. The approach was originally described by gtbuchanan in [a comment on the upstream issue](https://github.com/anthropics/claude-code/issues/50270#issuecomment-4467292215); this repo's `install.sh` adapts it with empirical verification, an auto-updating wrapper, and the two interactive prompts.
+
+Verified end-to-end on Pixel 10 Pro (Android 17) on 2026-05-28. v2.9.0 retests on Pixel 6, Moto G7 Power, and Galaxy S7 are pending. Path B and Path C are independent of the Path A change and unaffected.
+
+### Path A: new architecture
+
+- `install.sh` rewritten. Two yes/no questions up front (Q1: fresh Termux, choice of `--force-confnew` vs `--force-confold` for the upgrade pass. Q2: install recommended packages, the 17-package kit). After the questions, install runs unattended. End state:
+  - Patched linux-arm64 claude binary at `~/.local/share/claude/versions/<version>`
+  - Auto-updating wrapper at `$PREFIX/bin/claude`
+  - `~/.claude/settings.json` with `autoUpdates:false` and `env.LD_PRELOAD` for subprocess shebang resolution
+  - `~/.local/bin/claude` launcher pointing at the wrapper, and `~/.local/bin` appended to PATH in `~/.bashrc`. This is the native-install layout Claude Code expects; providing it silences the binary's "Native installation ... not in your PATH" startup notices at the source, rather than matching their text.
+- Wrapper behavior on each launch: query npm registry once per 24h for the latest version (or immediately with `claude --update-now`), if newer download + verify checksum + patchelf + atomic swap into versions/, keep the previous version for rollback and remove older ones (N-1 retention). Self-heal the binary's ELF interpreter if anything outside the wrapper replaced it. Unset `LD_PRELOAD` before exec so the glibc binary doesn't crash on libtermux-exec's unversioned `libc.so` dependency.
+- All-failure-modes (network, checksum mismatch, patchelf error): wrapper prints a one-line warning to stderr and falls through to launch the cached binary. The user's session never breaks because of an update problem.
+
+### Migration from a pinned v2.x install
+
+- `migrate.sh` added: upgrades an existing pinned install (the npm `@anthropic-ai/claude-code` package) to the v2.9.0 architecture without data loss. It backs up `~/.claude`, `~/.claude.json`, and `~/.bashrc` (with a generated `restore.sh`) before any change. It downloads, checksum-verifies, and patches the new binary before removing the old pin, so a mid-run failure leaves the old install intact. It installs the wrapper and merges `~/.claude/settings.json` in place, preserving existing keys and following a symlinked settings file rather than replacing it. It refuses to run while a `claude` session is active.
+- `install.sh` is now existing-install aware: it detects a pinned v2.x install and routes the user to `migrate.sh` rather than overwriting it, and detects an already-installed v2.9.0 wrapper and exits without changes.
+
+### Removed (Path A architectural)
+
+- `@anthropic-ai/claude-code@2.1.112` npm pin: replaced by the native binary path described above.
+- `chmod -R a-w` lock on the install directory: no longer needed. The wrapper is the only mutator of the binary directory and the binary path is under `~/.local/share/` rather than `$PREFIX/lib/node_modules/`.
+- `DISABLE_AUTOUPDATER=1` in `~/.bashrc`: the wrapper handles updates instead.
+- The April 18 upstream-regression recovery procedure: no longer applicable (the v2.9.0 install runs the linux-arm64 binary directly; there is no pin to clobber).
+- The Path A `pkg install ripgrep` + `CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1` workaround: the linux-arm64 binary reports `process.platform === 'linux'` and ships `vendor/ripgrep/arm64-linux/rg`, so the Grep / Glob tools work out of the box. `scripts/fix-ripgrep.sh` is vestigial under the new architecture and is no longer referenced from user-facing docs.
+
+### Changed
+
+- `README.md` Path A section rewritten around `install.sh` + `claude`. Path A footprint figures stated honestly: the linux-arm64 binary download is ~233 MB and the recommended packages add ~200 MB, so the base install is ~280 MB and a full install with the recommended kit is ~480 MB. Version badge bumped to 2.9.0. Last Verified bumped to 2026-05-29. Device Compatibility table calls out which rows are v2.9.0-verified and which are pending v2.9.0 retest.
+- `docs/install.md` Path A walkthrough rewritten. Path B and Path C sections retained largely as-is; the Path B verification footer remains 2026-05-16.
+- `docs/troubleshooting.md`: April 18 regression entries removed; OAuth entries retained; the Grep/Glob ENOENT entry updated to note that the v2.9.0 install does not exhibit the original bug.
+- `VERSION`: 2.8.1 -> 2.9.0.
+
+### Rolled up from [Unreleased] (pre-v2.9.0 work)
+
+- `README.md` Path B Ubuntu setup walkthrough fleshed out: the `proot-distro login ubuntu` step is now followed by a note that the download can take a few minutes, the `root@localhost.` prompt that signals completion, and the inside-Ubuntu install steps laid out as a separate block.
+- `README.md` Path C now ships an inline Quick Install matching the shape of Path A and Path B: how to check for support, where to toggle Linux development environment, what to expect in the Terminal app, and the install line for Claude Code inside the VM.
+- `docs/avf-guide.md` substantially rewritten for Android 17 reality. Memory size, Display resolution, and Keep awake are now documented as Terminal app Settings (gear icon) under Advanced, rather than file edits. The Recovery section (Reset to initial version, Remove backup data) is documented for the first time. Graphics Acceleration is described as a Pixel 10 Pro toggle, not a universal default. AOSP architecture reference linked.
+- `docs/avf-guide.md` Screen-Off Stability section rewritten around Settings > Advanced > Keep awake (preset timer up to one day) instead of the older ADB whitelist commands.
+- `docs/avf-guide.md` Security Defaults table now reflects that SSH is installed but not started by default; the exim4 row is gone since exim4 is not running by default either.
+- `docs/avf-guide.md` Known Issues, Comparison, and Technical Details sections updated to match the above.
+- `docs/troubleshooting.md` Path C section synchronized with the avf-guide rewrite.
+- `docs/install.md` Path C entry under "Devices verified" extended to cover Pixel 6 and Pixel 10 Pro on Android 17.
+- `README.md` "Device Compatibility" footnote now records Path C re-verification on Pixel 6 and Pixel 10 Pro running Android 17 on 2026-05-26.
+- TMPDIR / proot-as-Claude-requirement obsolete instructions removed across `docs/install.md`, `docs/troubleshooting.md`, `scripts/check-termux-env.sh`, `.claude/skills/termux-safe/SKILL.md`, `docs/constitution-template.md`, `docs/skills.md`, `.github/ISSUE_TEMPLATE/bug_report.md`, and `tests/verify-claims.sh`. Empirical verdicts on individual claims in `tests/results/*.txt` are unchanged from the 2026-05-16 test run; only the claim index shifted.
+- `README.md` Prerequisites moved above Quick Install. "Before You Start" section names the three things a first-time reader has to do before any command can succeed: confirm aarch64 / Android 8+, hold a Claude account, install Termux from F-Droid. Delegates F-Droid and Termux install steps to upstream maintainers rather than reinventing them.
+- `README.md` device compatibility table: a "Test artifact" column was added so each row's claim of "verified" can be checked against an on-disk file. The four devices with `tests/results/*.txt` artifacts link to their result file. Samsung Galaxy S26 Ultra and Galaxy S23+ are marked doc-only (no current `tests/results/` file): the S23+ row dates to the 2026-03-19 cycle that pre-dates the current `verify-claims.sh` artifact regime, and the S26 Ultra's v2.9.0 verification was a manual `migrate.sh` run on 2026-05-29, which produces no `verify-claims.sh` transcript.
+- `docs/troubleshooting.md` EMFILE entry: "measured 32,768 on Android 16 / kernel 6.12" reattributed to the actual measurements in `tests/results/` (Pixel 10 Pro Android 17 and Pixel 6 Android 13).
+- `docs/install.md` Prerequisites and Environment Reference: the "Android 14/15 use 5.10-6.6, Android 16 uses 6.12" kernel mapping replaced with the empirical per-Android-version kernel observations from the four test-artifact devices in this repo.
+
+### Notes
+
+- Tests directory `tests/results/*.txt` artifacts are from the v2.x pinned install. v2.9.0 retest transcripts will be added per device as they are produced. The Pixel 10 Pro v2.9.0 install was verified on 2026-05-28 manually; a deterministic `verify-claims.sh` transcript for the v2.9.0 architecture is a follow-up item.
+- `scripts/fix-ripgrep.sh` is left in the repo for users on a v2.x install who still need it. It is no longer referenced from user-facing docs and is not exercised by the v2.9.0 install path.
+- `scripts/check-termux-env.sh` updated to auto-detect v2.9.0 vs v2.x install layouts via filesystem signals (presence of `~/.local/share/claude/versions/` plus a non-symlink wrapper at `$PREFIX/bin/claude` indicates v2.9.0; presence of `$PREFIX/lib/node_modules/@anthropic-ai/claude-code/` indicates v2.x). Replaces the previous grep-based detection that searched the wrapper for a marker string the install.sh wrapper never writes.
+- AOSP source for the Terminal app's memory default (`ConfigJson.kt`, `memory_mib: Int = 1024`) is cited in the avf-guide. The Pixel 10 Pro on this hardware ships an OEM overlay that adds the Graphics Acceleration toggle but does not change the memory default.
+
+## [Unreleased]
+
+(No unreleased changes yet. The v2.9.0 release rolled up all prior Unreleased work.)
+
 ## [2.8.1] - 2026-05-17
 
 Hotfix. The v2.8.0 install was empirically broken: the `chmod -R a-w` lock on the install dir is necessary but not sufficient. Within minutes of starting a real claude session on a fresh v2.8.0 install (verified on Pixel 6 / Android 13), the in-process auto-updater chmod'd the dir writable and clobbered the 2.1.112 pin with 2.1.143 -- the broken android-arm64 version. claude then exited with `Error: claude native binary not installed`.

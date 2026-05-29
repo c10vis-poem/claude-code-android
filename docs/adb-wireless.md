@@ -19,7 +19,7 @@ ADB wireless debugging bypasses this. The phone connects to itself via `127.0.0.
 
 **Requires:** WiFi (Android checks for a WiFi association, not internet access). Does not require root.
 
-> ADB wireless self-connect has been verified on Samsung Galaxy S26 Ultra (Android 16). The pairing workflow should work on any device with Developer Options and wireless debugging support, but results may vary. Device-specific results welcome via the device_report issue template.
+> ADB wireless self-connect has been verified on Android 16. The pairing workflow should work on any device with Developer Options and wireless debugging support, but results may vary. Device-specific results welcome via the device_report issue template.
 
 ---
 
@@ -77,7 +77,7 @@ Go to **Settings → Developer options → Wireless debugging** and toggle it on
 
 Inside Wireless debugging, tap **Pair device with pairing code**. A dialog appears with:
 - A 6-digit pairing code
-- A pairing port (labeled something like "Wi-Fi pairing code port: 41823")
+- A pairing port (labeled something like "Wi-Fi pairing code port: 37000")
 
 The pairing port and connection port are different numbers. Note both.
 
@@ -99,12 +99,12 @@ adb pair 127.0.0.1:<pairing-port> <code>
 
 Example:
 ```sh
-adb pair 127.0.0.1:41823 123456
+adb pair 127.0.0.1:37000 123456
 ```
 
 Expected output:
 ```
-Successfully paired to 127.0.0.1:41823
+Successfully paired to 127.0.0.1:37000
 ```
 
 **If you get `error: protocol fault (couldn't read status message): Success`:** This is a known bug in ADB 35.x. Run the same command again. It usually succeeds on the second attempt.
@@ -119,12 +119,12 @@ adb connect 127.0.0.1:<connection-port>
 
 Example:
 ```sh
-adb connect 127.0.0.1:42103
+adb connect 127.0.0.1:38000
 ```
 
 Expected output:
 ```
-connected to 127.0.0.1:42103
+connected to 127.0.0.1:38000
 ```
 
 Verify it's working:
@@ -279,8 +279,8 @@ These are different access mechanisms with different security postures. Pick the
 | Inject touch/swipe/text into other apps | **ADB** | Termux can't input outside its own UI |
 | Query `dumpsys`, full process list, system settings | **ADB** | Termux's app sandbox blocks these |
 | Read system logs (logcat) | **ADB** | Same reason |
-| Read calendar events | **ADB** content-provider query (Termux:API does not expose calendar) | -- |
-| Run cron-style automation without UI access | Either, neither requires UI | -- |
+| Read calendar events | **ADB** content-provider query (Termux:API does not expose calendar) | n/a |
+| Run cron-style automation without UI access | Either, neither requires UI | n/a |
 
 If you only need the Termux:API category, do not enable wireless debugging. The pairing-code requirement provides reasonable protection on trusted networks, but the simplest security posture is "the port is closed." Pair only when you actually need the ADB-only capabilities.
 
@@ -321,4 +321,4 @@ ADB wireless self-connect gives Termux-based tools access to Android system APIs
 
 ---
 
-*Last updated: 2026-05-16.*
+*Last updated: 2026-05-29.*

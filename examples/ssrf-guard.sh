@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
-# ssrf-guard.sh -- PreToolUse hook for WebFetch and WebSearch tools
+# ssrf-guard.sh: PreToolUse hook for WebFetch and WebSearch tools
+#
+# Guards against SSRF (Server-Side Request Forgery): attacks where an
+# attacker tricks an agent into making HTTP requests to targets the
+# attacker could not reach directly, such as internal services or cloud
+# metadata endpoints.
 #
 # Blocks requests targeting internal, private, loopback, link-local,
 # and reserved IP ranges. Only http:// and https:// schemes are allowed.
 #
 # Uses Node's URL parser for WHATWG-compliant parsing and hostname
-# normalization. This matters because Claude Code's WebFetch uses the
+# normalization. WHATWG is the web standards body whose URL specification
+# defines how browsers (and Node's built-in URL class) parse and normalize
+# URLs. This matters because Claude Code's WebFetch uses the
 # same URL parser, so the following IPv4 encoding bypasses are all
 # normalized to dotted-quad at parse time (empirically verified
 # 2026-05-16 on Node v25):
@@ -22,7 +29,8 @@
 # - Does NOT perform DNS resolution. A hostname that resolves to a
 #   private IP (DNS rebinding) is not caught by this guard. Pair with
 #   network-level egress controls for stricter protection.
-# - Requires Node.js on PATH (reasonable since Claude Code needs Node).
+# - Requires Node.js on PATH. The Path A v2.9.0 install ships a standalone
+#   binary and does not install Node, so "pkg install nodejs" if needed.
 # - Requires jq for JSON parsing.
 #
 # Exit codes:
@@ -161,7 +169,7 @@ if [ "$IS_IPV6" = "1" ]; then
     block "IPv6 unique local address (fc00::/7)."
   fi
 
-  # IPv4-mapped (::ffff:x.x.x.x) -- unwrap and fall through to IPv4 checks
+  # IPv4-mapped (::ffff:x.x.x.x): unwrap and fall through to IPv4 checks
   if [[ "$HOST" =~ ^::ffff: ]]; then
     HOST="${HOST#::ffff:}"
   else

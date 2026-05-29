@@ -1,12 +1,12 @@
-# Security Model -- Claude Code on Android
+# Security Model: Claude Code on Android
 
-This document describes what Termux:API permissions and ADB wireless debugging expose when used with Claude Code on Android. It is written for anyone considering granting these capabilities -- developer or not. Read this before enabling Termux:API permissions or ADB wireless debugging.
+This document describes what Termux:API permissions and ADB wireless debugging expose when used with Claude Code on Android. It is written for anyone considering granting these capabilities, developer or not. Read this before enabling Termux:API permissions or ADB wireless debugging.
 
 ---
 
 ## What Termux:API Permissions Expose
 
-When you grant a permission to the Termux:API companion app, every process running inside Termux can access that data type. There is no per-session or per-tool scoping -- once a permission is granted, it stays granted for all Termux processes until you revoke it in Android Settings.
+When you grant a permission to the Termux:API companion app, every process running inside Termux can access that data type. There is no per-session or per-tool scoping. Once a permission is granted, it stays granted for all Termux processes until you revoke it in Android Settings.
 
 | Data Type | Command | Permission Gate | What This Means |
 |-----------|---------|-----------------|-----------------|
@@ -27,7 +27,7 @@ When you grant a permission to the Termux:API companion app, every process runni
 
 ## What ADB Adds
 
-ADB wireless debugging runs commands as Android's `shell` user -- a system-level debug identity that is more privileged than any app. These capabilities do not require any Termux:API permissions.
+ADB wireless debugging runs commands as Android's `shell` user, a system-level debug identity that is more privileged than any app. These capabilities do not require any Termux:API permissions.
 
 | Capability | Command | Impact |
 |-----------|---------|--------|
@@ -41,14 +41,14 @@ ADB wireless debugging runs commands as Android's `shell` user -- a system-level
 | Full process list | `adb shell ps -A` | Lists every running process on the device |
 | System logs | `adb logcat` | May contain authentication tokens, URLs, and debug data from other apps |
 | Installed apps | `adb shell pm list packages` | Complete list of every app installed on the device |
-| Hardware sensors | `adb shell dumpsys sensorservice` | Full hardware sensor inventory (42 sensor types observed in my testing) |
+| Hardware sensors | `adb shell dumpsys sensorservice` | Full hardware sensor inventory |
 | Device properties | `adb shell getprop` | Hardware identifiers, build info, carrier info |
 
 ---
 
 ## ADB Bypasses Termux:API Permission Denials
 
-This is the critical point most users miss. If you deny SMS permission to the Termux:API companion app, `termux-sms-list` correctly fails. But `adb shell content query --uri content://sms` still works -- because ADB operates as the `shell` user, not as the Termux app. Android's per-app permission model does not apply to ADB commands. Denying a permission in Android Settings blocks the app-level path but leaves the ADB path open. These are two completely different access levels using two different privilege models.
+This is the critical point most users miss. If you deny SMS permission to the Termux:API companion app, `termux-sms-list` correctly fails. But `adb shell content query --uri content://sms` still works, because ADB operates as the `shell` user, not as the Termux app. Android's per-app permission model does not apply to ADB commands. Denying a permission in Android Settings blocks the app-level path but leaves the ADB path open. These are two completely different access levels using two different privilege models.
 
 ---
 
@@ -64,13 +64,13 @@ Only with ADB connected. `adb shell screencap` captures whatever is currently on
 With ADB connected, yes. `adb shell am start` opens any app, and `adb shell input tap/swipe/text` navigates it. Combined, these can open an app, tap buttons, enter text, and interact with the UI without the user touching the screen.
 
 **Can it send data to an external server?**
-By default, Claude Code has access to `curl`, `wget`, and other network tools through the Bash tool. The SSRF guard (if installed) blocks WebFetch requests to internal IPs, but does not intercept Bash-level network commands. There is no outbound data boundary by default.
+By default, Claude Code has access to `curl`, `wget`, and other network tools through the Bash tool. The SSRF guard (the optional PreToolUse hook documented in `docs/ssrf-guard.md`, which blocks WebFetch requests to internal IPs) does not intercept Bash-level network commands. There is no outbound data boundary by default.
 
 **Can a malicious MCP server access my data?**
 MCP servers receive tool responses from Claude Code. If Claude Code has access to contacts, SMS, or location data, that data can appear in tool responses sent to any connected MCP server. The SSRF guard does not intercept MCP data flow.
 
 **Can a malicious file trick the agent into exfiltrating data?**
-Prompt injection -- where a file contains instructions that redirect the agent's behavior -- is a known risk with all LLM-based tools. The risk is non-zero. A file could attempt to instruct the agent to send data to an external URL.
+Prompt injection (where a file contains instructions that redirect the agent's behavior) is a known risk with all LLM-based tools. The risk is non-zero. A file could attempt to instruct the agent to send data to an external URL.
 
 ---
 
@@ -79,9 +79,9 @@ Prompt injection -- where a file contains instructions that redirect the agent's
 | Mitigation | What It Covers | What It Does Not Cover |
 |-----------|---------------|----------------------|
 | **SSRF guard** ([docs](ssrf-guard.md)) | Blocks WebFetch requests to private/reserved IP ranges and non-HTTP schemes | Does not block Bash-level `curl`/`wget`, does not intercept MCP data flow, does not prevent DNS rebinding |
-| **Fingerprint gate** ([docs](fingerprint-gate.md)) | Requires biometric approval before sensitive operations (git push, destructive commands by default) | Only gates operations you configure it for -- does not block Termux:API or ADB commands by default |
-| **CLAUDE.md constitution** ([template](constitution-template.md)) | Defines behavioral rules the model follows -- scope boundaries, forbidden actions, confirmation requirements | Model-enforced, not technically enforced. The model can be instructed to ignore it via prompt injection |
-| **Claude's safety training** | Anthropic's RLHF training makes the model resist harmful instructions | Not a technical control. Effective in most cases but not absolute |
+| **Fingerprint gate** ([docs](fingerprint-gate.md)) | Requires biometric approval before sensitive operations (git push, destructive commands by default) | Only gates operations you configure it for. Does not block Termux:API or ADB commands by default |
+| **CLAUDE.md constitution** ([template](constitution-template.md)) | Defines behavioral rules the model follows: scope boundaries, forbidden actions, confirmation requirements | Model-enforced, not technically enforced. The model can be instructed to ignore it via prompt injection |
+| **Claude's safety training** | Anthropic's safety training makes the model resist harmful instructions | Not a technical control. Effective in most cases but not absolute |
 | **Agent permissions matrix** ([docs](agent-permissions.md)) | Documents the principle that no agent should hold both web access and write access | Advisory framework, not a runtime enforcement mechanism |
 
 ---
@@ -90,7 +90,7 @@ Prompt injection -- where a file contains instructions that redirect the agent's
 
 These gaps exist by default in the current setup:
 
-- **No Termux:API command restriction.** Once a permission is granted, every Termux process can use it. There is no way to allow Claude Code to use the camera but deny it SMS access at the Termux level -- this must be done in Android's permission settings for the Termux:API app.
+- **No Termux:API command restriction.** Once a permission is granted, every Termux process can use it. There is no way to allow Claude Code to use the camera but deny it SMS access at the Termux level. This must be done in Android's permission settings for the Termux:API app.
 - **No ADB command restriction.** Once ADB is connected, the full set of `adb shell` commands is available. There is no built-in way to allow screencap but deny input injection.
 - **No outbound data exfiltration boundary.** Claude Code can run `curl`, `wget`, or any network command via the Bash tool. There is no default firewall or egress filter preventing data from being sent to external servers.
 - **No MCP data boundary.** Data flowing to MCP servers is not filtered or restricted. Any data Claude Code can access may appear in MCP tool responses.
@@ -113,4 +113,4 @@ These gaps exist by default in the current setup:
 
 ---
 
-Last updated: 2026-05-16.
+Last updated: 2026-05-29.

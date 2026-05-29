@@ -10,14 +10,14 @@ Skills are loaded by Claude Code when you place them under `~/.claude/skills/` (
 
 | Skill | What It Does |
 |-------|-------------|
-| `termux-safe` | Termux constraints: no sudo, no systemd, paths under `$PREFIX`. Some tools that hardcode `/tmp` need a `proot` wrapper; claude itself does not. |
+| `termux-safe` | Termux constraints: no sudo, no systemd, paths under `$PREFIX`, phantom-process-killer ceiling, and a note that if Node.js is installed separately, v25+ avoids the historical v24 startup hang (Node is not required by the install path itself). |
 
 ### Workflow (general-purpose, not Android-specific)
 
 | Skill | What It Does |
 |-------|-------------|
-| `/minimum-viable` | Before building anything, justify the complexity. Could a shell script do this? Does it need Node? A full app? Prevents over-engineering. |
-| `/scope-framing` | Before doing research, write a brief scope document. Names the decision the research serves, who acts on findings, and what counts as "done." |
+| `minimum-viable` | Before building anything, justify the complexity. Could a shell script do this? Does it need Node? A full app? Prevents over-engineering. |
+| `scope-framing` | Before doing research, write a brief scope document. Names the decision the research serves, who acts on findings, and what counts as "done." |
 
 ## Scripts (`scripts/`)
 
@@ -25,18 +25,18 @@ Scripts are deterministic checks and recoveries. They are bash scripts you run d
 
 | Script | What It Does |
 |--------|-------------|
-| [`scripts/check-termux-env.sh`](../scripts/check-termux-env.sh) | Run 13 environment checks: Node version, Claude Code install, proot, TMPDIR, ripgrep, Termux:API, fd limit, process headroom, storage. Reports PASS/WARN/FAIL with fix recommendations. Renamed from the `doctor` skill to avoid collision with the upstream `claude doctor` command. |
-| [`scripts/fix-ripgrep.sh`](../scripts/fix-ripgrep.sh) | Recovery for Claude Code's missing arm64-android ripgrep binary. Note: setting `CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1` in `~/.bashrc` makes this script unnecessary in most cases. Run it only if you see `spawn .../ripgrep/arm64-android/rg ENOENT`. |
+| [`scripts/check-termux-env.sh`](../scripts/check-termux-env.sh) | Run environment checks: Termux:API, file-descriptor limit, process headroom, storage. Reports PASS/WARN/FAIL with fix recommendations. Renamed from the `doctor` skill to avoid collision with the upstream `claude doctor` command. Auto-detects v2.9.0 vs v2.x install layouts via filesystem signals and runs the appropriate set of checks. |
 | [`scripts/config-validator.sh`](../scripts/config-validator.sh) | Audit a `.claude/` directory: frontmatter fidelity, file/dir naming, settings.json JSON validity, hook script existence, agent → skill cross-references. Useful after adding new agents, skills, or hooks. |
 
 Usage:
 
 ```bash
 bash scripts/check-termux-env.sh
-bash scripts/fix-ripgrep.sh
 bash scripts/config-validator.sh        # against current working dir
 bash scripts/config-validator.sh /path/to/some-repo
 ```
+
+`scripts/fix-ripgrep.sh` is retained in the repo for users still on a v2.x install; it is not needed under v2.9.0 and is not referenced from user-facing instructions.
 
 ## Installing Skills Globally
 
@@ -54,4 +54,4 @@ The scripts under `scripts/` are independent of skill installation; just run the
 
 ---
 
-*Last updated: 2026-05-16.*
+*Last updated: 2026-05-29.*

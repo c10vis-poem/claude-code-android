@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
-# ssrf-guard-tests.sh -- test harness for ssrf-guard.sh
+# ssrf-guard-tests.sh: test harness for ssrf-guard.sh
+#
+# SSRF (Server-Side Request Forgery) is a class of attack where an
+# attacker tricks an agent into making HTTP requests to targets the
+# attacker could not reach directly, such as internal services or cloud
+# metadata endpoints. ssrf-guard.sh is the PreToolUse hook that blocks
+# those requests; this file exercises its block/allow behavior.
 #
 # Feeds a suite of JSON PreToolUse payloads to the guard and asserts
 # the expected block/allow behavior. Works against any guard version.
@@ -61,7 +67,7 @@ run_test "172.31.255.1 private upper"      2 "$(wf 'http://172.31.255.1/')"
 run_test "192.168.1.1 private"             2 "$(wf 'http://192.168.1.1/')"
 run_test "192.168.1.1 private octal form"  2 "$(wf 'http://0300.0250.0001.0001/')"
 run_test "169.254.169.254 metadata IP"     2 "$(wf 'http://169.254.169.254/')"
-run_test "100.64.0.1 CGNAT"                2 "$(wf 'http://100.64.0.1/')"
+run_test "100.64.0.1 CGNAT (Carrier-Grade NAT)" 2 "$(wf 'http://100.64.0.1/')"
 run_test "0.0.0.0 reserved"                2 "$(wf 'http://0.0.0.0/')"
 run_test "255.255.255.255 broadcast"       2 "$(wf 'http://255.255.255.255/')"
 run_test "240.0.0.1 reserved /4"           2 "$(wf 'http://240.0.0.1/')"
@@ -76,7 +82,7 @@ echo
 echo "=== Blocked: IPv6 ==="
 run_test "IPv6 loopback ::1"               2 "$(wf 'http://[::1]/')"
 run_test "IPv6 link-local fe80::1"         2 "$(wf 'http://[fe80::1]/')"
-run_test "IPv6 ULA fc00::"                 2 "$(wf 'http://[fc00::1]/')"
+run_test "IPv6 ULA (Unique Local Address) fc00::" 2 "$(wf 'http://[fc00::1]/')"
 run_test "IPv6 unspecified ::"             2 "$(wf 'http://[::]/')"
 run_test "IPv4-mapped ::ffff:127.0.0.1"    2 "$(wf 'http://[::ffff:127.0.0.1]/')"
 
@@ -90,7 +96,7 @@ run_test "gopher scheme"                   2 "$(wf 'gopher://internal/')"
 echo
 echo "=== Allowed: public ==="
 run_test "public example.com"              0 "$(wf 'http://example.com/')"
-run_test "public 8.8.8.8 (Google DNS)"     0 "$(wf 'http://8.8.8.8/')"
+run_test "public 8.8.8.8 (Google DNS - Domain Name System)" 0 "$(wf 'http://8.8.8.8/')"
 run_test "https github.com"                0 "$(wf 'https://github.com/')"
 run_test "public IPv6 2001:db8::1"         0 "$(wf 'http://[2001:db8::1]/')"
 run_test "public with port"                0 "$(wf 'http://example.com:8443/')"

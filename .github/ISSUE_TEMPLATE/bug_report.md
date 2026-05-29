@@ -17,8 +17,6 @@ assignees: ''
 - **Launch command used:** (e.g., `claude`, or a custom wrapper if you set one up)
 - **Node.js version:** (output of `node -v`)
 - **Claude Code version:** (output of `claude --version`)
-- **`echo $TMPDIR` output:** (paste result)
-- **`echo $CLAUDE_CODE_TMPDIR` output:** (paste result, or "not set")
 
 ## Steps to Reproduce
 
@@ -42,4 +40,4 @@ Paste any error messages, logs, or terminal output here.
 
 ## Additional Context
 
-Any other details that might help diagnose the issue (proot usage, shell config, etc.).
+Any other details that might help diagnose the issue (shell config, custom env vars, etc.).

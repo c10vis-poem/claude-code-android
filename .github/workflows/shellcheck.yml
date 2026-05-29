@@ -14,4 +14,4 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y shellcheck
 
       - name: Run ShellCheck
-        run: shellcheck --severity=warning install.sh tests/verify-claims.sh scripts/check-termux-env.sh scripts/fix-ripgrep.sh scripts/config-validator.sh tests/ssrf-guard-tests.sh examples/ssrf-guard.sh examples/fingerprint-gate.sh
+        run: shellcheck --severity=warning install.sh migrate.sh tests/verify-claims.sh scripts/check-termux-env.sh scripts/fix-ripgrep.sh scripts/config-validator.sh tests/ssrf-guard-tests.sh examples/ssrf-guard.sh examples/fingerprint-gate.sh

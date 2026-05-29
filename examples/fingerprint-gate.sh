@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Fingerprint biometric gate -- source this file, then call require_fingerprint
+# Fingerprint biometric gate: source this file, then call require_fingerprint
 #
 # Usage:
 #   source fingerprint-gate.sh
 #   require_fingerprint || exit 1
 #
-# The write_sentinel function is optional -- use it to cache approval
+# Requires: jq (pkg install jq) and termux-api (pkg install termux-api)
+# Also requires the Termux:API companion app installed from F-Droid.
+#
+# The write_sentinel function is optional. Use it to cache approval
 # for a time window so the user is not prompted on every operation.
 
 require_fingerprint() {
@@ -34,6 +37,8 @@ require_fingerprint() {
 
 # Optional: write a sentinel file after successful authentication.
 # Other hooks can check this file to skip re-prompting within a window.
+#
+# $PREFIX is Termux's install prefix, typically /data/data/com.termux/files/usr.
 #
 # Usage:
 #   require_fingerprint && write_sentinel "$PREFIX/tmp/fp-approved"

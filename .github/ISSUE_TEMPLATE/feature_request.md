@@ -6,6 +6,8 @@ labels: enhancement
 assignees: ''
 ---
 
+This is a small, one-person project. I read every request, but I cannot promise implementation or a timeline. Practical, install-path-related improvements are more likely to move than large feature additions.
+
 ## What would you like to happen?
 
 
@@ -15,7 +17,7 @@ assignees: ''
 ## Your environment
 - **Device:**
 - **Android version:**
-- **Install path:** (A: native Termux / B: proot-distro Ubuntu / C: Android Virtualization Framework -- AVF)
+- **[Install path](https://github.com/ferrumclaudepilgrim/claude-code-android/blob/main/README.md#quick-install):** (A: native Termux / B: proot-distro Ubuntu / C: Android Virtualization Framework, AVF)
 
 ## Have you checked existing resources?
 - [ ] Searched [existing issues](https://github.com/ferrumclaudepilgrim/claude-code-android/issues)

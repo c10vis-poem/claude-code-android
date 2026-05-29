@@ -4,11 +4,11 @@
 
 | Version | Supported |
 |---------|-----------|
-| 2.8.x   | Yes       |
-| 2.7.x   | Security fixes only |
-| < 2.7   | No        |
+| 2.9.x   | Yes       |
+| 2.8.x   | Security fixes only |
+| < 2.8   | No        |
 
-Only the latest release receives active updates. The previous minor version receives critical security fixes for 30 days after the new release.
+Only the latest release receives active updates. I aim to provide critical security fixes for the previous minor version for roughly 30 days after a new release, but I cannot commit to that as a firm timeline.
 
 ## What counts as a security issue
 
