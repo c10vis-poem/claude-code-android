@@ -1,0 +1,35 @@
+# Android build outputs
+*.apk
+*.aar
+*.ap_
+*.dex
+
+# Gradle build dirs
+.gradle/
+build/
+out/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+captures/
+.navigation/
+.externalNativeBuild/
+.cxx/
+
+# Local SDK path — never commit
+local.properties
+
+# Keystore files
+*.jks
+*.keystore
+
+# Profiling
+*.hprof
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Gradle wrapper jar — regenerate with: gradle wrapper --gradle-version 8.11.1
+gradle/wrapper/gradle-wrapper.jar
