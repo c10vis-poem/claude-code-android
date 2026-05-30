@@ -3,10 +3,10 @@ name: Android CI
 on:
   push:
     branches: [ main, "claude/**" ]
-    paths: [ "NeuroOmni/**" ]
+    paths: [ "NeuroOmni/**", ".github/workflows/android-ci.yml" ]
   pull_request:
     branches: [ main ]
-    paths: [ "NeuroOmni/**" ]
+    paths: [ "NeuroOmni/**", ".github/workflows/android-ci.yml" ]
 
 jobs:
   build:
