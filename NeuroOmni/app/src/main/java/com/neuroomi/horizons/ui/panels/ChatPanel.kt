@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.neuroomi.horizons.edge.EdgeModel
 import com.neuroomi.horizons.model.ChatMessage
 import com.neuroomi.horizons.model.FrontierProvider
 import com.neuroomi.horizons.model.InstanceProfile
@@ -27,13 +28,21 @@ fun ChatPanel(
     modifier: Modifier = Modifier,
     instanceProfile: InstanceProfile = InstanceProfile.Personal,
     activeProvider: FrontierProvider = FrontierProvider.VertexClaude,
-    onProviderToggle: (Boolean) -> Unit = {}
+    isEdgeMode: Boolean = false,
+    onEdgeModeToggle: (Boolean) -> Unit = {},
+    edgeModel: EdgeModel
 ) {
     var messages by remember { mutableStateOf<List<ChatMessage>>(emptyList()) }
     var inputText by remember { mutableStateOf("") }
-    var isEdgeMode by remember { mutableStateOf(activeProvider == FrontierProvider.Edge) }
+    // Non-null while a stream is in flight; null otherwise
+    var streamingContent by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+
+    // Scroll to the streaming item whenever a new token arrives
+    LaunchedEffect(streamingContent) {
+        if (streamingContent != null) listState.scrollToItem(messages.size)
+    }
 
     Column(
         modifier = modifier
@@ -43,10 +52,7 @@ fun ChatPanel(
         ProviderToggleRow(
             isEdgeMode = isEdgeMode,
             cloudProvider = activeProvider,
-            onToggle = {
-                isEdgeMode = it
-                onProviderToggle(it)
-            },
+            onToggle = onEdgeModeToggle,
             accentColor = instanceProfile.accentColor
         )
 
@@ -63,6 +69,20 @@ fun ChatPanel(
             items(messages, key = { it.id }) { msg ->
                 MessageBubble(message = msg, accentColor = instanceProfile.accentColor)
             }
+            // Streaming assistant message — shown while flow is in flight
+            streamingContent?.let { partial ->
+                item(key = "streaming") {
+                    MessageBubble(
+                        message = ChatMessage(
+                            id = -1L,
+                            role = ChatMessage.Role.Assistant,
+                            content = partial
+                        ),
+                        accentColor = instanceProfile.accentColor,
+                        isStreaming = true
+                    )
+                }
+            }
         }
 
         HorizontalDivider(color = MaterialTheme.colorScheme.outline)
@@ -70,16 +90,34 @@ fun ChatPanel(
         InputRow(
             text = inputText,
             onTextChange = { inputText = it },
+            enabled = streamingContent == null,
             onSend = {
-                val trimmed = inputText.trim()
-                if (trimmed.isNotEmpty()) {
-                    messages = messages + ChatMessage(
-                        id = System.currentTimeMillis(),
-                        role = ChatMessage.Role.User,
-                        content = trimmed
-                    )
-                    inputText = ""
-                    scope.launch { listState.animateScrollToItem(messages.size - 1) }
+                val prompt = inputText.trim()
+                if (prompt.isEmpty()) return@InputRow
+                messages = messages + ChatMessage(
+                    id = System.currentTimeMillis(),
+                    role = ChatMessage.Role.User,
+                    content = prompt
+                )
+                inputText = ""
+                scope.launch { listState.scrollToItem(messages.size - 1) }
+
+                if (isEdgeMode) {
+                    scope.launch {
+                        var accumulated = ""
+                        streamingContent = ""
+                        edgeModel.generateStream(prompt).collect { token ->
+                            accumulated += token
+                            streamingContent = accumulated
+                        }
+                        // Commit completed response to the stable list
+                        messages = messages + ChatMessage(
+                            id = System.currentTimeMillis(),
+                            role = ChatMessage.Role.Assistant,
+                            content = accumulated.trim()
+                        )
+                        streamingContent = null
+                    }
                 }
             },
             accentColor = instanceProfile.accentColor
@@ -127,7 +165,11 @@ private fun ProviderToggleRow(
 }
 
 @Composable
-private fun MessageBubble(message: ChatMessage, accentColor: Color) {
+private fun MessageBubble(
+    message: ChatMessage,
+    accentColor: Color,
+    isStreaming: Boolean = false
+) {
     val isUser = message.role == ChatMessage.Role.User
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -144,8 +186,10 @@ private fun MessageBubble(message: ChatMessage, accentColor: Color) {
                     else MaterialTheme.colorScheme.surfaceVariant,
             modifier = Modifier.widthIn(max = 300.dp)
         ) {
+            // Trailing block cursor while streaming
+            val display = if (isStreaming) "${message.content}▋" else message.content
             Text(
-                text = message.content,
+                text = display,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface
@@ -158,6 +202,7 @@ private fun MessageBubble(message: ChatMessage, accentColor: Color) {
 private fun InputRow(
     text: String,
     onTextChange: (String) -> Unit,
+    enabled: Boolean,
     onSend: () -> Unit,
     accentColor: Color
 ) {
@@ -171,6 +216,7 @@ private fun InputRow(
         OutlinedTextField(
             value = text,
             onValueChange = onTextChange,
+            enabled = enabled,
             placeholder = {
                 Text("Message…", color = MaterialTheme.colorScheme.onSurfaceVariant)
             },
@@ -190,7 +236,7 @@ private fun InputRow(
         Spacer(Modifier.width(8.dp))
         FilledIconButton(
             onClick = onSend,
-            enabled = text.isNotBlank(),
+            enabled = enabled && text.isNotBlank(),
             colors = IconButtonDefaults.filledIconButtonColors(
                 containerColor = accentColor,
                 disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
