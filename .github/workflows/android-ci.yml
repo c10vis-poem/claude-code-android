@@ -38,7 +38,19 @@ jobs:
 
       - name: Build debug APK
         working-directory: NeuroOmni
-        run: gradle :app:compileDebugKotlin assembleDebug --no-daemon
+        run: |
+          set -o pipefail
+          gradle :app:compileDebugKotlin assembleDebug --no-daemon 2>&1 | tee /tmp/build.log
+
+      - name: Show Kotlin errors on failure
+        if: failure()
+        run: |
+          echo "::group::Kotlin compiler errors (e: lines)"
+          grep "^e: " /tmp/build.log | head -40 || echo "(no e: lines found)"
+          echo "::endgroup::"
+          echo "::group::Build log — last 80 lines"
+          tail -80 /tmp/build.log
+          echo "::endgroup::"
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4

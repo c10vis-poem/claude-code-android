@@ -24,7 +24,7 @@ import com.neuroomi.horizons.edge.EdgeModel
 import com.neuroomi.horizons.model.ChatMessage
 import com.neuroomi.horizons.model.FrontierProvider
 import com.neuroomi.horizons.model.InstanceProfile
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 @Composable
@@ -74,13 +74,14 @@ fun ChatPanel(
                 MessageBubble(message = msg, accentColor = instanceProfile.accentColor)
             }
             // Streaming assistant message — shown while flow is in flight
-            streamingContent?.let { partial ->
+            val partialContent = streamingContent
+            if (partialContent != null) {
                 item(key = "streaming") {
                     MessageBubble(
                         message = ChatMessage(
                             id = -1L,
                             role = ChatMessage.Role.Assistant,
-                            content = partial
+                            content = partialContent
                         ),
                         accentColor = instanceProfile.accentColor,
                         isStreaming = true
