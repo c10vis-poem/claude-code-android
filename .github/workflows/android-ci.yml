@@ -45,12 +45,13 @@ jobs:
       - name: Show Kotlin errors on failure
         if: failure()
         run: |
-          echo "::group::Kotlin compiler errors (e: lines)"
-          grep "^e: " /tmp/build.log | head -40 || echo "(no e: lines found)"
-          echo "::endgroup::"
-          echo "::group::Build log — last 80 lines"
-          tail -80 /tmp/build.log
-          echo "::endgroup::"
+          mapfile -t elines < <(grep "^e: " /tmp/build.log | head -40)
+          if [ ${#elines[@]} -gt 0 ]; then
+            for line in "${elines[@]}"; do echo "::error::$line"; done
+          else
+            echo "::error::No 'e:' lines — dumping last 80 build log lines"
+            tail -80 /tmp/build.log | while IFS= read -r l; do echo "::error::$l"; done
+          fi
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
