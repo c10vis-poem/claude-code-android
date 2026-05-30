@@ -20,29 +20,61 @@ set -euo pipefail
 
 info(){ printf '\033[0;36m[info]\033[0m  %s\n' "$1"; }
 ok(){   printf '\033[0;32m[ok]\033[0m    %s\n' "$1"; }
+warn(){ printf '\033[0;33m[warn]\033[0m  %s\n' "$1" >&2; }
 fail(){ printf '\033[0;31m[fail]\033[0m  %s\n' "$1" >&2; exit 1; }
 
 # --- Preflight ---
 [ -z "${PREFIX:-}" ] && fail "PREFIX unset. Run this inside Termux, not adb shell."
 [ "$(uname -m)" = "aarch64" ] || fail "aarch64 only. uname -m reports: $(uname -m)"
 
-# --- Existing-install detection: hand off, do not clobber ---
-# This is the fresh-install path. If claude is already present, route the user
-# instead of overwriting their setup.
+# Android's low-memory killer can SIGKILL the whole process tree during the heavy
+# glibc install if this runs inside a claude session under memory pressure. A
+# plain Termux shell is safer.
+if [ -n "${CLAUDE_CODE_EXECPATH:-}" ] || [ -n "${CLAUDECODE:-}" ]; then
+  warn "You appear to be running inside a claude session; Android may kill the"
+  warn "install under memory pressure. A plain Termux shell is safer."
+  read -r -p "Continue anyway? [y/N] " LMK
+  case "${LMK,,}" in y|yes) ;; *) fail "Stopped. Open a fresh Termux session and re-run." ;; esac
+fi
+
+# --- Classify any prior claude state, then route or pick an install mode ---
+# One classifier covers every real prior state instead of a blunt
+# "anything-exists, refuse" gate. Outcomes:
+#   already_v29  complete v2.9.0 wrapper present        -> nothing to do
+#   pinned       npm @anthropic-ai/claude-code present  -> migrate.sh (safe npm removal)
+#   inplace      official native install, or leftover ~/.claude with no working
+#                binary                                 -> install here, preserving data
+#   fresh        no claude footprint at all             -> clean install
 CC_NPM_PKG="$PREFIX/lib/node_modules/@anthropic-ai/claude-code"
 CC_BINLINK="$PREFIX/bin/claude"
 CC_VERSIONS="$HOME/.local/share/claude/versions"
-if [ -d "$CC_VERSIONS" ] && ls "$CC_VERSIONS"/*.*.* >/dev/null 2>&1 && [ -f "$CC_BINLINK" ] && [ ! -L "$CC_BINLINK" ]; then
+
+cc_has_versions(){ [ -d "$CC_VERSIONS" ] && ls "$CC_VERSIONS"/*.*.* >/dev/null 2>&1; }
+cc_is_wrapper(){ [ -f "$CC_BINLINK" ] && [ ! -L "$CC_BINLINK" ]; }
+cc_is_npm_link(){ [ -L "$CC_BINLINK" ] && readlink "$CC_BINLINK" | grep -q 'node_modules/@anthropic-ai/claude-code'; }
+
+if cc_has_versions && cc_is_wrapper; then
+  state="already_v29"
+elif [ -d "$CC_NPM_PKG" ] || cc_is_npm_link; then
+  state="pinned"
+elif cc_has_versions || [ -e "$HOME/.local/bin/claude" ] || [ -d "$HOME/.local/share/claude" ] \
+     || [ -e "$HOME/.claude" ] || [ -e "$HOME/.claude.json" ]; then
+  state="inplace"
+else
+  state="fresh"
+fi
+
+if [ "$state" = already_v29 ]; then
   ok "claude is already installed via the v2.9.0 wrapper. Nothing to do here."
   info "The wrapper auto-updates daily. Force a check now with: claude --update-now"
   exit 0
 fi
-if [ -d "$CC_NPM_PKG" ] || { [ -L "$CC_BINLINK" ] && readlink "$CC_BINLINK" | grep -q 'node_modules/@anthropic-ai/claude-code'; }; then
+if [ "$state" = pinned ]; then
   info "An older pinned v2.x install is present."
   info "To upgrade WITHOUT losing your sessions, login, or settings, use the"
   info "migration script instead of this installer:"
   printf '\n    curl -fsSL https://raw.githubusercontent.com/ferrumclaudepilgrim/claude-code-android/main/migrate.sh -o migrate.sh\n    bash migrate.sh\n\n'
-  info "This installer is fresh-only and will not overwrite an existing install."
+  info "This installer does not remove npm installs; migrate.sh does that safely."
   exit 0
 fi
 
@@ -60,9 +92,9 @@ cat <<'Q1'
 Q1. Is this a fresh Termux install?
 
   Brand new Termux installs need their package index brought up to date
-  before installing anything else. The script will run pkg update + pkg
-  upgrade, taking the new defaults for any system config files that ship
-  updates. Safe on a fresh Termux: nothing of yours to lose yet.
+  before installing anything else. The script refreshes the package index
+  and upgrades base packages, taking the new defaults for any system config
+  files that ship updates. Safe on a fresh Termux: nothing of yours to lose yet.
 
   If you have been using Termux a while and customized system configs
   under $PREFIX/etc/ (sshd_config, openssl.cnf, etc.), say no and the
@@ -113,39 +145,65 @@ esac
 ok "Q2: $([ $RECOMMENDED = 1 ] && echo yes || echo no)"
 echo
 
-# --- Sanity: clean state ---
-[ -d "$PREFIX/glibc" ]                 && fail "\$PREFIX/glibc already exists. Run 'termux-reset' for a clean install."
-[ -e "$PREFIX/bin/claude" ]            && fail "\$PREFIX/bin/claude already exists. This installer is fresh-only."
-[ -e "$HOME/.local/share/claude" ]     && fail "\$HOME/.local/share/claude already exists. This installer is fresh-only."
-[ -e "$HOME/.claude" ]                 && fail "\$HOME/.claude already exists. This installer is fresh-only."
-ok "clean state confirmed"
+# --- Pre-install: fresh asserts, or in-place preservation ---
+if [ "$state" = inplace ]; then
+  # A prior claude config is present (official native install, or a leftover
+  # ~/.claude after a removed claude). Install in place and keep the user's
+  # data: ~/.claude (sessions, login, agents, hooks) is never removed, and
+  # settings.json is merged, not overwritten.
+  RUNNING="$( { pgrep -x claude; pgrep -f '@anthropic-ai/claude-code'; } 2>/dev/null | sort -un | grep -vw "$$" | grep -vw "${PPID:-0}" | tr '\n' ' ' || true )"
+  if [ -n "${RUNNING// /}" ]; then
+    fail "claude appears to be running (PIDs: $RUNNING). Close all claude sessions, then re-run."
+  fi
+  if [ -e "$HOME/.claude/settings.json" ]; then
+    cp -a "$HOME/.claude/settings.json" "$HOME/.claude/settings.json.pre-v29.bak" 2>/dev/null \
+      && ok "backed up existing settings.json -> settings.json.pre-v29.bak"
+  fi
+  ok "existing claude config will be preserved (installing in place)"
+else
+  # Fresh: the classifier already proved there is no claude footprint; these are
+  # belt-and-suspenders guards against a race or a partial earlier run.
+  [ -e "$PREFIX/bin/claude" ]        && fail "\$PREFIX/bin/claude already exists. Use migrate.sh, or 'termux-reset' for a clean install."
+  [ -e "$HOME/.local/share/claude" ] && fail "\$HOME/.local/share/claude already exists. Use migrate.sh for an in-place upgrade."
+  ok "clean state confirmed"
+fi
 
 # --- apt non-interactive options based on Q1 ---
 export DEBIAN_FRONTEND=noninteractive
 if [ "$FRESH" = 1 ]; then
-  PKG_OPTS="-y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confnew"
+  APT_OPTS="-y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confnew"
 else
-  PKG_OPTS="-y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"
+  APT_OPTS="-y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"
+fi
+
+# --- Pin a Termux mirror if none is selected (avoids an interactive stall) ---
+# On a brand-new Termux with no chosen mirror, the package tooling can stop on a
+# mirror-selection prompt. Selecting the default first keeps the run unattended.
+# Only acts when nothing is chosen yet, so it never overrides a working mirror.
+if [ ! -e "$PREFIX/etc/termux/chosen_mirrors" ] && [ -e "$PREFIX/etc/termux/mirrors/default" ]; then
+  ln -sf "$PREFIX/etc/termux/mirrors/default" "$PREFIX/etc/termux/chosen_mirrors" 2>/dev/null || true
 fi
 
 # --- Termux: bring base packages current ---
-info "pkg update"
-pkg update $PKG_OPTS >/dev/null || fail "pkg update failed"
+# apt-get (not pkg/apt) for the scripted steps: apt-get has a stable CLI and
+# does not print apt's "does not have a stable CLI interface" script warning.
+info "apt-get update"
+apt-get update $APT_OPTS >/dev/null || fail "apt-get update failed"
 
-info "pkg upgrade (fixes any bootstrap/current library mismatches)"
-pkg upgrade $PKG_OPTS >/dev/null || fail "pkg upgrade failed"
+info "apt-get full-upgrade (fixes any bootstrap/current library mismatches)"
+apt-get full-upgrade $APT_OPTS >/dev/null || fail "apt-get full-upgrade failed"
 
-info "pkg install curl jq"
-pkg install $PKG_OPTS curl jq >/dev/null || fail "pkg install curl/jq failed"
+info "apt-get install curl jq"
+apt-get install $APT_OPTS curl jq >/dev/null || fail "apt-get install curl/jq failed"
 ok "base tools installed"
 
 # --- glibc-runner + patchelf-glibc ---
-info "pkg install glibc-repo (enables Termux glibc-packages source)"
-pkg install $PKG_OPTS glibc-repo >/dev/null || fail "glibc-repo install failed"
-pkg update $PKG_OPTS >/dev/null || fail "pkg update after glibc-repo failed"
+info "apt-get install glibc-repo (enables Termux glibc-packages source)"
+apt-get install $APT_OPTS glibc-repo >/dev/null || fail "glibc-repo install failed"
+apt-get update $APT_OPTS >/dev/null || fail "apt-get update after glibc-repo failed"
 
-info "pkg install glibc-runner patchelf-glibc (~50 MB download)"
-pkg install $PKG_OPTS glibc-runner patchelf-glibc >/dev/null || fail "glibc-runner install failed"
+info "apt-get install glibc-runner patchelf-glibc (~50 MB download)"
+apt-get install $APT_OPTS glibc-runner patchelf-glibc >/dev/null || fail "glibc-runner install failed"
 
 PATCHELF="$PREFIX/glibc/bin/patchelf"
 GLIBC_LD="$PREFIX/glibc/lib/ld-linux-aarch64.so.1"
@@ -158,6 +216,9 @@ info "resolving latest claude version from npm registry"
 LATEST="$(curl -fsSL --max-time 10 https://registry.npmjs.org/@anthropic-ai/claude-code/latest 2>/dev/null | jq -r .version 2>/dev/null)"
 if [ -z "$LATEST" ] || [ "$LATEST" = "null" ]; then
   fail "could not query npm registry for the latest claude version"
+fi
+if ! printf '%s' "$LATEST" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+  fail "npm registry returned an unexpected version string: $LATEST"
 fi
 ok "latest claude version: $LATEST"
 
@@ -192,18 +253,35 @@ mv "$BINARY.tmp" "$BINARY"
 ok "binary patched and installed at $BINARY"
 
 # --- ~/.claude/settings.json ---
-# autoUpdates:false disables claude's in-process updater. The wrapper
-# handles updates instead. env.LD_PRELOAD restores Termux's syscall
-# shim for subprocesses claude spawns (Bash tool, npm, etc.).
-cat > "$HOME/.claude/settings.json" <<EOF
+# autoUpdates:false disables claude's in-process updater; the wrapper handles
+# updates instead. No env.LD_PRELOAD: a bionic preload set here leaks into the
+# Bash tool's subprocesses and breaks claude's bundled grep/rg/ugrep, which
+# re-exec the raw glibc binary and then mis-resolve libc. The wrapper already
+# clears LD_PRELOAD before exec, so the binary itself is unaffected.
+# Known trade-off: without the preload, claude's subprocesses also lose
+# termux-exec, so a directly-run "#!/usr/bin/env ..." script cannot find its
+# interpreter (Android has no /usr/bin/env). Grep correctness wins; the common
+# cases (bash/python/node FILE, and tools called by name) still work.
+SF="$HOME/.claude/settings.json"
+if [ -e "$SF" ]; then
+  TMP="$(mktemp "${TMPDIR:-$PREFIX/tmp}/cc-settings.XXXXXX")"
+  if jq 'del(.env.LD_PRELOAD) | .autoUpdates=false | if (.env // {}) == {} then del(.env) else . end' "$SF" > "$TMP" 2>/dev/null; then
+    cat "$TMP" > "$SF"     # write THROUGH a possible symlink rather than replacing it
+    rm -f "$TMP"
+    ok "settings.json updated (existing keys preserved; stale LD_PRELOAD removed)"
+  else
+    rm -f "$TMP"
+    warn "settings.json is not valid JSON; leaving it untouched."
+    warn "Set  \"autoUpdates\": false  by hand and remove any env.LD_PRELOAD."
+  fi
+else
+  cat > "$SF" <<'EOF'
 {
-  "autoUpdates": false,
-  "env": {
-    "LD_PRELOAD": "$PREFIX/lib/libtermux-exec-ld-preload.so"
-  }
+  "autoUpdates": false
 }
 EOF
-ok "settings.json written"
+  ok "settings.json written"
+fi
 
 # --- Wrapper at $PREFIX/bin/claude ---
 # Once per 24h on launch, checks npm for a newer version. If found,
@@ -244,7 +322,7 @@ fi
 
 if [ "\$should_check" = 1 ]; then
   latest=\$(curl -fsSL --max-time 5 https://registry.npmjs.org/@anthropic-ai/claude-code/latest 2>/dev/null | jq -r .version 2>/dev/null || echo "")
-  if [ -n "\$latest" ] && [ "\$latest" != "null" ]; then
+  if [ -n "\$latest" ] && printf '%s' "\$latest" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\$'; then
     new_bin="\$VERSIONS_DIR/\$latest"
     if [ ! -f "\$new_bin" ]; then
       dl="https://downloads.claude.ai/claude-code-releases/\$latest"
@@ -322,7 +400,7 @@ fi
 # --- Recommended packages (Q2) ---
 if [ "$RECOMMENDED" = 1 ]; then
   info "installing recommended packages (this is the longest step)"
-  pkg install $PKG_OPTS git gh wget jq python openssh tree proot \
+  apt-get install $APT_OPTS git gh wget jq python openssh tree proot \
     termux-api proot-distro make clang file xxd htop bat fzf >/dev/null \
     || fail "recommended package install failed"
   ok "recommended packages installed"

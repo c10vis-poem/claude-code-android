@@ -24,8 +24,8 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/Android-8%2B-brightgreen.svg" alt="Android 8+">
-  <img src="https://img.shields.io/badge/Version-2.9.0-blue.svg" alt="Version 2.9.0">
-  <img src="https://img.shields.io/badge/Last%20Verified-2026--05--29-lightgrey.svg" alt="Last Verified 2026-05-29">
+  <img src="https://img.shields.io/badge/Version-2.9.1-blue.svg" alt="Version 2.9.1">
+  <img src="https://img.shields.io/badge/Last%20Verified-2026--05--30-lightgrey.svg" alt="Last Verified 2026-05-30">
 </p>
 
 <p align="center">
@@ -69,6 +69,9 @@ The repo documents three install paths. Pick one before pasting commands:
 - **Path B (proot-Ubuntu).** Latest Claude Code installed via Anthropic's official installer inside a full Ubuntu environment. Heavier (~2 GB on disk) but `process.platform` (the runtime identifier of the host operating system, which some tools branch on) reports `linux` and standard Linux conventions all apply.
 - **Path C (AVF Linux VM, experimental, Pixel 6+ on Android 16+ only).** Real Linux kernel via Android's built-in hypervisor. Doesn't use Termux at all.
 
+> [!TIP]
+> **From the maintainer:** Native Termux (Path A) works and is great for those who need it, especially with hardware or storage limitations. I highly recommend running it in proot-Ubuntu (Path B) though: it is the most native way I could get it running since the 2.1.112 regression. Until that changes, it is up to the community to keep Claude Code alive and updating on Termux.
+
 For a side-by-side comparison: **[docs/install.md#choose-your-path](docs/install.md#choose-your-path)**.
 
 ### Path A: Native Termux
@@ -87,6 +90,8 @@ claude
 [`install.sh`](install.sh) installs Termux's `glibc-runner` and `patchelf-glibc`, downloads the official linux-arm64 claude binary from Anthropic's CDN, verifies the checksum against the published manifest, patches the binary's ELF interpreter (ELF is the Executable and Linkable Format used by Linux binaries; the interpreter is the dynamic linker the kernel invokes to load the binary, and patching it points the binary at the Termux-provided one) so Android can run it, and drops a wrapper at `$PREFIX/bin/claude` (where `$PREFIX` is Termux's prefix directory, typically `/data/data/com.termux/files/usr`) that auto-checks for new claude releases once per day on launch. The wrapper accepts a `--update-now` flag to force an immediate check; this is a Path A wrapper feature, not a built-in Claude Code flag. Want to read it first? **[View install.sh on GitHub](install.sh)** before running.
 
 Full walkthrough: **[docs/install.md](docs/install.md)**.
+
+Prefer the smallest, simplest install and do not need current claude? [`install-pinned.sh`](install-pinned.sh) pins Claude Code `2.1.112` (the last version with a JS entry point) with no binary patching and no auto-updating wrapper. It stays at that version; `install.sh` above is the default for current claude.
 
 > [!IMPORTANT]
 > **Path A runs on a compatibility workaround.** Anthropic ships Claude Code as a glibc-linked Linux binary, with no Android build. Termux runs on Android's Bionic C library, so any version past the old pinned `2.1.112` runs here only because `install.sh` patches the official linux-arm64 binary to load through Termux's glibc-runner. It works and stays current, but it is a shim, not native support.
@@ -162,7 +167,8 @@ The Terminal app's gear icon opens Settings, with Memory size, Display resolutio
 | Item | Does |
 |------|-------------|
 | [install.sh](install.sh) | Path A installer (patched linux-arm64 binary + auto-updating wrapper) |
-| [migrate.sh](migrate.sh) | Upgrade a pinned v2.x install to v2.9.0, preserving sessions, login, and settings |
+| [install-pinned.sh](install-pinned.sh) | Opt-in pinned installer (Claude Code 2.1.112, no patched binary, no auto-update); stays pinned |
+| [migrate.sh](migrate.sh) | Upgrade a pinned v2.x install to the current auto-updating architecture, preserving sessions, login, and settings |
 | [scripts/](scripts/) | `check-termux-env.sh`, `config-validator.sh` |
 | [.claude/skills/](.claude/skills/) | `minimum-viable`, `scope-framing`, `termux-safe` |
 | [tests/](tests/) | `verify-claims.sh` (per-claim PASS/FAIL/SKIP harness); `ssrf-guard-tests.sh` |
@@ -180,12 +186,12 @@ The Terminal app's gear icon opens Settings, with Memory size, Display resolutio
 
 ## Device Compatibility
 
-Per-device last-verified dates below. The Path A architecture changed in v2.9.0 (from a pinned 2.1.112 npm install to a patched native linux-arm64 binary with auto-updating wrapper). Devices marked `v2.9.0` use the new architecture; devices marked `v2.x` retain the older verification under the previous pinned install (Path A v2.9.0 is expected to work, but is not yet re-verified on every device).
+Per-device last-verified dates below. The Path A architecture changed in v2.9.0 (from a pinned 2.1.112 npm install to a patched native linux-arm64 binary with auto-updating wrapper). Devices marked `v2.9.x` use the new architecture; devices marked `v2.x` retain the older verification under the previous pinned install (the current Path A is expected to work, but is not yet re-verified on every device). The v2.9.1 device runs were manual installs, not the `verify-claims.sh` transcript harness, so they are marked doc-only.
 
 | Device | Android | Path A | Path B | Last Verified | Test artifact |
 |--------|---------|--------|--------|---------------|---------------|
-| Google Pixel 10 Pro | 17 | ✅ (v2.9.0, 2026-05-28) | ✅ | 2026-05-28 | [pixel-10-pro-android17.txt](tests/results/pixel-10-pro-android17.txt) |
-| Google Pixel 6 | 17 | (pending v2.9.0 retest) | ✅ | 2026-05-16 (v2.x) | [pixel-6-android13.txt](tests/results/pixel-6-android13.txt) (v2.x) |
+| Google Pixel 10 Pro | 17 | ✅ (v2.9.0, 2026-05-28; v2.9.1 via migrate.sh, 2026-05-30) | ✅ | 2026-05-30 | [pixel-10-pro-android17.txt](tests/results/pixel-10-pro-android17.txt) (v2.9.0) |
+| Google Pixel 6 | 17 | ✅ (v2.9.1 fresh install, 2026-05-30) | ✅ | 2026-05-30 | doc-only (no current `tests/results/` file) |
 | Motorola Moto G7 Power | 10 | (pending v2.9.0 retest) | ✅ | 2026-05-16 (v2.x) | [moto-g(7)-power-android10.txt](tests/results/moto-g(7)-power-android10.txt) (v2.x) |
 | Samsung Galaxy S7 (SM-G930P) | 8 | (pending v2.9.0 retest) | ✅ (manual URL paste) | 2026-05-16 (v2.x) | [sm-g930p-android8.0.0.txt](tests/results/sm-g930p-android8.0.0.txt) (v2.x) |
 | Samsung Galaxy S26 Ultra | 16 | ✅ (v2.9.0, 2026-05-29, via migrate.sh) | ✅ | 2026-05-29 | doc-only (no current `tests/results/` file) |

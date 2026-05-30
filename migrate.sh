@@ -67,7 +67,7 @@ if [ -n "${RUNNING// /}" ]; then
   fail "claude appears to be running (PIDs: $RUNNING). Close all claude sessions, then re-run."
 fi
 
-# A live proot session: the pkg-upgrade step can update proot packages under it.
+# A live proot session: the package-upgrade step can update proot packages under it.
 if pgrep -x proot >/dev/null 2>&1; then
   warn "A proot session is running. The package-upgrade step can update proot packages underneath it."
   read -r -p "Continue anyway? [y/N] " PR
@@ -96,6 +96,11 @@ elif [ -d "$NPM_PKG" ]; then
   state="pinned"
 elif [ -L "$BINLINK" ] && readlink "$BINLINK" | grep -q 'node_modules/@anthropic-ai/claude-code'; then
   state="pinned"
+elif [ -d "$VERSIONS_DIR" ] && ls "$VERSIONS_DIR"/*.*.* >/dev/null 2>&1 && [ ! -e "$BINLINK" ]; then
+  # Official native install: a versioned binary under ~/.local/share/claude with
+  # a ~/.local/bin launcher, but no $PREFIX/bin wrapper and no npm package.
+  # claude treats it as native; convert it to the wrapper in place, keeping data.
+  state="native"
 elif [ ! -e "$BINLINK" ] && [ ! -d "$NPM_PKG" ] && ! command -v claude >/dev/null 2>&1; then
   state="fresh"
 fi
@@ -119,7 +124,11 @@ case "$state" in
 esac
 
 OLD_VER="$(claude --version 2>&1 | head -1 || echo unknown)"
-ok "Detected pinned v2.x install (reports: $OLD_VER)."
+if [ "$state" = native ]; then
+  ok "Detected an official native install (reports: $OLD_VER). Converting it in place."
+else
+  ok "Detected pinned v2.x install (reports: $OLD_VER)."
+fi
 echo
 
 # --- Q: recommended packages ---
@@ -142,7 +151,7 @@ cat <<'SUMMARY'
 This will:
   1. Back up ~/.claude, ~/.claude.json, and ~/.bashrc to a timestamped folder.
   2. Download, verify, and patch the latest claude linux-arm64 binary.
-  3. Remove the old pinned v2.x install (the binary only).
+  3. Replace the old claude binary (the npm package is removed only if present).
   4. Install the auto-updating wrapper.
   5. Merge your settings.json, preserving your existing hooks/permissions/env.
 
@@ -199,20 +208,28 @@ ok "backup complete (restore: bash $BACKUP_DIR/restore.sh)"
 
 # --- apt options: existing user, preserve their configs ---
 export DEBIAN_FRONTEND=noninteractive
-PKG_OPTS="-y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"
+APT_OPTS="-y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"
 
-info "pkg update"
-pkg update $PKG_OPTS >/dev/null || fail "pkg update failed"
-info "pkg upgrade"
-pkg upgrade $PKG_OPTS >/dev/null || fail "pkg upgrade failed"
-info "pkg install curl jq"
-pkg install $PKG_OPTS curl jq >/dev/null || fail "pkg install curl/jq failed"
+# Pin a Termux mirror if none is selected (only-if-missing; never overrides a
+# working mirror), so the package step cannot stall on a mirror-selection prompt.
+if [ ! -e "$PREFIX/etc/termux/chosen_mirrors" ] && [ -e "$PREFIX/etc/termux/mirrors/default" ]; then
+  ln -sf "$PREFIX/etc/termux/mirrors/default" "$PREFIX/etc/termux/chosen_mirrors" 2>/dev/null || true
+fi
 
-info "pkg install glibc-repo"
-pkg install $PKG_OPTS glibc-repo >/dev/null || fail "glibc-repo install failed"
-pkg update $PKG_OPTS >/dev/null || fail "pkg update after glibc-repo failed"
-info "pkg install glibc-runner patchelf-glibc (~50 MB)"
-pkg install $PKG_OPTS glibc-runner patchelf-glibc >/dev/null || fail "glibc-runner install failed"
+# apt-get (not pkg/apt) for the scripted steps: apt-get has a stable CLI and
+# does not print apt's "does not have a stable CLI interface" script warning.
+info "apt-get update"
+apt-get update $APT_OPTS >/dev/null || fail "apt-get update failed"
+info "apt-get full-upgrade"
+apt-get full-upgrade $APT_OPTS >/dev/null || fail "apt-get full-upgrade failed"
+info "apt-get install curl jq"
+apt-get install $APT_OPTS curl jq >/dev/null || fail "apt-get install curl/jq failed"
+
+info "apt-get install glibc-repo"
+apt-get install $APT_OPTS glibc-repo >/dev/null || fail "glibc-repo install failed"
+apt-get update $APT_OPTS >/dev/null || fail "apt-get update after glibc-repo failed"
+info "apt-get install glibc-runner patchelf-glibc (~50 MB)"
+apt-get install $APT_OPTS glibc-runner patchelf-glibc >/dev/null || fail "glibc-runner install failed"
 
 PATCHELF="$PREFIX/glibc/bin/patchelf"
 GLIBC_LD="$PREFIX/glibc/lib/ld-linux-aarch64.so.1"
@@ -259,17 +276,23 @@ LD_PRELOAD='' "$PATCHELF" --set-interpreter "$GLIBC_LD" "$BINARY.tmp" \
 mv "$BINARY.tmp" "$BINARY"
 ok "new binary staged at $BINARY"
 
-# --- Remove the old pinned v2.x install (only now that the new binary is verified) ---
-info "removing the old pinned v2.x install"
-if [ -d "$NPM_PKG" ]; then chmod -R u+w "$NPM_PKG" 2>/dev/null || true; fi
-if command -v npm >/dev/null 2>&1; then npm uninstall -g @anthropic-ai/claude-code >/dev/null 2>&1 || true; fi
-if [ -d "$NPM_PKG" ]; then rm -rf "$NPM_PKG" 2>/dev/null || true; fi
-if [ -L "$BINLINK" ]; then
-  case "$(readlink "$BINLINK")" in
-    *node_modules/@anthropic-ai/claude-code*) rm -f "$BINLINK" ;;
-  esac
+# --- Remove the old install (only now that the new binary is verified) ---
+# The official native install has no npm package and no $PREFIX/bin symlink, so
+# for state=native this whole block is a no-op; the wrapper is written next.
+if [ "$state" = pinned ]; then
+  info "removing the old pinned v2.x install"
+  if [ -d "$NPM_PKG" ]; then chmod -R u+w "$NPM_PKG" 2>/dev/null || true; fi
+  if command -v npm >/dev/null 2>&1; then npm uninstall -g @anthropic-ai/claude-code >/dev/null 2>&1 || true; fi
+  if [ -d "$NPM_PKG" ]; then rm -rf "$NPM_PKG" 2>/dev/null || true; fi
+  if [ -L "$BINLINK" ]; then
+    case "$(readlink "$BINLINK")" in
+      *node_modules/@anthropic-ai/claude-code*) rm -f "$BINLINK" ;;
+    esac
+  fi
+  ok "old install removed"
+else
+  ok "no npm package to remove (native install)"
 fi
-ok "old install removed"
 
 # --- Wrapper at $PREFIX/bin/claude  (KEEP BYTE-IDENTICAL TO install.sh) ---
 cat > "$WRAPPER" <<EOF
@@ -303,7 +326,7 @@ fi
 
 if [ "\$should_check" = 1 ]; then
   latest=\$(curl -fsSL --max-time 5 https://registry.npmjs.org/@anthropic-ai/claude-code/latest 2>/dev/null | jq -r .version 2>/dev/null || echo "")
-  if [ -n "\$latest" ] && [ "\$latest" != "null" ]; then
+  if [ -n "\$latest" ] && printf '%s' "\$latest" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\$'; then
     new_bin="\$VERSIONS_DIR/\$latest"
     if [ ! -f "\$new_bin" ]; then
       dl="https://downloads.claude.ai/claude-code-releases/\$latest"
@@ -379,30 +402,32 @@ else
 fi
 
 # --- Merge settings.json (symlink-safe; preserve existing keys) ---
+# autoUpdates:false hands updates to the wrapper. No env.LD_PRELOAD: a bionic
+# preload there leaks into the Bash tool's subprocesses and breaks claude's
+# bundled grep/rg/ugrep. Any stale LD_PRELOAD from an earlier version is removed.
+# Known trade-off: without the preload, claude's subprocesses also lose
+# termux-exec, so a directly-run "#!/usr/bin/env ..." script cannot find its
+# interpreter (Android has no /usr/bin/env). Grep correctness wins.
 SF="$HOME/.claude/settings.json"
-LP="$PREFIX/lib/libtermux-exec-ld-preload.so"
 if [ -e "$SF" ]; then
   TMP="$(mktemp "${TMPDIR:-$PREFIX/tmp}/cc-settings.XXXXXX")"
-  if jq --arg lp "$LP" '.autoUpdates=false | .env=((.env // {}) + {"LD_PRELOAD":$lp})' "$SF" > "$TMP" 2>/dev/null; then
+  if jq 'del(.env.LD_PRELOAD) | .autoUpdates=false | if (.env // {}) == {} then del(.env) else . end' "$SF" > "$TMP" 2>/dev/null; then
     # Write THROUGH the file (cat, not mv) so a symlink is followed, not replaced.
     cat "$TMP" > "$SF"
     rm -f "$TMP"
     if [ -L "$SF" ]; then
       warn "settings.json is a symlink -> $(readlink -f "$SF"). Updated the target in place; if it is version-controlled, review and commit the change."
     fi
-    ok "settings.json merged (your existing keys preserved)"
+    ok "settings.json merged (your existing keys preserved; stale LD_PRELOAD removed)"
   else
     rm -f "$TMP"
     warn "settings.json is not valid JSON; leaving it untouched to avoid corrupting it."
-    warn "Set  \"autoUpdates\": false  and  \"env\": { \"LD_PRELOAD\": \"$LP\" }  by hand."
+    warn "Set  \"autoUpdates\": false  by hand and remove any env.LD_PRELOAD."
   fi
 else
-  cat > "$SF" <<SET
+  cat > "$SF" <<'SET'
 {
-  "autoUpdates": false,
-  "env": {
-    "LD_PRELOAD": "$LP"
-  }
+  "autoUpdates": false
 }
 SET
   ok "settings.json written"
@@ -411,7 +436,7 @@ fi
 # --- Recommended packages ---
 if [ "$RECOMMENDED" = 1 ]; then
   info "installing recommended packages (this is the longest step)"
-  pkg install $PKG_OPTS git gh wget jq python openssh tree proot \
+  apt-get install $APT_OPTS git gh wget jq python openssh tree proot \
     termux-api proot-distro make clang file xxd htop bat fzf >/dev/null \
     || fail "recommended package install failed"
   ok "recommended packages installed"
@@ -422,7 +447,14 @@ hash -r 2>/dev/null || true
 VER="$(claude --version 2>&1)" || fail "claude --version failed: $VER"
 RES="$(command -v claude || true)"
 if [ "$RES" != "$WRAPPER" ]; then warn "claude resolves to $RES (expected $WRAPPER)"; fi
-SESS="$(ls "$HOME/.claude/projects" 2>/dev/null | wc -l | tr -d ' ')"
+# Count preserved sessions. Guard the directory: a claude that was installed
+# but never launched has no projects/ yet, and under 'set -e' a bare ls on a
+# missing path would abort the run at the very end (after the real work is done).
+if [ -d "$HOME/.claude/projects" ]; then
+  SESS="$(ls -1 "$HOME/.claude/projects" 2>/dev/null | wc -l | tr -d ' ')"
+else
+  SESS=0
+fi
 ok "claude --version: $VER"
 
 # --- bashrc stale-line detection (suggest only; never auto-edit) ---

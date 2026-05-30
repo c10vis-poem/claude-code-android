@@ -2,7 +2,7 @@
 
 A complete, reproducible guide to installing Claude Code (Anthropic's AI coding assistant) on Android. Three install paths: pick one. Path A is the smallest install and auto-updates on launch. Path B gives you a full Ubuntu environment. Path C runs a real Linux kernel via AVF (Android Virtualization Framework, the built-in hypervisor that ships with Android 16 on supported devices) and requires Pixel 6+ on Android 16+.
 
-Path A was rewritten in v2.9.0 to install the official linux-arm64 claude binary with an auto-updating wrapper. The earlier install pinned a specific npm package version (npm is Anthropic's chosen distribution channel for Claude Code). That pin is no longer needed. See [Why v2.9.0](#why-v290) at the bottom of this file for the history.
+Path A was rewritten in v2.9.0 to install the official linux-arm64 claude binary with an auto-updating wrapper. The earlier install pinned a specific npm package version (npm is Anthropic's chosen distribution channel for Claude Code). That pin is no longer needed for current claude, though it remains available as an opt-in for a minimal install: [`install-pinned.sh`](../install-pinned.sh) pins `2.1.112` with no binary patching and no auto-updating wrapper. See [Why v2.9.0](#why-v290) at the bottom of this file for the history.
 
 ---
 
@@ -95,7 +95,7 @@ After the questions, the installer:
 6. Downloads the linux-arm64 claude binary from `https://downloads.claude.ai/claude-code-releases/<version>/linux-arm64/claude` (~233 MB)
 7. Verifies the binary's sha256 checksum (sha256 is a cryptographic hash function; comparing the hash of the downloaded file against the published value confirms the file arrived intact and unmodified) against the published manifest (a `manifest.json` Anthropic publishes alongside each release, containing per-platform checksums)
 8. Patches the binary's ELF interpreter to point at glibc-runner's `ld.so`
-9. Writes `~/.claude/settings.json` with `"autoUpdates": false` (the wrapper handles updates) and `env.LD_PRELOAD` set so subprocesses claude spawns get Termux's syscall-translation shim. `LD_PRELOAD` is a Linux environment variable that names a shared library to load before any other library; setting it in claude's settings causes the shim to be injected into every subprocess claude spawns.
+9. Writes `~/.claude/settings.json` with `"autoUpdates": false` so claude's in-process updater stays off (the wrapper handles updates). It does not set `env.LD_PRELOAD`, and removes any stale one a prior install left, because that preload leaked into claude's subprocesses and broke its bundled grep, rg, and ugrep. If a `settings.json` already exists, it is merged in place, keeping your other keys.
 10. Drops the auto-updating wrapper at `$PREFIX/bin/claude`
 11. If you answered yes to Q2, installs the recommended packages
 
@@ -115,10 +115,10 @@ On first launch, claude opens its welcome wizard (theme selection, project trust
 
 On each `claude` invocation, the wrapper:
 
-1. Checks if it has been at least 24 hours since the last update check (using a stamp file at `~/.local/share/claude/versions/.last-update-check`). If yes, queries the npm registry for the latest version. If a newer version is published, downloads it, verifies the checksum, patches it, swaps it in, and refreshes the `~/.local/bin/claude` symlink. The previous version is kept for rollback; older versions are removed.
+1. Checks if it has been at least 24 hours since the last update check (using a stamp file at `~/.local/share/claude/versions/.last-update-check`). If yes, queries the npm registry for the latest version. If a newer version is published, downloads it, verifies the checksum, patches it, and moves it into `~/.local/share/claude/versions/`. The wrapper runs the highest installed version on each launch. The previous version is kept for rollback; older ones are removed.
 2. Self-heals: if the binary's ELF interpreter is wrong (because something replaced the binary outside the wrapper's knowledge), re-patches it before launch.
 3. Unsets `LD_PRELOAD`. Termux's syscall shim must not be loaded when the glibc binary starts, or it crashes on an unversioned libc.so dependency.
-4. Execs the binary, filtering claude's cosmetic "Native installation exists" startup warning (a false positive: the wrapper is the intended entry point, not the `~/.local/bin` symlink).
+4. Execs the binary. The wrapper passes claude's output through unchanged. claude itself may print a cosmetic "Native installation" startup notice if `~/.local/bin` is not yet on your PATH; it is harmless.
 
 Force an immediate update check at any time:
 
@@ -208,7 +208,7 @@ ls -la $PREFIX/bin/claude
 # Latest installed binary
 ls $HOME/.local/share/claude/versions/
 
-# Settings has autoUpdates:false and env.LD_PRELOAD
+# Settings has autoUpdates:false (and no env.LD_PRELOAD)
 cat $HOME/.claude/settings.json
 
 # Wrapper resolves correctly via PATH (not claude's self-installed symlink)

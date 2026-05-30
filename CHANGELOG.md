@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.9.1] - 2026-05-30
+
+A bug-fix release for the v2.9.0 Path A architecture. No architecture change. It makes `install.sh` and `migrate.sh` work on a device that already had claude, brings back claude's bundled grep, rg, and ugrep, and stops the package step from printing a warning on every call. It also adds an opt-in pinned installer for people who want the smallest setup.
+
+Verified on 2026-05-30, all on Android 17. A fresh `install.sh` on a Google Pixel 6 ran end to end: claude launches, and grep, rg, and ugrep all work. On a Google Pixel 10 Pro, `migrate.sh` converted an official native install and `install.sh` installed in place over a leftover config, both keeping login and settings. On the Pixel 6, `install-pinned.sh` then `migrate.sh` took a pinned 2.1.112 install up to the 2.9.x wrapper. Older devices (Galaxy S7, Moto G7 Power) are not re-verified.
+
+### Fixed
+
+- claude's bundled grep, rg, and ugrep work again. `install.sh` and `migrate.sh` no longer write `env.LD_PRELOAD` into `~/.claude/settings.json`. That preload leaked into claude's subprocess environment, where claude's own grep/rg/ugrep re-exec the native binary directly. The glibc loader then rejected the bionic preload, and every search failed with "invalid ELF header". There is a trade-off: without the preload, claude's subprocesses also lose termux-exec, so a directly-run `#!/usr/bin/env ...` script cannot find its interpreter (Android has no `/usr/bin/env`). Search working was the higher priority. Running an interpreter explicitly (`bash file`, `python file`, `node file`) and tools called by name are unaffected.
+- `install.sh` no longer refuses on a device that previously ran claude. It classifies the current state and either installs fresh, installs in place while preserving `~/.claude` (sessions, login, settings), routes a pinned npm install to `migrate.sh`, or exits if the current wrapper is already present. The earlier "this installer is fresh-only" failure fired whenever `~/.claude` existed, even after claude had been removed.
+- `migrate.sh` recognizes and converts an official native claude install (a versioned binary with a `~/.local/bin` launcher and no wrapper) in place, instead of refusing it as an install it did not create.
+- `migrate.sh` no longer ends with a false failure when it migrates a claude that was installed but never launched. The final session-count step ran `ls` on a `~/.claude/projects` directory that does not exist yet and aborted under `set -e`, after the migration had already finished. It now reports zero sessions and completes normally.
+
+### Changed
+
+- The scripted package steps use `apt-get` instead of `pkg`, so the install no longer prints apt's "does not have a stable CLI interface" warning on every call.
+- A Termux mirror is selected automatically only when none is set, so a brand-new Termux does not stall the unattended install on a mirror prompt. It never overrides a mirror you already chose.
+- `install.sh` (and `install-pinned.sh`) warn before installing if launched inside a running claude session, where Android's low-memory killer can end the install.
+- `VERSION`: 2.9.0 -> 2.9.1.
+
+### Added
+
+- `install-pinned.sh`: an opt-in installer that pins Claude Code `2.1.112` (the last upstream version with a JS entry point) and locks the pin. No binary patching and no auto-updating wrapper. It is for people who want the smallest, simplest install and are content to stay pinned. `install.sh` is still the default for current claude.
+
 ## [2.9.0] - 2026-05-29
 
 Path A architectural switch from the pinned 2.1.112 npm install to a patched native linux-arm64 binary with an auto-updating wrapper. Also rolls up the Path C (Android Virtualization Framework, AVF) refresh for Android 17 and a Path B walk-through clarification originally drafted under [Unreleased].

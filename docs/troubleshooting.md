@@ -20,6 +20,7 @@ If you haven't installed yet, see [install.md](install.md) first.
 - [npm install fails silently](#npm-install-fails-silently-your-own-packages-not-claude-code)
 - [Grep/Glob/slash commands fail with ENOENT](#grepglobslash-commands-fail-with-enoent-v2x-install)
 - [Custom agents fail to load (same root cause)](#custom-agents-v2x)
+- [`#!/usr/bin/env` scripts fail with "bad interpreter"](#usrbinenv-scripts-fail-with-bad-interpreter-v291)
 - [Voice mode not functional](#voice-mode-not-functional)
 - [Hooks on Termux native](#hooks-on-termux-native)
 - [Termux from Google Play has issues](#termux-from-google-play-has-issues)
@@ -320,6 +321,30 @@ One-time. Persists across Claude Code updates.
 ### Custom agents (v2.x)
 
 If custom agents defined in `.claude/agents/` fail to load on v2.x, it is the same root cause: Claude Code's file search cannot find the agent definition files on `arm64-android`. The `CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1` env var above resolves agent loading as well. v2.9.0 does not exhibit this issue.
+
+---
+
+### `#!/usr/bin/env` scripts fail with "bad interpreter" (v2.9.1+)
+
+**You see:**
+
+```
+/usr/bin/env: bad interpreter: No such file or directory
+```
+
+A script that claude's Bash tool runs **directly** and whose first line is `#!/usr/bin/env bash` (or `python3`, `node`, and so on) exits 126. This shows up with some project scripts and `node` CLI shims.
+
+**Affected:** v2.9.1 and later. The install no longer sets `env.LD_PRELOAD` in `~/.claude/settings.json`, because that preload broke claude's own bundled grep, rg, and ugrep. Android has no `/usr/bin/env`; Termux's `termux-exec` preload is what rewrites `/usr/bin/env` to Termux's own `env`, and claude's subprocesses no longer carry that preload. This is a deliberate trade-off in favour of search working.
+
+**Work around it:** run the interpreter explicitly instead of executing the file:
+
+```bash
+bash ./script.sh      # instead of ./script.sh
+python ./script.py    # instead of ./script.py
+node ./tool.js        # instead of ./tool.js
+```
+
+Tools called by name (`grep`, `git`, `python`, `node`) and `#!/bin/sh` scripts are unaffected, and a normal Termux shell outside claude is unaffected.
 
 ---
 
