@@ -38,7 +38,7 @@ jobs:
 
       - name: Build debug APK
         working-directory: NeuroOmni
-        run: gradle assembleDebug --no-daemon --stacktrace
+        run: gradle :app:compileDebugKotlin assembleDebug --no-daemon
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
