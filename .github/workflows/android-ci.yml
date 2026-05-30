@@ -30,7 +30,9 @@ jobs:
       # build-tools explicitly so checkDebugAarMetadata doesn't fall back to 34.
       - name: Install Android SDK 35
         run: |
-          yes | sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          test -f "$ANDROID_HOME/platforms/android-35/android.jar" \
+            || { echo "::error::SDK 35 install failed — android.jar missing"; exit 1; }
 
       # Install Gradle directly — wrapper jar is not committed to the repo.
       # CI uses `gradle` command; `./gradlew` is for local use after running
@@ -52,13 +54,13 @@ jobs:
       - name: Show Kotlin errors on failure
         if: failure()
         run: |
-          mapfile -t elines < <(grep "^e: " /tmp/build.log | head -40)
-          if [ ${#elines[@]} -gt 0 ]; then
-            for line in "${elines[@]}"; do echo "::error::$line"; done
-          else
-            echo "::error::No 'e:' lines — dumping last 80 build log lines"
-            tail -80 /tmp/build.log | while IFS= read -r l; do echo "::error::$l"; done
-          fi
+          grep -E "^e: |^error: |Caused by:|> Task .* FAILED|requires.*compile against" \
+            /tmp/build.log | head -30 \
+            | while IFS= read -r l; do echo "::error::$l"; done \
+            || true
+          echo "::group::Build log — last 60 lines"
+          tail -60 /tmp/build.log
+          echo "::endgroup::"
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
