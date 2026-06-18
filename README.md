@@ -24,8 +24,8 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/Android-8%2B-brightgreen.svg" alt="Android 8+">
-  <img src="https://img.shields.io/badge/Version-2.9.1-blue.svg" alt="Version 2.9.1">
-  <img src="https://img.shields.io/badge/Last%20Verified-2026--05--30-lightgrey.svg" alt="Last Verified 2026-05-30">
+  <img src="https://img.shields.io/badge/Version-2.9.2-blue.svg" alt="Version 2.9.2">
+  <img src="https://img.shields.io/badge/Last%20Verified-2026--06--18-lightgrey.svg" alt="Last Verified 2026-06-18">
 </p>
 
 <p align="center">
@@ -33,6 +33,9 @@
 </p>
 
 ---
+
+> [!WARNING]
+> **Claude crashing the moment you run `claude`?** (You see `Bad system call`, `Segmentation fault`, or `oh no: Bun has crashed`.) Claude Code checks for a new version once a day and installs it on its own. Since version 2.1.113, when upstream switched from an npm JavaScript package to a single native binary, keeping it running on Android takes ongoing work: Android is not a true native Linux system, so the binary is run through a Termux compatibility layer (`glibc-runner`) that lets Linux programs run on Android. A new release of Claude Code, of the Bun runtime it is built with (which bundles its own JavaScript engine and networking layer), or of `glibc-runner` can each begin using a low-level system call that Android blocks, and that crashes it on launch. It is not only old phones: older Android versions block more of these calls, but recent breaks have hit current devices too. `install.sh` now adds fallback protection: the launcher tests each version before running it and rolls back to the last one that worked. If you are already crashing, re-run `install.sh` to get that protection. Full steps: **[Claude crashes immediately on launch](docs/troubleshooting.md#claude-crashes-immediately-on-launch)**.
 
 > [!NOTE]
 > **Already on an older pinned install?** If you set Path A up with a previous version of this repo (Claude Code `2.1.112`, pinned with the auto-updater off), you can move to the current auto-updating architecture without losing your sessions, login, or settings.
@@ -67,7 +70,7 @@ The repo documents three install paths. Pick one before pasting commands:
 
 - **Path A (native Termux).** The official linux-arm64 claude binary, patched via Termux's glibc-runner (a Termux package that provides a working glibc and dynamic linker so Linux binaries can run on Android's Bionic-based system) to run on Android. A wrapper checks for new versions once per day on launch and updates transparently. About 5-10 minutes to install; the binary alone is ~233 MB, plus ~200 MB if you accept recommended packages.
 - **Path B (proot-Ubuntu).** Latest Claude Code installed via Anthropic's official installer inside a full Ubuntu environment. Heavier (~2 GB on disk) but `process.platform` (the runtime identifier of the host operating system, which some tools branch on) reports `linux` and standard Linux conventions all apply.
-- **Path C (AVF Linux VM, experimental, Pixel 6+ on Android 16+ only).** Real Linux kernel via Android's built-in hypervisor. Doesn't use Termux at all.
+- **Path C (AVF Linux VM, experimental, Pixel 6+ on Android 16+ only).** Real Linux kernel via Android's built-in virtual machine support (the hypervisor). Doesn't use Termux at all.
 
 > [!TIP]
 > **From the maintainer:** Native Termux (Path A) works and is great for those who need it, especially with hardware or storage limitations. I highly recommend running it in proot-Ubuntu (Path B) though: it is the most native way I could get it running since the 2.1.112 regression. Until that changes, it is up to the community to keep Claude Code alive and updating on Termux.
@@ -190,7 +193,7 @@ Per-device last-verified dates below. The Path A architecture changed in v2.9.0 
 
 | Device | Android | Path A | Path B | Last Verified | Test artifact |
 |--------|---------|--------|--------|---------------|---------------|
-| Google Pixel 10 Pro | 17 | ✅ (v2.9.0, 2026-05-28; v2.9.1 via migrate.sh, 2026-05-30) | ✅ | 2026-05-30 | [pixel-10-pro-android17.txt](tests/results/pixel-10-pro-android17.txt) (v2.9.0) |
+| Google Pixel 10 Pro | 17 | ✅ (v2.9.0, 2026-05-28; v2.9.1 via migrate.sh, 2026-05-30; v2.9.2 resilience 2026-06-18) | ✅ | 2026-06-18 | [pixel-10-pro-android17.txt](tests/results/pixel-10-pro-android17.txt) (v2.9.0) |
 | Google Pixel 6 | 17 | ✅ (v2.9.1 fresh install, 2026-05-30) | ✅ | 2026-05-30 | doc-only (no current `tests/results/` file) |
 | Motorola Moto G7 Power | 10 | (pending v2.9.0 retest) | ✅ | 2026-05-16 (v2.x) | [moto-g(7)-power-android10.txt](tests/results/moto-g(7)-power-android10.txt) (v2.x) |
 | Samsung Galaxy S7 (SM-G930P) | 8 | (pending v2.9.0 retest) | ✅ (manual URL paste) | 2026-05-16 (v2.x) | [sm-g930p-android8.0.0.txt](tests/results/sm-g930p-android8.0.0.txt) (v2.x) |

@@ -113,12 +113,15 @@ On first launch, claude opens its welcome wizard (theme selection, project trust
 
 ### What the wrapper does on every launch
 
+The short version: each launch makes sure the installed version actually runs on your phone, checks for an update at most once a day, and on its own falls back to the last working version if an update turns out to be broken. The first time it runs a new version it may pause a few seconds to test it; that is normal, not a freeze. Step by step:
+
 On each `claude` invocation, the wrapper:
 
-1. Checks if it has been at least 24 hours since the last update check (using a stamp file at `~/.local/share/claude/versions/.last-update-check`). If yes, queries the npm registry for the latest version. If a newer version is published, downloads it, verifies the checksum, patches it, and moves it into `~/.local/share/claude/versions/`. The wrapper runs the highest installed version on each launch. The previous version is kept for rollback; older ones are removed.
-2. Self-heals: if the binary's ELF interpreter is wrong (because something replaced the binary outside the wrapper's knowledge), re-patches it before launch.
-3. Unsets `LD_PRELOAD`. Termux's syscall shim must not be loaded when the glibc binary starts, or it crashes on an unversioned libc.so dependency.
-4. Execs the binary. The wrapper passes claude's output through unchanged. claude itself may print a cosmetic "Native installation" startup notice if `~/.local/bin` is not yet on your PATH; it is harmless.
+1. Checks for updates, at most once every 24 hours (using a stamp file at `~/.local/share/claude/versions/.last-update-check`). If due, it queries the npm registry for the latest version. If a newer version is published, it downloads the binary, verifies the checksum, patches the ELF interpreter, and launch-tests it (item 2) before adopting it. A version that passes is moved into `~/.local/share/claude/versions/`; one that crashes on this device is discarded and recorded so it is not downloaded again. The previous working version is kept for rollback; older ones are removed.
+2. Launch-tests the version it is about to run. Some upstream releases pass `--version` but crash on full launch under Android's seccomp filter (for example Android 10's blocked `statx`, or an `epoll_pwait2` regression in the Bun runtime claude is built on). The wrapper boots the binary once with `--init-only` in a throwaway, isolated HOME, so your real `~/.claude`, login, and hooks are never touched. A version that crashes is added to a blocklist and skipped, and the wrapper falls back to the highest version that still works, so a bad auto-update rolls back on its own with no action from you. The version confirmed good is cached so the next launch skips the test.
+3. Self-heals the ELF interpreter: if the binary's interpreter is wrong (because something replaced the binary outside the wrapper's knowledge), re-patches it before launch.
+4. Unsets `LD_PRELOAD`. Termux's syscall shim must not be loaded when the glibc binary starts, or it crashes on an unversioned libc.so dependency.
+5. Execs the binary. The wrapper passes claude's output through unchanged. claude itself may print a cosmetic "Native installation" startup notice if `~/.local/bin` is not yet on your PATH; it is harmless.
 
 Force an immediate update check at any time:
 
@@ -127,6 +130,20 @@ claude --update-now
 ```
 
 If any update step fails (network down, checksum mismatch, patchelf error), the wrapper prints a one-line warning to stderr and falls through to launch the cached binary. Your session never breaks because of an update issue.
+
+### What the wrapper keeps on disk, and how to reset it
+
+The wrapper stores its state alongside the binaries, in `~/.local/share/claude/versions/`:
+
+- The current binary and the previous one, kept so a bad update can roll back without re-downloading. At about 233 MB each, these two binaries are the bulk of Path A's disk use.
+- `.verified`: the version last confirmed to launch on this device, so the launch test is skipped next time.
+- `.blocklist`: versions that crashed on this device. A blocklisted version is never run or downloaded again.
+
+If a version was blocklisted and you want the wrapper to try it again (for example after a Termux or glibc update that might have fixed it), delete the blocklist and relaunch:
+
+```bash
+rm ~/.local/share/claude/versions/.blocklist
+```
 
 ### Updating Claude Code (Path A)
 
@@ -148,7 +165,7 @@ Close any running `claude` sessions first. The script refuses to run while one i
 What it does:
 
 - Backs up `~/.claude`, `~/.claude.json`, and `~/.bashrc` to a timestamped folder before changing anything, and writes a `restore.sh` you can run to undo.
-- Downloads, checksum-verifies, and patches the latest claude binary, then removes the old pinned install and drops in the auto-updating wrapper. The new binary is verified on disk before the old one is removed, so a failure partway leaves your existing install usable.
+- Downloads, checksum-verifies, patches, and launch-tests the latest claude binary, then removes the old pinned install and drops in the auto-updating wrapper. The new binary must boot on this device before the old one is removed, so a release that crashes here (or any failure partway) leaves your existing install in place and usable.
 - Merges your `~/.claude/settings.json` in place, preserving your existing hooks, permissions, and env. It does not overwrite your settings, and if that file is a symlink it follows the link instead of replacing it.
 
 Preserved untouched: your chats and sessions, your login, and any custom agents, hooks, skills, or `CLAUDE.md`. Running `install.sh` on a pinned install detects it and points you here rather than overwriting anything.

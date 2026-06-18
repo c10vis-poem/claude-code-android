@@ -71,6 +71,14 @@ ok "Node.js $NODE_V installed"
 # --- Claude Code (pinned) ---
 export TMPDIR="$PREFIX/tmp"   # npm needs a writable temp dir
 [ -d "$CC_DIR" ] && chmod -R u+w "$CC_DIR" 2>/dev/null || true
+# npm install -g creates $PREFIX/bin/claude. A non-npm regular file there (an
+# install.sh native wrapper) makes npm abort with EEXIST, which leaves a crashing
+# native install in place. Clear it first so the pinned package can own the
+# command. A symlink (npm's own, on a re-run) is left for npm to replace.
+if [ -e "$PREFIX/bin/claude" ] && [ ! -L "$PREFIX/bin/claude" ]; then
+  rm -f "$PREFIX/bin/claude"
+  info "cleared the existing native claude command so the pinned package can own it"
+fi
 info "installing Claude Code $CC_PIN (the last upstream version with a JS entry point)"
 DISABLE_AUTOUPDATER=1 npm install -g "@anthropic-ai/claude-code@${CC_PIN}" || fail "npm install failed."
 CLAUDE_VER="$(claude --version 2>/dev/null | head -1 || true)"

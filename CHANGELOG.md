@@ -1,5 +1,28 @@
 # Changelog
 
+## [2.9.2] - 2026-06-18
+
+A resilience release for the auto-updating wrapper. It makes the wrapper refuse to run, and refuse to promote, a Claude Code binary that crashes on this device, and it rolls a device back to the last working version automatically. The trigger was Claude Code 2.1.181, which bundles an unreleased Bun 1.4 that segfaults at launch on Android (issue #6). It is the same class of failure as the Android 10 problem (issue #5): a newer syscall the native binary uses, blocked by Android's per-app seccomp filter.
+
+Why this is needed: the native binary runs under that seccomp filter, which blocks syscalls it does not allowlist. On Android 10 the binary issues `statx` and dies with SIGSYS. On newer devices Bun 1.4 issues `epoll_pwait2` and dies with SIGSEGV. In both cases the binary passes `claude --version` but crashes on full launch, so the previous wrapper auto-updated to it and then could not start. Upstream: oven-sh/bun#32489 and #32490 (unmerged at the time of this release).
+
+Verified on 2026-06-18. On a device carrying both a working 2.1.176 and a crashing 2.1.181, the wrapper rolled back to 2.1.176 on launch with no user action, recorded the bad version so it is not re-downloaded, and a second launch ran the verified-good binary with no re-test. The launch probe was confirmed to trip both failure modes: the `epoll_pwait2` crash on a current device and the `statx` crash on Android 10. The selection loop was exercised against empty, all-broken, stale-pointer, and corrupt-file states.
+
+### Fixed
+
+- The wrapper no longer leaves a device stuck on a crashing auto-update. On launch it smoke-tests the version it is about to run (a short `--init-only` probe under a timeout). If that binary dies by a fatal signal, hangs, fails to execute, or prints a runtime crash banner, the wrapper records it as bad and falls back to the next-highest installed version that launches. A device that auto-updated to a broken release recovers on the next launch with no user action.
+- `install-pinned.sh` now recovers a device that already has a crashing native install. Previously the pinned `npm install` aborted with `EEXIST` because the native launcher file was still at `$PREFIX/bin/claude`, leaving the crash in place; the script now clears that file first so the pinned package can take over the `claude` command. This is the fallback the troubleshooting guide points to when no working binary is left.
+
+### Added
+
+- A smoke test before a downloaded update is promoted. The wrapper runs the same launch probe on the freshly downloaded, patched binary before swapping it in. A binary that crashes is discarded, the working binary is kept, and the bad version is recorded so it is not downloaded again.
+- An install-time smoke test in `install.sh`. After installing, it runs the launch probe; if the latest release crashes on this device it says so and points to `install-pinned.sh` or proot, instead of leaving a crash on first launch.
+- Re-running `install.sh` on a device that already has the v2.9 launcher now refreshes the launcher in place (skipping the package install and binary download) instead of exiting with nothing to do. This is how an existing install receives the self-healing launcher: the daily auto-update refreshes the binary, not the launcher, so re-running the installer is what delivers a launcher change to a device that is already set up.
+
+### Changed
+
+- `VERSION`: 2.9.1 -> 2.9.2.
+
 ## [2.9.1] - 2026-05-30
 
 A bug-fix release for the v2.9.0 Path A architecture. No architecture change. It makes `install.sh` and `migrate.sh` work on a device that already had claude, brings back claude's bundled grep, rg, and ugrep, and stops the package step from printing a warning on every call. It also adds an opt-in pinned installer for people who want the smallest setup.

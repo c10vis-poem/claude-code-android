@@ -8,6 +8,7 @@ If you haven't installed yet, see [install.md](install.md) first.
 
 ## Table of Contents
 
+- [Claude crashes immediately on launch](#claude-crashes-immediately-on-launch)
 - [Unsupported architecture: armhf](#unsupported-architecture-armhf)
 - [Claude Code won't start, no error](#claude-code-wont-start-no-error-v2x-install)
 - [Claude Code exits: "native binary not installed"](#claude-code-exits-native-binary-not-installed-historical--v2x-context)
@@ -29,6 +30,50 @@ If you haven't installed yet, see [install.md](install.md) first.
 - [Path C: AVF (Experimental)](#path-c-avf-experimental)
 - [Upstream Issues](#upstream-issues)
 - [ADB Wireless Debugging](#adb-wireless-debugging)
+
+---
+
+### Claude crashes immediately on launch
+
+**You see:** one of these the instant you run `claude`, often right after it had been working fine:
+
+```
+Bad system call
+```
+
+or
+
+```
+oh no: Bun has crashed. This indicates a bug in Bun, not your code.
+```
+
+or a `Segmentation fault` message that links to `bun.report`. Tellingly, `claude --version` still prints a version, but `claude` on its own dies straight away.
+
+**What happened:** Claude Code auto-updated itself to a release that does not run on Android. Claude Code is a single native program, and a recent build of it asks Android for something Android does not allow, so it stops the moment it starts. This is a bug in that release, not in your phone, and not anything you did.
+
+**Fix it:** re-run this repo's installer (below). However you first installed, on a phone that already has this setup it refreshes the launcher in place, without the large re-download, updating it to a version that checks each Claude Code update before running it and, on its own, falls back to the last one that worked. Your login and settings are kept.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ferrumclaudepilgrim/claude-code-android/main/install.sh -o install.sh
+bash install.sh
+```
+
+Then start Claude Code the normal way. The refreshed launcher checks the installed version and, if it crashes, rolls back to the last one that worked, with no further action from you.
+
+If you are still on the older pinned install (Claude Code `2.1.112` with the auto-updater off), `install.sh` will point you to `migrate.sh` instead. Run that: it upgrades you to the current self-healing setup.
+
+**If you then see `no working claude binary found`:** your phone has no good version saved to fall back to. Install the pinned version, an older Claude Code that does not have this problem:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ferrumclaudepilgrim/claude-code-android/main/install-pinned.sh -o install-pinned.sh
+bash install-pinned.sh
+```
+
+The pinned version is a safety net, not a one-way street: once a working Claude Code release is out, re-run `install.sh` to move back to the current, self-healing setup.
+
+Running Claude Code inside proot-distro Ubuntu (Path B) is another way around it; see the [install guide](install.md).
+
+**Why it happens, briefly:** Android runs every app under a filter that permits only a fixed set of low-level system calls. A native program like Claude Code sometimes uses a newer system call the filter was not told to allow, and Android stops the program instead of letting the call through. `claude --version` survives because it quits before it reaches that point; a real launch does not. The launcher in v2.9.2 and later tests each version this way and rolls back when one fails. One instance, on newer phones, is in the Bun runtime Claude Code is built on, tracked upstream at oven-sh/bun#32489.
 
 ---
 

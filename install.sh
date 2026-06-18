@@ -9,9 +9,11 @@
 # Two yes/no questions up front, then unattended. Approx 5-10 minutes
 # depending on connection. The first download is ~233 MB.
 #
-# Re-running this script is not supported. It is a fresh-install path.
-# If you need to update claude, that happens automatically through the
-# wrapper. If you want to start over, run termux-reset then re-run.
+# Re-running this script is safe. On a device that already has the v2.9
+# launcher it refreshes the launcher in place (no re-download); on a pinned
+# npm install it routes you to migrate.sh; otherwise it installs while
+# preserving any existing ~/.claude. Day-to-day updates happen automatically
+# through the launcher.
 #
 # Tracking the upstream issue this works around:
 #   https://github.com/anthropics/claude-code/issues/50270
@@ -65,9 +67,24 @@ else
 fi
 
 if [ "$state" = already_v29 ]; then
-  ok "claude is already installed via the v2.9.0 wrapper. Nothing to do here."
-  info "The wrapper auto-updates daily. Force a check now with: claude --update-now"
-  exit 0
+  # An existing v2.9 launcher is present. The launcher only changes when this
+  # script rewrites it (the daily auto-update refreshes the binary, not the
+  # launcher), so re-running install.sh is how an existing install picks up
+  # launcher improvements such as the self-healing rollback. Refresh in place:
+  # skip the heavy first-time steps (packages, glibc, binary download) and go
+  # straight to rewriting the launcher and settings.
+  info "existing v2.9 install detected; refreshing the launcher to the current version"
+  REFRESH=1
+  PATCHELF="$PREFIX/glibc/bin/patchelf"
+  GLIBC_LD="$PREFIX/glibc/lib/ld-linux-aarch64.so.1"
+  { [ -x "$PATCHELF" ] && [ -f "$GLIBC_LD" ]; } || fail "glibc-runner is missing; cannot refresh the launcher. Install it (pkg install glibc-runner patchelf-glibc) and re-run."
+  VERSIONS_DIR="$HOME/.local/share/claude/versions"
+  WRAPPER="$PREFIX/bin/claude"
+  BINARY="(existing install retained)"
+  LATEST="(existing)"
+  FRESH=0
+  RECOMMENDED=0
+  mkdir -p "$HOME/.claude"
 fi
 if [ "$state" = pinned ]; then
   info "An older pinned v2.x install is present."
@@ -77,6 +94,12 @@ if [ "$state" = pinned ]; then
   info "This installer does not remove npm installs; migrate.sh does that safely."
   exit 0
 fi
+
+# Everything from here to the settings step is the heavy first-time install
+# (questions, packages, glibc, the ~233 MB binary download). On a refresh of an
+# existing v2.9 launcher, skip all of it and go straight to rewriting the
+# launcher and settings.
+if [ "${REFRESH:-0}" != 1 ]; then
 
 cat <<BANNER
 
@@ -252,6 +275,37 @@ LD_PRELOAD='' "$PATCHELF" --set-interpreter "$GLIBC_LD" "$BINARY.tmp" \
 mv "$BINARY.tmp" "$BINARY"
 ok "binary patched and installed at $BINARY"
 
+# Smoke-test the freshly installed binary. Some upstream releases crash on full
+# launch under Android's seccomp filter while still passing "--version" (Android
+# 10 statx -> SIGSYS; Bun 1.4 epoll_pwait2 -> SIGSEGV). Probe with --init-only
+# (it boots the full runtime and exits 0 on a healthy binary). On pass, record
+# it as verified so the wrapper's first launch skips the re-test; on fail, warn
+# with a working path forward instead of a cryptic crash on first launch.
+info "smoke-testing the installed binary"
+ST_ERR="$VERSIONS_DIR/.smoke-stderr"
+ST_HOME="$VERSIONS_DIR/.smoke-home"
+rm -rf "$ST_HOME"; mkdir -p "$ST_HOME/.claude"
+HOME="$ST_HOME" LD_PRELOAD='' timeout -s KILL 25 "$BINARY" --init-only </dev/null >/dev/null 2>"$ST_ERR"
+ST_RC=$?
+rm -rf "$ST_HOME"
+if { [ "$ST_RC" -gt 128 ] && [ "$ST_RC" -le 159 ]; } || [ "$ST_RC" -eq 124 ] \
+   || [ "$ST_RC" -eq 126 ] || [ "$ST_RC" -eq 127 ] \
+   || grep -qE 'Bad system call|oh no: Bun has crashed|panic\(|bun\.report' "$ST_ERR" 2>/dev/null; then
+  rm -f "$ST_ERR"
+  warn "Claude Code $LATEST crashes on this device. This is a known upstream"
+  warn "regression in some releases under Android's seccomp filter, not an install"
+  warn "problem. The install is complete, but this version will not launch here."
+  warn "To get a working Claude Code now:"
+  warn "  - run  ./install-pinned.sh   to pin a known-good build, or"
+  warn "  - run Claude Code inside proot-distro Ubuntu (see the README)."
+else
+  rm -f "$ST_ERR"
+  printf '%s\n' "$LATEST" > "$VERSIONS_DIR/.verified"
+  ok "binary launches cleanly on this device"
+fi
+
+fi  # end heavy first-time install (skipped on a refresh)
+
 # --- ~/.claude/settings.json ---
 # autoUpdates:false disables claude's in-process updater; the wrapper handles
 # updates instead. No env.LD_PRELOAD: a bionic preload set here leaks into the
@@ -297,7 +351,39 @@ VERSIONS_DIR="$VERSIONS_DIR"
 GLIBC_LD="$GLIBC_LD"
 PATCHELF="$PATCHELF"
 STAMP="\$VERSIONS_DIR/.last-update-check"
+BLOCKLIST="\$VERSIONS_DIR/.blocklist"
+VERIFIED="\$VERSIONS_DIR/.verified"
 RATE_LIMIT=86400
+
+# Smoke test: returns 0 if the binary launches on this device, 1 if it crashes
+# or hangs. Why this exists: upstream has shipped binaries that pass "--version"
+# but die on full launch under Android's seccomp filter (Android 10 statx ->
+# SIGSYS; Bun 1.4 epoll_pwait2 -> SIGSEGV). We probe the full runtime with
+# --init-only (it boots the HTTP thread and worker pool and exits 0 offline on
+# a healthy binary) and refuse to promote or run anything that dies. If a
+# future release drops --init-only, the probe returns a benign non-zero (no
+# signal, no crash banner), treated as inconclusive: not rejected, never a
+# false fail.
+smoke_test() {
+  st_err="\$VERSIONS_DIR/.smoke-stderr"
+  st_home="\$VERSIONS_DIR/.smoke-home"
+  if [ ! -s "\$1" ]; then return 1; fi
+  # Probe in an isolated HOME so we never load the user's hooks (--init-only
+  # fires SessionStart/SessionEnd), never depend on login, and never write to
+  # the real ~/.claude. The crash we detect is a syscall, independent of config.
+  rm -rf "\$st_home"; mkdir -p "\$st_home/.claude"
+  HOME="\$st_home" LD_PRELOAD= timeout -s KILL 25 "\$1" --init-only </dev/null >/dev/null 2>"\$st_err"
+  st_rc=\$?
+  rm -rf "\$st_home"
+  if [ "\$st_rc" -gt 128 ] && [ "\$st_rc" -le 159 ]; then rm -f "\$st_err"; return 1; fi
+  if [ "\$st_rc" -eq 124 ]; then rm -f "\$st_err"; return 1; fi
+  if [ "\$st_rc" -eq 126 ] || [ "\$st_rc" -eq 127 ]; then rm -f "\$st_err"; return 1; fi
+  if grep -qE 'Bad system call|oh no: Bun has crashed|panic\(|bun\.report' "\$st_err" 2>/dev/null; then
+    rm -f "\$st_err"; return 1
+  fi
+  rm -f "\$st_err"
+  return 0
+}
 
 force_update=0
 args=()
@@ -324,7 +410,7 @@ if [ "\$should_check" = 1 ]; then
   latest=\$(curl -fsSL --max-time 5 https://registry.npmjs.org/@anthropic-ai/claude-code/latest 2>/dev/null | jq -r .version 2>/dev/null || echo "")
   if [ -n "\$latest" ] && printf '%s' "\$latest" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\$'; then
     new_bin="\$VERSIONS_DIR/\$latest"
-    if [ ! -f "\$new_bin" ]; then
+    if [ ! -f "\$new_bin" ] && ! grep -qxF "\$latest" "\$BLOCKLIST" 2>/dev/null; then
       dl="https://downloads.claude.ai/claude-code-releases/\$latest"
       if curl -fsSL --max-time 300 "\$dl/linux-arm64/claude" -o "\$new_bin.tmp" 2>/dev/null; then
         exp=\$(curl -fsSL --max-time 5 "\$dl/manifest.json" 2>/dev/null | jq -er '.platforms["linux-arm64"].checksum' 2>/dev/null || echo "")
@@ -332,15 +418,20 @@ if [ "\$should_check" = 1 ]; then
         if [ -n "\$exp" ] && [ "\$exp" = "\$act" ]; then
           chmod +x "\$new_bin.tmp"
           if LD_PRELOAD= "\$PATCHELF" --set-interpreter "\$GLIBC_LD" "\$new_bin.tmp" 2>/dev/null; then
-            mv "\$new_bin.tmp" "\$new_bin"
-            # Retain N-1 (latest + previous) for rollback. If the new \$latest
-            # ships broken, "rm versions/\$latest && claude --update-now" puts
-            # you back on the prior known-good binary.
-            prev=\$(ls -1 "\$VERSIONS_DIR" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\$' | sort -V | tail -2 | head -1)
-            for old in "\$VERSIONS_DIR"/*; do
-              base=\$(basename "\$old")
-              [ -f "\$old" ] && [ "\$base" != "\$latest" ] && [ "\$base" != "\$prev" ] && rm -f "\$old"
-            done
+            if smoke_test "\$new_bin.tmp"; then
+              mv "\$new_bin.tmp" "\$new_bin"
+              printf '%s\n' "\$latest" > "\$VERIFIED"
+              # Retain N-1 (latest + previous) for rollback.
+              prev=\$(ls -1 "\$VERSIONS_DIR" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\$' | sort -V | tail -2 | head -1)
+              for old in "\$VERSIONS_DIR"/*; do
+                base=\$(basename "\$old")
+                [ -f "\$old" ] && [ "\$base" != "\$latest" ] && [ "\$base" != "\$prev" ] && rm -f "\$old"
+              done
+            else
+              rm -f "\$new_bin.tmp"
+              printf '%s\n' "\$latest" >> "\$BLOCKLIST"
+              echo "[claude] update: \$latest crashes on launch (failed smoke test), keeping cached" >&2
+            fi
           else
             rm -f "\$new_bin.tmp"
             echo "[claude] update: patchelf failed on \$latest, using cached" >&2
@@ -359,20 +450,34 @@ if [ "\$should_check" = 1 ]; then
   touch "\$STAMP"
 fi
 
-# Pick the highest installed version
-bin=\$(ls -1 "\$VERSIONS_DIR" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\$' | sort -V | tail -1)
-if [ -z "\$bin" ] || [ ! -f "\$VERSIONS_DIR/\$bin" ]; then
-  echo "[claude] no installed binary in \$VERSIONS_DIR. Re-run install.sh" >&2
+# Pick the highest installed version that actually launches on this device.
+# Self-healing rollback: skip blocklisted versions; the already-verified-good
+# version runs with no re-test (zero startup cost); any other candidate is
+# re-patched and smoke-tested, and if it crashes it is blocklisted and we fall
+# back to the next-highest. This rescues a device that auto-updated to a binary
+# that crashes here (e.g. a bad release that landed before this wrapper shipped)
+# with no user action.
+verified=\$(cat "\$VERIFIED" 2>/dev/null || echo "")
+bin=""
+for cand in \$(ls -1 "\$VERSIONS_DIR" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\$' | sort -Vr); do
+  grep -qxF "\$cand" "\$BLOCKLIST" 2>/dev/null && continue
+  cpath="\$VERSIONS_DIR/\$cand"
+  [ -f "\$cpath" ] || continue
+  if [ "\$cand" = "\$verified" ]; then bin="\$cpath"; break; fi
+  interp=\$(LD_PRELOAD= "\$PATCHELF" --print-interpreter "\$cpath" 2>/dev/null || echo unknown)
+  [ "\$interp" = "\$GLIBC_LD" ] || LD_PRELOAD= "\$PATCHELF" --set-interpreter "\$GLIBC_LD" "\$cpath" 2>/dev/null
+  if smoke_test "\$cpath"; then
+    printf '%s\n' "\$cand" > "\$VERIFIED"
+    bin="\$cpath"
+    break
+  else
+    echo "[claude] \$cand crashes on this device; rolling back to the previous version" >&2
+    printf '%s\n' "\$cand" >> "\$BLOCKLIST"
+  fi
+done
+if [ -z "\$bin" ]; then
+  echo "[claude] no working claude binary found in \$VERSIONS_DIR. Re-run install.sh." >&2
   exit 1
-fi
-bin="\$VERSIONS_DIR/\$bin"
-
-# Self-heal: re-patch if anything outside our control swapped the binary
-interp=\$(LD_PRELOAD= "\$PATCHELF" --print-interpreter "\$bin" 2>/dev/null || echo unknown)
-if [ "\$interp" != "\$GLIBC_LD" ]; then
-  echo "[claude] re-patching ELF interpreter (was: \$interp)" >&2
-  LD_PRELOAD= "\$PATCHELF" --set-interpreter "\$GLIBC_LD" "\$bin" \
-    || { echo "[claude] patchelf failed; cannot run \$bin" >&2; exit 1; }
 fi
 
 unset LD_PRELOAD
@@ -408,8 +513,14 @@ fi
 
 # --- Verify ---
 hash -r 2>/dev/null || true
-VER="$(claude --version 2>&1)" || fail "claude --version failed: $VER"
-ok "claude --version: $VER"
+if VER="$(claude --version 2>&1)"; then
+  ok "claude --version: $VER"
+elif [ "${REFRESH:-0}" = 1 ]; then
+  warn "the refreshed launcher could not find a working Claude Code version on this device."
+  warn "run  ./install-pinned.sh  to pin a known-good build, or use proot-Ubuntu (see the README)."
+else
+  fail "claude --version failed: $VER"
+fi
 
 # --- Done ---
 cat <<DONE
