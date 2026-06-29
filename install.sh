@@ -25,6 +25,14 @@ ok(){   printf '\033[0;32m[ok]\033[0m    %s\n' "$1"; }
 warn(){ printf '\033[0;33m[warn]\033[0m  %s\n' "$1" >&2; }
 fail(){ printf '\033[0;31m[fail]\033[0m  %s\n' "$1" >&2; exit 1; }
 
+# DNS ETIMEOUT fix: preload sets Bun's c-ares resolver to a live nameserver (the wrapper loads it via BUN_OPTIONS).
+CC_SETDNS="$HOME/.local/share/claude/setdns.js"
+CC_SETDNS_JS='try { require("dns").setServers(["8.8.8.8", "8.8.4.4"]); } catch (e) {}'
+write_setdns() {
+  [ -s "$1" ] && return 0
+  printf '%s\n' "$CC_SETDNS_JS" > "$1" 2>/dev/null
+}
+
 # --- Preflight ---
 [ -z "${PREFIX:-}" ] && fail "PREFIX unset. Run this inside Termux, not adb shell."
 [ "$(uname -m)" = "aarch64" ] || fail "aarch64 only. uname -m reports: $(uname -m)"
@@ -275,6 +283,10 @@ LD_PRELOAD='' "$PATCHELF" --set-interpreter "$GLIBC_LD" "$BINARY.tmp" \
 mv "$BINARY.tmp" "$BINARY"
 ok "binary patched and installed at $BINARY"
 
+write_setdns "$CC_SETDNS"
+[ -s "$CC_SETDNS" ] && ok "DNS resolver preload installed ($CC_SETDNS)" \
+  || warn "could not write $CC_SETDNS; DNS ETIMEOUT workaround inactive."
+
 # Smoke-test the freshly installed binary. Some upstream releases crash on full
 # launch under Android's seccomp filter while still passing "--version" (Android
 # 10 statx -> SIGSYS; Bun 1.4 epoll_pwait2 -> SIGSEGV). Probe with --init-only
@@ -354,6 +366,13 @@ STAMP="\$VERSIONS_DIR/.last-update-check"
 BLOCKLIST="\$VERSIONS_DIR/.blocklist"
 VERIFIED="\$VERSIONS_DIR/.verified"
 RATE_LIMIT=86400
+
+CC_SETDNS="$HOME/.local/share/claude/setdns.js"
+CC_SETDNS_JS='try { require("dns").setServers(["8.8.8.8", "8.8.4.4"]); } catch (e) {}'
+write_setdns() {
+  [ -s "\$1" ] && return 0
+  printf '%s\n' "\$CC_SETDNS_JS" > "\$1" 2>/dev/null
+}
 
 # Smoke test: returns 0 if the binary launches on this device, 1 if it crashes
 # or hangs. Why this exists: upstream has shipped binaries that pass "--version"
@@ -480,6 +499,8 @@ if [ -z "\$bin" ]; then
   exit 1
 fi
 
+write_setdns "\$CC_SETDNS"
+[ -f "\$CC_SETDNS" ] && export BUN_OPTIONS="--preload \$CC_SETDNS\${BUN_OPTIONS:+ \$BUN_OPTIONS}"
 unset LD_PRELOAD
 exec "\$bin" "\${args[@]}"
 EOF
