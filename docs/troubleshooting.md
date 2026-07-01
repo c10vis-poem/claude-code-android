@@ -74,7 +74,7 @@ The pinned version is a safety net, not a one-way street: once a working Claude 
 
 Running Claude Code inside proot-distro Ubuntu (Path B) is another way around it; see the [install guide](install.md).
 
-**Why it happens, briefly:** Android runs every app under a filter that permits only a fixed set of low-level system calls. A native program like Claude Code sometimes uses a newer system call the filter was not told to allow, and Android stops the program instead of letting the call through. `claude --version` survives because it quits before it reaches that point; a real launch does not. The launcher in v2.9.2 and later tests each version this way and rolls back when one fails. One instance, on newer phones, is in the Bun runtime Claude Code is built on, tracked upstream at oven-sh/bun#32489.
+**Why it happens, briefly:** two different failures produce these messages. `Bad system call` is Android's seccomp filter doing its job: the native binary issues a low-level system call the filter does not allow, and Android stops it. Which call trips it is version specific (an Android 10 build has died on `statx`, a newer native build on `pidfd_open`). `Segmentation fault` or `oh no: Bun has crashed` on newer phones is a different problem: it is a null pointer crash inside Termux's `glibc-runner` shim for `epoll_pwait2`, which the Bun 1.4 runtime calls at startup, not a blocked system call. In both cases `claude --version` survives because it exits before it reaches the crash; a real launch does not. The launcher in v2.9.2 and later tests each version this way and rolls back when one fails. The Bun side is fixed upstream in oven-sh/bun#32490 (the runtime issues a raw system call to skip the shim).
 
 ---
 
