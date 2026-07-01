@@ -9,6 +9,7 @@ If you haven't installed yet, see [install.md](install.md) first.
 ## Table of Contents
 
 - [Claude crashes immediately on launch](#claude-crashes-immediately-on-launch)
+- [Claude hangs on "Checking connectivity" / ETIMEOUT / 'API error' on every message](#claude-hangs-on-checking-connectivity--etimeout--api-error-on-every-message)
 - [Unsupported architecture: armhf](#unsupported-architecture-armhf)
 - [Claude Code won't start, no error](#claude-code-wont-start-no-error-v2x-install)
 - [Claude Code exits: "native binary not installed"](#claude-code-exits-native-binary-not-installed-historical--v2x-context)
@@ -74,6 +75,34 @@ The pinned version is a safety net, not a one-way street: once a working Claude 
 Running Claude Code inside proot-distro Ubuntu (Path B) is another way around it; see the [install guide](install.md).
 
 **Why it happens, briefly:** Android runs every app under a filter that permits only a fixed set of low-level system calls. A native program like Claude Code sometimes uses a newer system call the filter was not told to allow, and Android stops the program instead of letting the call through. `claude --version` survives because it quits before it reaches that point; a real launch does not. The launcher in v2.9.2 and later tests each version this way and rolls back when one fails. One instance, on newer phones, is in the Bun runtime Claude Code is built on, tracked upstream at oven-sh/bun#32489.
+
+---
+
+### Claude hangs on "Checking connectivity" / ETIMEOUT / 'API error' on every message
+
+**You see:** Claude starts, then hangs on `Checking connectivity...` and fails with:
+
+```
+Unable to connect to Anthropic services
+Failed to connect to api.anthropic.com: ETIMEOUT
+```
+
+even though `curl https://api.anthropic.com/` connects fine over both IPv4 and IPv6. It is often **intermittent** - fine one launch, hung the next - and is unrelated to your Claude Code version or to running as root. (On an already-logged-in session it may instead surface as an API error when you send a message.)
+
+**Fix:** Update to the latest `install.sh` (or just re-run if using the curl + bash command). The launcher now points Claude Code's DNS resolver at a working nameserver automatically: it writes a tiny `setdns.js` next to the binary and loads it with `BUN_OPTIONS=--preload` on every launch (no binary patching, no extra permissions, no daemon). To confirm it's in place:
+
+```bash
+cat ~/.local/share/claude/setdns.js   # -> require("dns").setServers(["8.8.8.8", ...])
+```
+
+If you'd rather fix it by hand without re-running the installer, set it in the shell that launches claude:
+
+```bash
+echo 'try { require("dns").setServers(["8.8.8.8","8.8.4.4"]); } catch(e){}' > ~/setdns.js
+export BUN_OPTIONS="--preload $HOME/setdns.js"
+```
+
+**Why it happens, briefly:** Claude Code is built with Bun, whose DNS resolver (c-ares) reads `/etc/resolv.conf` to find a nameserver. On Android `/etc` is a read-only link to `/system/etc` with no `resolv.conf`, so c-ares falls back to its built-in default `127.0.0.1:53` — where nothing is listening. The glibc resolver Termux ships *does* work (it reads `$PREFIX/glibc/etc/resolv.conf`), but Bun uses both, and under the burst of name lookups at startup the dead-loopback queries time out and starve the working path. `curl` is unaffected because it uses Android's own (bionic/netd) resolver. The preload calls `dns.setServers()` to hand c-ares a live nameserver before the first lookup, so it never hits the dead loopback.
 
 ---
 
