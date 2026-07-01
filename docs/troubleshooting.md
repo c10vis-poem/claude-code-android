@@ -87,7 +87,7 @@ Unable to connect to Anthropic services
 Failed to connect to api.anthropic.com: ETIMEOUT
 ```
 
-even though `curl https://api.anthropic.com/` connects fine over both IPv4 and IPv6. It is often **intermittent** - fine one launch, hung the next - and is unrelated to your Claude Code version or to running as root. (On an already-logged-in session it may instead surface as an API error when you send a message.)
+even though `curl https://api.anthropic.com/` connects fine over both IPv4 and IPv6. It is often **intermittent** (fine one launch, hung the next) and is unrelated to your Claude Code version or to running as root. (On an already-logged-in session it may instead surface as an API error when you send a message.)
 
 **Fix:** Update to the latest `install.sh` (or just re-run if using the curl + bash command). The launcher now points Claude Code's DNS resolver at a working nameserver automatically: it writes a tiny `setdns.js` next to the binary and loads it with `BUN_OPTIONS=--preload` on every launch (no binary patching, no extra permissions, no daemon). To confirm it's in place:
 
@@ -102,7 +102,7 @@ echo 'try { require("dns").setServers(["8.8.8.8","8.8.4.4"]); } catch(e){}' > ~/
 export BUN_OPTIONS="--preload $HOME/setdns.js"
 ```
 
-**Why it happens, briefly:** Claude Code is built with Bun, whose DNS resolver (c-ares) reads `/etc/resolv.conf` to find a nameserver. On Android `/etc` is a read-only link to `/system/etc` with no `resolv.conf`, so c-ares falls back to its built-in default `127.0.0.1:53` — where nothing is listening. The glibc resolver Termux ships *does* work (it reads `$PREFIX/glibc/etc/resolv.conf`), but Bun uses both, and under the burst of name lookups at startup the dead-loopback queries time out and starve the working path. `curl` is unaffected because it uses Android's own (bionic/netd) resolver. The preload calls `dns.setServers()` to hand c-ares a live nameserver before the first lookup, so it never hits the dead loopback.
+**Why it happens, briefly:** Claude Code is built with Bun, whose DNS resolver (c-ares) reads `/etc/resolv.conf` to find a nameserver. On Android `/etc` is a read-only link to `/system/etc` with no `resolv.conf`, so c-ares falls back to its built-in default `127.0.0.1:53`, where nothing is listening. The glibc resolver Termux ships *does* work (it reads `$PREFIX/glibc/etc/resolv.conf`), but Bun uses both, and under the burst of name lookups at startup the dead-loopback queries time out and starve the working path. `curl` is unaffected because it uses Android's own (bionic/netd) resolver. The preload calls `dns.setServers()` to hand c-ares a live nameserver before the first lookup, so it never hits the dead loopback.
 
 ---
 
