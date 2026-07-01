@@ -1,5 +1,27 @@
 # Changelog
 
+## [2.9.3] - 2026-07-01
+
+A DNS reliability release. It works around a Bun bug that makes Claude Code hang on "checking connectivity" and fail with ETIMEOUT on Termux, and it makes search work out of the box on the pinned install for older devices.
+
+Why the DNS fix is needed: Claude Code is a Bun binary, and on Linux Bun's DNS resolver defaults to c-ares, which reads `/etc/resolv.conf`. Termux has no `/etc/resolv.conf`, so c-ares falls back to a resolver at `127.0.0.1:53` where nothing is listening, and lookups fail. Because the binary is the linux-arm64 build, Bun treats the environment as Linux and takes that c-ares path rather than Android's system resolver. glibc's own `getaddrinfo` reads the resolver config Termux provides and works, which is why the failure is intermittent and shows up under load. Upstream: the c-ares behavior is oven-sh/bun#24970 (open); the proposed fix to default to `getaddrinfo` on Linux, oven-sh/bun#29231, was closed unmerged after CI regressions; the slow-fail that turns it into a hang and an ETIMEOUT is oven-sh/bun#32165 (open).
+
+Verified on 2026-07-01 across four devices. On the Pixel 10 Pro and Pixel 6 (Android 17, native 2.1.197 with the preload), name resolution no longer touches the dead `127.0.0.1:53` loopback and a real authenticated turn reaches the server; search works. On the Moto G7 Power (Android 10) and Galaxy S7 (Android 8), the pinned 2.1.112 install runs and search works through the ripgrep symlink. The self-healing launcher from 2.9.2 was re-confirmed on both native devices: a planted crashing version is smoke-tested, recorded as bad, and rolled back with no user action.
+
+### Fixed
+
+- Claude Code no longer hangs on "checking connectivity" or fails with ETIMEOUT because of Bun's DNS resolver. `install.sh` and `migrate.sh` install a small preload that points Bun's resolver at a working nameserver (8.8.8.8 / 8.8.4.4) before Claude starts, so name resolution no longer falls back to the dead `127.0.0.1:53` loopback. It touches nothing in the binary. Thanks to @Tanbeer191 for the root cause and the fix (issue #7, PR #9).
+- Search (Grep and Glob) works out of the box on the pinned install. `install-pinned.sh` installs system ripgrep and symlinks it onto the vendored path Claude Code looks for (`vendor/ripgrep/arm64-android/rg`), which upstream does not ship. Previously the pinned install left search failing with `spawn ENOENT` until the user ran `scripts/fix-ripgrep.sh` by hand.
+
+### Changed
+
+- The troubleshooting guide's search recovery now points at the ripgrep symlink, which is what works on the pinned 2.1.112 install. The `CLAUDE_CODE_USE_NATIVE_FILE_SEARCH` env var does not redirect the bundled search on 2.1.112 (verified on device); the symlink onto the vendored path is the fix.
+- `VERSION`: 2.9.2 -> 2.9.3.
+
+### Added
+
+- A troubleshooting entry for the DNS hang and ETIMEOUT, with the upstream Bun references.
+
 ## [2.9.2] - 2026-06-18
 
 A resilience release for the auto-updating wrapper. It makes the wrapper refuse to run, and refuse to promote, a Claude Code binary that crashes on this device, and it rolls a device back to the last working version automatically. The trigger was Claude Code 2.1.181, which bundles an unreleased Bun 1.4 that segfaults at launch on Android (issue #6). It is the same class of failure as the Android 10 problem (issue #5): a newer syscall the native binary uses, blocked by Android's per-app seccomp filter.
