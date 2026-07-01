@@ -25,7 +25,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/Android-8%2B-brightgreen.svg" alt="Android 8+">
   <img src="https://img.shields.io/badge/Version-2.9.3-blue.svg" alt="Version 2.9.3">
-  <img src="https://img.shields.io/badge/Last%20Verified-2026--06--18-lightgrey.svg" alt="Last Verified 2026-06-18">
+  <img src="https://img.shields.io/badge/Last%20Verified-2026--07--01-lightgrey.svg" alt="Last Verified 2026-07-01">
 </p>
 
 <p align="center">
@@ -189,14 +189,14 @@ The Terminal app's gear icon opens Settings, with Memory size, Display resolutio
 
 ## Device Compatibility
 
-Per-device last-verified dates below. The Path A architecture changed in v2.9.0 (from a pinned 2.1.112 npm install to a patched native linux-arm64 binary with auto-updating wrapper). Devices marked `v2.9.x` use the new architecture; devices marked `v2.x` retain the older verification under the previous pinned install (the current Path A is expected to work, but is not yet re-verified on every device). The v2.9.1 device runs were manual installs, not the `verify-claims.sh` transcript harness, so they are marked doc-only.
+Per-device last-verified dates below. The Path A architecture changed in v2.9.0 (from a pinned 2.1.112 npm install to a patched native linux-arm64 binary with an auto-updating wrapper). Recent Android versions run that native binary. Android 10 and 8 cannot: the native binary trips Android's seccomp filter and crashes on launch, so those devices stay on the pinned 2.1.112 install (`install-pinned.sh`), which is what their 2026-07-01 verification covers. The linked test artifacts are older `verify-claims.sh` transcripts; the 2026-07-01 runs were verified on the devices directly, not captured as new transcript files.
 
 | Device | Android | Path A | Path B | Last Verified | Test artifact |
 |--------|---------|--------|--------|---------------|---------------|
-| Google Pixel 10 Pro | 17 | ✅ (v2.9.0, 2026-05-28; v2.9.1 via migrate.sh, 2026-05-30; v2.9.2 resilience 2026-06-18) | ✅ | 2026-06-18 | [pixel-10-pro-android17.txt](tests/results/pixel-10-pro-android17.txt) (v2.9.0) |
-| Google Pixel 6 | 17 | ✅ (v2.9.1 fresh install, 2026-05-30) | ✅ | 2026-05-30 | doc-only (no current `tests/results/` file) |
-| Motorola Moto G7 Power | 10 | (pending v2.9.0 retest) | ✅ | 2026-05-16 (v2.x) | [moto-g(7)-power-android10.txt](tests/results/moto-g(7)-power-android10.txt) (v2.x) |
-| Samsung Galaxy S7 (SM-G930P) | 8 | (pending v2.9.0 retest) | ✅ (manual URL paste) | 2026-05-16 (v2.x) | [sm-g930p-android8.0.0.txt](tests/results/sm-g930p-android8.0.0.txt) (v2.x) |
+| Google Pixel 10 Pro | 17 | ✅ native 2.1.197 (v2.9.3, 2026-07-01) | ✅ | 2026-07-01 | [pixel-10-pro-android17.txt](tests/results/pixel-10-pro-android17.txt) (v2.9.0 transcript) |
+| Google Pixel 6 | 17 | ✅ native 2.1.197 (v2.9.3, 2026-07-01) | ✅ | 2026-07-01 | doc-only |
+| Motorola Moto G7 Power | 10 | ✅ pinned 2.1.112 (native capped on A10; 2026-07-01) | ✅ | 2026-07-01 | [moto-g(7)-power-android10.txt](tests/results/moto-g(7)-power-android10.txt) (v2.x) |
+| Samsung Galaxy S7 (SM-G930P) | 8 | ✅ pinned 2.1.112 (native capped on A8; 2026-07-01) | ✅ (manual URL paste) | 2026-07-01 | [sm-g930p-android8.0.0.txt](tests/results/sm-g930p-android8.0.0.txt) (v2.x) |
 | Samsung Galaxy S26 Ultra | 16 | ✅ (v2.9.0, 2026-05-29, via migrate.sh) | ✅ | 2026-05-29 | doc-only (no current `tests/results/` file) |
 | Samsung Galaxy S23+ | 15 | n/a | ✅ | 2026-03-19 | doc-only (no current `tests/results/` file) |
 
