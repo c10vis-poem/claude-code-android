@@ -351,21 +351,22 @@ Search tools (Grep, Glob) and slash commands that depend on them crash immediate
 
 **Affected:** v2.x installs only. On v2.9.0, the linux-arm64 native binary ships `vendor/ripgrep/arm64-linux/rg` and reports `process.platform === 'linux'`, so it finds its bundled rg on the first try. No env var or symlink needed.
 
-**Recovery (v2.x):** Install system ripgrep and add the env var:
+**Recovery (v2.x / pinned 2.1.112):** Install system ripgrep and symlink it onto the exact vendored path Claude Code looks for. This is what `scripts/fix-ripgrep.sh` does:
 
 ```bash
 pkg install ripgrep -y
-echo 'export CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1' >> ~/.bashrc
-source ~/.bashrc
+VEN="$PREFIX/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/arm64-android"
+mkdir -p "$VEN"
+ln -sf "$(command -v rg)" "$VEN/rg"
 ```
 
-One-time. Persists across Claude Code updates.
+Re-run after a Claude Code update; the symlink does not survive updates.
 
-**Cause:** The v2.x install used the npm-distributed JS bundle whose vendored ripgrep set does not include an `arm64-android` build. The env var redirects Claude Code to a system-installed `rg`.
+**Cause:** The v2.x / pinned 2.1.112 install uses the npm-distributed JS bundle whose vendored ripgrep set has no `arm64-android` build, so the search tool spawns a path that does not exist. On 2.1.112 the `CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1` env var does not redirect the search (verified on device: with the symlink removed, Grep fails with the same ENOENT whether the flag is set in `~/.bashrc`, exported in the shell, or set in `settings.json` env). The symlink onto the vendored path is the fix.
 
 ### Custom agents (v2.x)
 
-If custom agents defined in `.claude/agents/` fail to load on v2.x, it is the same root cause: Claude Code's file search cannot find the agent definition files on `arm64-android`. The `CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1` env var above resolves agent loading as well. v2.9.0 does not exhibit this issue.
+If custom agents defined in `.claude/agents/` fail to load on v2.x, it is the same root cause: Claude Code's file search cannot find the agent definition files on `arm64-android`. The ripgrep symlink above resolves agent loading as well. v2.9.0 does not exhibit this issue.
 
 ---
 
@@ -533,7 +534,7 @@ Known issues filed against the Claude Code repository that affect Android/Termux
 |-------|-------------|--------|-------|
 | [#50270](https://github.com/anthropics/claude-code/issues/50270) | 2.1.113+ broken on Termux/Android: native binary requires glibc, no JS fallback | Open | v2.9.0 install in this repo runs the linux-arm64 native binary directly under Termux's glibc-runner; see [README](../README.md#path-a-native-termux) |
 | [#16615](https://github.com/anthropics/claude-code/issues/16615) | Platform detection: `android` not recognized | Closed (not planned) | Historic. Path A v2.9.0 ships the linux-arm64 binary which reports `process.platform === 'linux'`, sidestepping the detection problem entirely |
-| [#9435](https://github.com/anthropics/claude-code/issues/9435) | Missing arm64-android ripgrep binary | Closed | v2.x install: `CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1` in `~/.bashrc`. v2.9.0 install: not applicable. The linux-arm64 binary ships `vendor/ripgrep/arm64-linux/rg` and uses it |
+| [#9435](https://github.com/anthropics/claude-code/issues/9435) | Missing arm64-android ripgrep binary | Closed | v2.x / pinned 2.1.112: symlink system rg onto `vendor/ripgrep/arm64-android/rg` (`scripts/fix-ripgrep.sh`); the env var does not redirect the search on 2.1.112. v2.9.0 install: not applicable. The linux-arm64 binary ships `vendor/ripgrep/arm64-linux/rg` and uses it |
 
 ---
 
