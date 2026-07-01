@@ -85,6 +85,25 @@ CLAUDE_VER="$(claude --version 2>/dev/null | head -1 || true)"
 { [ -n "$CLAUDE_VER" ] && [[ "$CLAUDE_VER" != *"not installed"* ]]; } || fail "claude did not launch after install. 'claude --version' returned: $CLAUDE_VER"
 ok "Claude Code installed: $CLAUDE_VER"
 
+# --- Grep tool: system ripgrep symlinked onto the vendored path ---
+# The 2.1.112 JS bundle spawns vendor/ripgrep/arm64-android/rg, which upstream
+# does not ship, so Grep/Glob fail with spawn ENOENT. Install system ripgrep and
+# symlink it onto that path. On device, CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1 does
+# not redirect the search on 2.1.112 (the bundle still spawns the missing vendored
+# path); the symlink is what works. $CC_DIR is still writable here, before the pin
+# lock below. This is the same fix as scripts/fix-ripgrep.sh, run at install time.
+info "wiring Claude Code's Grep tool to system ripgrep"
+apt-get install $APT_OPTS ripgrep >/dev/null || warn "ripgrep install failed; run scripts/fix-ripgrep.sh later to enable Grep/Glob"
+RG_BIN="$(command -v rg || true)"
+if [ -n "$RG_BIN" ]; then
+  VENDOR_RG="$CC_DIR/vendor/ripgrep/arm64-android"
+  mkdir -p "$VENDOR_RG"
+  ln -sf "$RG_BIN" "$VENDOR_RG/rg"
+  ok "Grep tool wired to system ripgrep ($RG_BIN)"
+else
+  warn "ripgrep not found after install; run scripts/fix-ripgrep.sh to enable Grep/Glob"
+fi
+
 # --- Lock the pin against the in-process auto-updater (three layers) ---
 # The updater re-fetches 'latest' on a timer and overwrites the install dir; a
 # 2.1.113+ build has no JS entry point and breaks on Termux. All three layers
