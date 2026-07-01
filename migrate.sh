@@ -484,7 +484,7 @@ if [ -z "\$bin" ]; then
 fi
 
 write_setdns "\$CC_SETDNS"
-[ -f "\$CC_SETDNS" ] && export BUN_OPTIONS="--preload \$CC_SETDNS\${BUN_OPTIONS:+ \$BUN_OPTIONS}"
+[ -s "\$CC_SETDNS" ] && export BUN_OPTIONS="--preload \$CC_SETDNS\${BUN_OPTIONS:+ \$BUN_OPTIONS}"
 unset LD_PRELOAD
 exec "\$bin" "\${args[@]}"
 EOF
