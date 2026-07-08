@@ -299,11 +299,10 @@ info "smoke-testing the installed binary"
 ST_ERR="$VERSIONS_DIR/.smoke-stderr"
 ST_HOME="$VERSIONS_DIR/.smoke-home"
 rm -rf "$ST_HOME"; mkdir -p "$ST_HOME/.claude"
-HOME="$ST_HOME" LD_PRELOAD='' timeout -s KILL 25 "$BINARY" --init-only </dev/null >/dev/null 2>"$ST_ERR"
+HOME="$ST_HOME" LD_PRELOAD='' timeout -s KILL 45 "$BINARY" --init-only </dev/null >/dev/null 2>"$ST_ERR"
 ST_RC=$?
 rm -rf "$ST_HOME"
-if { [ "$ST_RC" -gt 128 ] && [ "$ST_RC" -le 159 ]; } || [ "$ST_RC" -eq 124 ] \
-   || [ "$ST_RC" -eq 126 ] || [ "$ST_RC" -eq 127 ] \
+if { [ "$ST_RC" -gt 128 ] && [ "$ST_RC" -le 159 ]; } \
    || grep -qE 'Bad system call|oh no: Bun has crashed|panic\(|bun\.report' "$ST_ERR" 2>/dev/null; then
   rm -f "$ST_ERR"
   warn "Claude Code $LATEST crashes on this device. This is a known upstream"
@@ -312,6 +311,12 @@ if { [ "$ST_RC" -gt 128 ] && [ "$ST_RC" -le 159 ]; } || [ "$ST_RC" -eq 124 ] \
   warn "To get a working Claude Code now:"
   warn "  - run  ./install-pinned.sh   to pin a known-good build, or"
   warn "  - run Claude Code inside proot-distro Ubuntu (see the README)."
+elif [ "$ST_RC" -eq 124 ] || [ "$ST_RC" -eq 126 ] || [ "$ST_RC" -eq 127 ]; then
+  rm -f "$ST_ERR"
+  warn "Could not fully verify Claude Code $LATEST on this device: the launch"
+  warn "probe timed out, which can happen on a slow or loaded device. The"
+  warn "install is complete; the launcher re-checks on first run and will use"
+  warn "this build if it starts."
 else
   rm -f "$ST_ERR"
   printf '%s\n' "$LATEST" > "$VERSIONS_DIR/.verified"
@@ -376,33 +381,42 @@ write_setdns() {
   printf '%s\n' "\$CC_SETDNS_JS" > "\$1" 2>/dev/null
 }
 
-# Smoke test: returns 0 if the binary launches on this device, 1 if it crashes
-# or hangs. Why this exists: upstream has shipped binaries that pass "--version"
-# but die on full launch, either from Android's seccomp filter (Android 10
-# statx or pidfd_open -> SIGSYS) or from a null deref in Termux's glibc-runner
-# epoll_pwait2 shim under Bun 1.4 (-> SIGSEGV). We probe the full runtime with
-# --init-only (it boots the HTTP thread and worker pool and exits 0 offline on
-# a healthy binary) and refuse to promote or run anything that dies. If a
-# future release drops --init-only, the probe returns a benign non-zero (no
-# signal, no crash banner), treated as inconclusive: not rejected, never a
-# false fail.
+# Smoke test: returns 0 if the binary launches on this device, 1 if it
+# DEFINITELY crashes here (a fatal signal or a known Bun/seccomp crash banner),
+# and 2 if the result is inconclusive (the probe timed out, could not exec, or
+# the file is empty). Why this exists: upstream has shipped binaries that pass
+# "--version" but die on full launch, either from Android's seccomp filter
+# (Android 10 statx or pidfd_open -> SIGSYS) or from a null deref in Termux's
+# glibc-runner epoll_pwait2 shim under Bun 1.4 (-> SIGSEGV). We probe the full
+# runtime with --init-only (it boots the HTTP thread and worker pool and exits
+# 0 offline on a healthy binary) and refuse to promote or run anything that
+# dies. Only a DEFINITE crash (return 1) is ever blocklisted; an inconclusive
+# result (return 2, e.g. a probe that timed out on a slow or thermally
+# throttled device) is never blocklisted, so a good build is not permanently
+# rejected by a transient hiccup. If a future release drops --init-only the
+# probe exits a benign non-zero with no signal and no crash banner, treated as
+# healthy (return 0): not rejected, never a false fail.
 smoke_test() {
   st_err="\$VERSIONS_DIR/.smoke-stderr"
   st_home="\$VERSIONS_DIR/.smoke-home"
-  if [ ! -s "\$1" ]; then return 1; fi
+  if [ ! -s "\$1" ]; then return 2; fi
   # Probe in an isolated HOME so we never load the user's hooks (--init-only
   # fires SessionStart/SessionEnd), never depend on login, and never write to
   # the real ~/.claude. The crash we detect is a syscall, independent of config.
   rm -rf "\$st_home"; mkdir -p "\$st_home/.claude"
-  HOME="\$st_home" LD_PRELOAD= timeout -s KILL 25 "\$1" --init-only </dev/null >/dev/null 2>"\$st_err"
+  HOME="\$st_home" LD_PRELOAD= timeout -s KILL 45 "\$1" --init-only </dev/null >/dev/null 2>"\$st_err"
   st_rc=\$?
   rm -rf "\$st_home"
+  # A fatal signal (129-159) or a known crash banner means the binary is broken
+  # on this device: blocklist it (return 1).
   if [ "\$st_rc" -gt 128 ] && [ "\$st_rc" -le 159 ]; then rm -f "\$st_err"; return 1; fi
-  if [ "\$st_rc" -eq 124 ]; then rm -f "\$st_err"; return 1; fi
-  if [ "\$st_rc" -eq 126 ] || [ "\$st_rc" -eq 127 ]; then rm -f "\$st_err"; return 1; fi
   if grep -qE 'Bad system call|oh no: Bun has crashed|panic\(|bun\.report' "\$st_err" 2>/dev/null; then
     rm -f "\$st_err"; return 1
   fi
+  # Timed out (124) or could not exec (126/127): inconclusive, not a proven
+  # crash. Never blocklist these (return 2) so a slow or thermally throttled
+  # device does not permanently reject a good build.
+  if [ "\$st_rc" -eq 124 ] || [ "\$st_rc" -eq 126 ] || [ "\$st_rc" -eq 127 ]; then rm -f "\$st_err"; return 2; fi
   rm -f "\$st_err"
   return 0
 }
@@ -429,47 +443,72 @@ else
 fi
 
 if [ "\$should_check" = 1 ]; then
-  latest=\$(curl -fsSL --max-time 5 https://registry.npmjs.org/@anthropic-ai/claude-code/latest 2>/dev/null | jq -r .version 2>/dev/null || echo "")
-  if [ -n "\$latest" ] && printf '%s' "\$latest" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\$'; then
-    new_bin="\$VERSIONS_DIR/\$latest"
-    if [ ! -f "\$new_bin" ] && ! grep -qxF "\$latest" "\$BLOCKLIST" 2>/dev/null; then
-      dl="https://downloads.claude.ai/claude-code-releases/\$latest"
-      if curl -fsSL --max-time 300 "\$dl/linux-arm64/claude" -o "\$new_bin.tmp" 2>/dev/null; then
-        exp=\$(curl -fsSL --max-time 5 "\$dl/manifest.json" 2>/dev/null | jq -er '.platforms["linux-arm64"].checksum' 2>/dev/null || echo "")
-        act=\$(sha256sum "\$new_bin.tmp" | cut -d' ' -f1)
-        if [ -n "\$exp" ] && [ "\$exp" = "\$act" ]; then
-          chmod +x "\$new_bin.tmp"
-          if LD_PRELOAD= "\$PATCHELF" --set-interpreter "\$GLIBC_LD" "\$new_bin.tmp" 2>/dev/null; then
-            if smoke_test "\$new_bin.tmp"; then
-              mv "\$new_bin.tmp" "\$new_bin"
-              printf '%s\n' "\$latest" > "\$VERIFIED"
-              # Retain N-1 (latest + previous) for rollback.
-              prev=\$(ls -1 "\$VERSIONS_DIR" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\$' | sort -V | tail -2 | head -1)
-              for old in "\$VERSIONS_DIR"/*; do
-                base=\$(basename "\$old")
-                [ -f "\$old" ] && [ "\$base" != "\$latest" ] && [ "\$base" != "\$prev" ] && rm -f "\$old"
-              done
-            else
-              rm -f "\$new_bin.tmp"
-              printf '%s\n' "\$latest" >> "\$BLOCKLIST"
-              echo "[claude] update: \$latest crashes on launch (failed smoke test), keeping cached" >&2
-            fi
+  # One-updater lock: only one claude process downloads at a time. A second
+  # launch during the (up to 5 min) download skips the update and runs the
+  # cached binary instead of racing on a shared staging file. A crashed
+  # updater's lock is stolen after 15 min so updates can never wedge forever.
+  LOCK="\$VERSIONS_DIR/.update.lock"
+  if [ -d "\$LOCK" ]; then
+    lock_age=\$(( \$(date +%s) - \$(stat -c%Y "\$LOCK" 2>/dev/null || echo 0) ))
+    [ "\$lock_age" -ge 900 ] && rmdir "\$LOCK" 2>/dev/null
+  fi
+  if mkdir "\$LOCK" 2>/dev/null; then
+    touch "\$STAMP"
+    latest=\$(curl -fsSL --max-time 5 https://registry.npmjs.org/@anthropic-ai/claude-code/latest 2>/dev/null | jq -r .version 2>/dev/null || echo "")
+    if [ -n "\$latest" ] && printf '%s' "\$latest" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\$'; then
+      new_bin="\$VERSIONS_DIR/\$latest"
+      # Per-process staging path (never a shared name) so two updaters cannot
+      # clobber each other's in-flight download.
+      tmp="\$new_bin.\$\$.tmp"
+      if [ ! -f "\$new_bin" ] && ! grep -qxF "\$latest" "\$BLOCKLIST" 2>/dev/null; then
+        dl="https://downloads.claude.ai/claude-code-releases/\$latest"
+        if curl -fsSL --max-time 300 "\$dl/linux-arm64/claude" -o "\$tmp" 2>/dev/null && [ -s "\$tmp" ]; then
+          exp=\$(curl -fsSL --max-time 5 "\$dl/manifest.json" 2>/dev/null | jq -er '.platforms["linux-arm64"].checksum' 2>/dev/null || echo "")
+          act=\$(sha256sum "\$tmp" 2>/dev/null | cut -d' ' -f1)
+          if [ -z "\$exp" ]; then
+            rm -f "\$tmp"
+            echo "[claude] update: could not read release manifest, using cached" >&2
+          elif [ "\$exp" != "\$act" ]; then
+            rm -f "\$tmp"
+            echo "[claude] update: checksum mismatch on \$latest, using cached" >&2
           else
-            rm -f "\$new_bin.tmp"
-            echo "[claude] update: patchelf failed on \$latest, using cached" >&2
+            chmod +x "\$tmp"
+            if ! LD_PRELOAD= "\$PATCHELF" --set-interpreter "\$GLIBC_LD" "\$tmp" 2>/dev/null; then
+              rm -f "\$tmp"
+              echo "[claude] update: patchelf failed on \$latest, using cached" >&2
+            else
+              smoke_test "\$tmp"; sc=\$?
+              if [ "\$sc" -eq 0 ]; then
+                mv "\$tmp" "\$new_bin"
+                printf '%s\n' "\$latest" > "\$VERIFIED"
+                # Retain N-1 (latest + previous) for rollback. Only version-named
+                # binaries are removed, never a staging .tmp or the lock dir.
+                prev=\$(ls -1 "\$VERSIONS_DIR" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\$' | sort -V | tail -2 | head -1)
+                for old in "\$VERSIONS_DIR"/*; do
+                  base=\$(basename "\$old")
+                  printf '%s' "\$base" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\$' || continue
+                  [ -f "\$old" ] && [ "\$base" != "\$latest" ] && [ "\$base" != "\$prev" ] && rm -f "\$old"
+                done
+              elif [ "\$sc" -eq 1 ]; then
+                rm -f "\$tmp"
+                printf '%s\n' "\$latest" >> "\$BLOCKLIST"
+                echo "[claude] update: \$latest crashes on launch (failed smoke test), keeping cached" >&2
+              else
+                rm -f "\$tmp"
+                echo "[claude] update: could not verify \$latest on this device, keeping cached" >&2
+              fi
+            fi
           fi
         else
-          rm -f "\$new_bin.tmp"
-          echo "[claude] update: checksum mismatch on \$latest, using cached" >&2
+          rm -f "\$tmp" 2>/dev/null
+          echo "[claude] update: download incomplete, using cached" >&2
         fi
-      else
-        echo "[claude] update: download failed, using cached" >&2
       fi
+    else
+      echo "[claude] update: could not query npm registry, using cached" >&2
     fi
-  else
-    echo "[claude] update: could not query npm registry, using cached" >&2
+    rmdir "\$LOCK" 2>/dev/null
   fi
-  touch "\$STAMP"
 fi
 
 # Pick the highest installed version that actually launches on this device.
@@ -481,6 +520,7 @@ fi
 # with no user action.
 verified=\$(cat "\$VERIFIED" 2>/dev/null || echo "")
 bin=""
+fallback=""
 for cand in \$(ls -1 "\$VERSIONS_DIR" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\$' | sort -Vr); do
   grep -qxF "\$cand" "\$BLOCKLIST" 2>/dev/null && continue
   cpath="\$VERSIONS_DIR/\$cand"
@@ -488,15 +528,25 @@ for cand in \$(ls -1 "\$VERSIONS_DIR" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0
   if [ "\$cand" = "\$verified" ]; then bin="\$cpath"; break; fi
   interp=\$(LD_PRELOAD= "\$PATCHELF" --print-interpreter "\$cpath" 2>/dev/null || echo unknown)
   [ "\$interp" = "\$GLIBC_LD" ] || LD_PRELOAD= "\$PATCHELF" --set-interpreter "\$GLIBC_LD" "\$cpath" 2>/dev/null
-  if smoke_test "\$cpath"; then
+  smoke_test "\$cpath"; sc=\$?
+  if [ "\$sc" -eq 0 ]; then
     printf '%s\n' "\$cand" > "\$VERIFIED"
     bin="\$cpath"
     break
-  else
+  elif [ "\$sc" -eq 1 ]; then
     echo "[claude] \$cand crashes on this device; rolling back to the previous version" >&2
     printf '%s\n' "\$cand" >> "\$BLOCKLIST"
+  else
+    # Inconclusive (e.g. the probe timed out on a slow device): do not blocklist,
+    # but remember the highest such build as a last resort so we still launch.
+    [ -z "\$fallback" ] && fallback="\$cpath"
+    echo "[claude] could not verify \$cand on this device; trying an older version first" >&2
   fi
 done
+# Nothing probed clean, but a build merely failed to prove itself (never
+# crashed): run the highest such build rather than refuse. An inconclusive
+# probe is not a crash.
+[ -z "\$bin" ] && [ -n "\$fallback" ] && bin="\$fallback"
 if [ -z "\$bin" ]; then
   echo "[claude] no working claude binary found in \$VERSIONS_DIR. Re-run install.sh." >&2
   exit 1
