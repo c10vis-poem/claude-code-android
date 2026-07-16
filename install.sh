@@ -243,6 +243,7 @@ GLIBC_LD="$PREFIX/glibc/lib/ld-linux-aarch64.so.1"
 ok "glibc-runner + patchelf installed"
 
 # --- Resolve latest claude version, download, verify, patch ---
+# SYNC:BEGIN resolve-download-patch (kept byte-identical to migrate.sh -- checked by scripts/check-sync.sh)
 info "resolving latest claude version from npm registry"
 LATEST="$(curl -fsSL --max-time 10 https://registry.npmjs.org/@anthropic-ai/claude-code/latest 2>/dev/null | jq -r .version 2>/dev/null)"
 if [ -z "$LATEST" ] || [ "$LATEST" = "null" ]; then
@@ -279,8 +280,9 @@ ok "checksum verified"
 
 chmod +x "$BINARY.tmp"
 LD_PRELOAD='' "$PATCHELF" --set-interpreter "$GLIBC_LD" "$BINARY.tmp" \
-  || fail "patchelf failed to set ELF interpreter"
+  || { rm -f "$BINARY.tmp"; fail "patchelf failed to set ELF interpreter"; }
 mv "$BINARY.tmp" "$BINARY"
+# SYNC:END resolve-download-patch
 ok "binary patched and installed at $BINARY"
 
 write_setdns "$CC_SETDNS"
@@ -357,6 +359,7 @@ fi
 # used. Self-heals the ELF interpreter every launch. Unsets LD_PRELOAD
 # before exec so the glibc binary doesn't crash on libtermux-exec's
 # unversioned libc.so dependency.
+# SYNC:BEGIN wrapper-heredoc (kept byte-identical to migrate.sh -- checked by scripts/check-sync.sh)
 cat > "$WRAPPER" <<EOF
 #!/data/data/com.termux/files/usr/bin/bash
 VERSIONS_DIR="$VERSIONS_DIR"
@@ -504,6 +507,7 @@ write_setdns "\$CC_SETDNS"
 unset LD_PRELOAD
 exec "\$bin" "\${args[@]}"
 EOF
+# SYNC:END wrapper-heredoc
 chmod +x "$WRAPPER"
 ok "wrapper installed at $WRAPPER"
 

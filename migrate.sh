@@ -21,7 +21,9 @@
 #
 # SYNC NOTE: the npm-version resolve, download, checksum, patchelf, and the
 # emitted wrapper below are kept byte-identical to install.sh. If you change
-# one, change both.
+# one, change both. This is enforced, not just documented: the sections are
+# wrapped in matching "# SYNC:BEGIN <name>" / "# SYNC:END <name>" markers, and
+# scripts/check-sync.sh diffs them and fails if they drift (wired into CI).
 #
 # Tracking the upstream issue this works around:
 #   https://github.com/anthropics/claude-code/issues/50270
@@ -250,6 +252,7 @@ if [ ! -f "$GLIBC_LD" ]; then fail "glibc ld.so not found at $GLIBC_LD"; fi
 ok "glibc-runner + patchelf ready"
 
 # --- Resolve + stage the NEW binary (old install still intact at this point) ---
+# SYNC:BEGIN resolve-download-patch (kept byte-identical to install.sh -- checked by scripts/check-sync.sh)
 info "resolving latest claude version from npm registry"
 LATEST="$(curl -fsSL --max-time 10 https://registry.npmjs.org/@anthropic-ai/claude-code/latest 2>/dev/null | jq -r .version 2>/dev/null)"
 if [ -z "$LATEST" ] || [ "$LATEST" = "null" ]; then
@@ -260,9 +263,11 @@ if ! printf '%s' "$LATEST" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
 fi
 ok "latest claude version: $LATEST"
 
+VERSIONS_DIR="$HOME/.local/share/claude/versions"
 BINARY="$VERSIONS_DIR/$LATEST"
 WRAPPER="$PREFIX/bin/claude"
 mkdir -p "$VERSIONS_DIR" "$HOME/.claude"
+
 DL_BASE="https://downloads.claude.ai/claude-code-releases/$LATEST"
 
 info "downloading $LATEST linux-arm64 binary (~233 MB)"
@@ -286,6 +291,7 @@ chmod +x "$BINARY.tmp"
 LD_PRELOAD='' "$PATCHELF" --set-interpreter "$GLIBC_LD" "$BINARY.tmp" \
   || { rm -f "$BINARY.tmp"; fail "patchelf failed to set ELF interpreter"; }
 mv "$BINARY.tmp" "$BINARY"
+# SYNC:END resolve-download-patch
 ok "new binary staged at $BINARY"
 
 write_setdns "$CC_SETDNS"
@@ -341,6 +347,7 @@ else
 fi
 
 # --- Wrapper at $PREFIX/bin/claude  (KEEP BYTE-IDENTICAL TO install.sh) ---
+# SYNC:BEGIN wrapper-heredoc (kept byte-identical to install.sh -- checked by scripts/check-sync.sh)
 cat > "$WRAPPER" <<EOF
 #!/data/data/com.termux/files/usr/bin/bash
 VERSIONS_DIR="$VERSIONS_DIR"
@@ -488,6 +495,7 @@ write_setdns "\$CC_SETDNS"
 unset LD_PRELOAD
 exec "\$bin" "\${args[@]}"
 EOF
+# SYNC:END wrapper-heredoc
 chmod +x "$WRAPPER"
 ok "wrapper installed at $WRAPPER"
 
