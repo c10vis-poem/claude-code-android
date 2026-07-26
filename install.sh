@@ -299,8 +299,11 @@ info "smoke-testing the installed binary"
 ST_ERR="$VERSIONS_DIR/.smoke-stderr"
 ST_HOME="$VERSIONS_DIR/.smoke-home"
 rm -rf "$ST_HOME"; mkdir -p "$ST_HOME/.claude"
-HOME="$ST_HOME" LD_PRELOAD='' timeout -s KILL 45 "$BINARY" --init-only </dev/null >/dev/null 2>"$ST_ERR"
-ST_RC=$?
+if HOME="$ST_HOME" LD_PRELOAD='' timeout -s KILL 45 "$BINARY" --init-only </dev/null >/dev/null 2>"$ST_ERR"; then
+  ST_RC=0
+else
+  ST_RC=$?
+fi
 rm -rf "$ST_HOME"
 if { [ "$ST_RC" -gt 128 ] && [ "$ST_RC" -le 159 ]; } \
    || grep -qE 'Bad system call|oh no: Bun has crashed|panic\(|bun\.report' "$ST_ERR" 2>/dev/null; then
@@ -361,9 +364,10 @@ fi
 # downloads, verifies checksum, patchelfs, swaps. --update-now forces
 # an immediate check, bypassing the rate limit. Any failure (network,
 # checksum, patchelf) is reported to stderr and the cached binary is
-# used. Self-heals the ELF interpreter every launch. Unsets LD_PRELOAD
-# before exec so the glibc binary doesn't crash on libtermux-exec's
-# unversioned libc.so dependency.
+# used. Repairs the ELF interpreter for any candidate it must test; the
+# already-verified binary takes the zero-cost fast path and skips that work.
+# Unsets LD_PRELOAD before exec so the glibc binary doesn't crash on
+# libtermux-exec's unversioned libc.so dependency.
 cat > "$WRAPPER" <<EOF
 #!/data/data/com.termux/files/usr/bin/bash
 VERSIONS_DIR="$VERSIONS_DIR"
@@ -373,6 +377,11 @@ STAMP="\$VERSIONS_DIR/.last-update-check"
 BLOCKLIST="\$VERSIONS_DIR/.blocklist"
 VERIFIED="\$VERSIONS_DIR/.verified"
 RATE_LIMIT=86400
+
+retry_update_soon() {
+  retry_at=\$(( \$(date +%s) - RATE_LIMIT + 3600 ))
+  touch -d "@\$retry_at" "\$STAMP" 2>/dev/null || rm -f "\$STAMP"
+}
 
 CC_SETDNS="$HOME/.local/share/claude/setdns.js"
 CC_SETDNS_JS='try { require("dns").setServers(["8.8.8.8", "8.8.4.4"]); } catch (e) {}'
@@ -453,6 +462,16 @@ if [ "\$should_check" = 1 ]; then
     [ "\$lock_age" -ge 900 ] && rmdir "\$LOCK" 2>/dev/null
   fi
   if mkdir "\$LOCK" 2>/dev/null; then
+    # A SIGKILL during download bypasses normal cleanup. Sweep stale staging
+    # files on every serialized update check; a live download is only minutes old.
+    cleanup_now=\$(date +%s 2>/dev/null || echo "")
+    case "\$cleanup_now" in ""|*[!0-9]*) cleanup_now=0 ;; esac
+    for stale_tmp in "\$VERSIONS_DIR"/*.tmp; do
+      [ -f "\$stale_tmp" ] && [ ! -L "\$stale_tmp" ] || continue
+      stale_mtime=\$(stat -c%Y "\$stale_tmp" 2>/dev/null || echo "")
+      case "\$stale_mtime" in ""|*[!0-9]*) continue ;; esac
+      [ \$(( cleanup_now - stale_mtime )) -gt 86400 ] && rm -f "\$stale_tmp" 2>/dev/null
+    done
     touch "\$STAMP"
     latest=\$(curl -fsSL --max-time 5 https://registry.npmjs.org/@anthropic-ai/claude-code/latest 2>/dev/null | jq -r .version 2>/dev/null || echo "")
     if [ -n "\$latest" ] && printf '%s' "\$latest" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\$'; then
@@ -467,9 +486,11 @@ if [ "\$should_check" = 1 ]; then
           act=\$(sha256sum "\$tmp" 2>/dev/null | cut -d' ' -f1)
           if [ -z "\$exp" ]; then
             rm -f "\$tmp"
+            retry_update_soon
             echo "[claude] update: could not read release manifest, using cached" >&2
           elif [ "\$exp" != "\$act" ]; then
             rm -f "\$tmp"
+            retry_update_soon
             echo "[claude] update: checksum mismatch on \$latest, using cached" >&2
           else
             chmod +x "\$tmp"
@@ -501,10 +522,12 @@ if [ "\$should_check" = 1 ]; then
           fi
         else
           rm -f "\$tmp" 2>/dev/null
+          retry_update_soon
           echo "[claude] update: download incomplete, using cached" >&2
         fi
       fi
     else
+      retry_update_soon
       echo "[claude] update: could not query npm registry, using cached" >&2
     fi
     rmdir "\$LOCK" 2>/dev/null
@@ -553,7 +576,19 @@ if [ -z "\$bin" ]; then
 fi
 
 write_setdns "\$CC_SETDNS"
-[ -s "\$CC_SETDNS" ] && export BUN_OPTIONS="--preload \$CC_SETDNS\${BUN_OPTIONS:+ \$BUN_OPTIONS}"
+if [ -s "\$CC_SETDNS" ]; then
+  # Bun resolves relative preloads from its physical CWD; default realpath resolves
+  # symlinks to match that assumption and avoids its node_modules walk to / (cosmetic EACCES).
+  # The absolute fallback keeps DNS working if relative-path resolution fails.
+  cc_preload=\$(realpath --relative-to="\$PWD" "\$CC_SETDNS" 2>/dev/null) || cc_preload=""
+  case "\$cc_preload" in
+    ./*|../*) ;;
+    "") cc_preload="\$CC_SETDNS" ;;
+    /*) cc_preload="\$CC_SETDNS" ;;
+    *) cc_preload="./\$cc_preload" ;;
+  esac
+  export BUN_OPTIONS="--preload \$cc_preload\${BUN_OPTIONS:+ \$BUN_OPTIONS}"
+fi
 unset LD_PRELOAD
 exec "\$bin" "\${args[@]}"
 EOF
