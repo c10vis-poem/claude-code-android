@@ -1,11 +1,11 @@
-name: ShellCheck
+name: Test
 
 on:
   push:
   pull_request:
 
 jobs:
-  shellcheck:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -13,8 +13,23 @@ jobs:
       - name: Install ShellCheck
         run: sudo apt-get update && sudo apt-get install -y shellcheck
 
+      - name: Check shell syntax
+        run: bash -n install.sh install-pinned.sh migrate.sh tests/*.sh scripts/*.sh examples/*.sh
+
       - name: Run ShellCheck
-        run: shellcheck --severity=warning install.sh install-pinned.sh migrate.sh tests/verify-claims.sh scripts/check-termux-env.sh scripts/fix-ripgrep.sh scripts/config-validator.sh scripts/check-sync.sh tests/ssrf-guard-tests.sh examples/ssrf-guard.sh examples/fingerprint-gate.sh
+        run: shellcheck --severity=warning install.sh install-pinned.sh migrate.sh tests/*.sh scripts/*.sh examples/*.sh
 
       - name: Check install.sh / migrate.sh sync
         run: bash scripts/check-sync.sh
+
+      - name: Test generated wrapper
+        run: bash tests/wrapper-update-tests.sh
+
+      - name: Test installer smoke classification
+        run: bash tests/installer-smoke-tests.sh
+
+      - name: Test SSRF guard
+        run: bash tests/ssrf-guard-tests.sh
+
+      - name: Run mutation checks
+        run: bash tests/mutation-check.sh
