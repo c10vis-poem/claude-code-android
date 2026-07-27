@@ -15,7 +15,7 @@ case "$MODE" in
 esac
 
 ANDROID="$(getprop ro.build.version.release)"
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
+SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)"
 OUT_DIR="${CC_MATRIX_OUT:-/sdcard/Download/claude-code-android-matrix}"
 RUN_ID="${MODE}-${DEVICE}"
 TRANSCRIPT="$OUT_DIR/$RUN_ID.txt"

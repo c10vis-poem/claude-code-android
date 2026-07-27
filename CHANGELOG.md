@@ -4,6 +4,49 @@
 
 (No unreleased changes yet.)
 
+## [2.9.4] - 2026-07-27
+
+A reliability release for the installer and the launcher, with a documentation pass alongside it.
+
+Three things could go wrong on a real phone. On a device where the current Claude Code cannot start at all, `install.sh` ran its launch probe as a bare command under a shell setting that exits on any failure, so it stopped right there, before writing the launcher, the settings, or the PATH entry. The user got a raw `Killed` and no working `claude` command instead of the explanation the script was written to give. Android 8 and 10 are where that fired, and a healthy install passes straight through it, so it sat unseen. Separately, the daily update check staged every download to one shared file with no lock, so two ordinary launches inside the same few-minute window could delete each other's download, report a false "checksum mismatch", and leave the device a version behind until the next day. And every launch printed `error: Cannot read directory "/": EACCES`, because loading the DNS helper by its absolute path made the runtime walk up the folders above it until it reached the top of the filesystem, which Android does not let an app read. That last one was cosmetic throughout. Thanks to @Tanbeer191, who found both its cause and its fix.
+
+Verified across four devices. On the Moto G7 Power (Android 10), where the binary genuinely cannot start, a fresh install classifies the crash, writes the launcher, settings, and PATH entry, and finishes with the explanation and a working way forward. On the Galaxy S7 (Android 8), the migration aborts on that same crash and leaves the existing pinned install running. On the Pixel 6 and Pixel 10 Pro (Android 17), the startup error is gone, name resolution returns a real address, and two simultaneous launches leave no false "checksum mismatch" and no partial download behind. The Pixel 6 also ran a full install from scratch.
+
+### Added
+
+- A single-updater lock and a per-process staging path in the launcher (`install.sh` and `migrate.sh`), so two launches inside the download window no longer race on a shared file.
+- Enforcement that `install.sh` and `migrate.sh` stay byte-identical where they must. Both scripts mark the shared sections with `SYNC:BEGIN` and `SYNC:END`, and `scripts/check-sync.sh` fails when they drift. Thanks to @doomcrew328.
+- An offer to install the working pinned release. When the installer finds that the current Claude Code cannot run on this device, it now offers to fetch and run `install-pinned.sh` for you rather than leaving you to do it by hand, and it names the upstream issue so you can see why. Declining, or a failure in that optional step, leaves the completed install alone. A non-interactive install prints the command instead of prompting.
+- A mutation harness (`tests/mutation-check.sh`) that applies eleven known regressions to temporary copies and requires each to be caught, so a suite that has stopped protecting the code cannot pass unnoticed.
+- Regression suites for the launcher's update path and the install-time probe classification (`tests/wrapper-update-tests.sh`, `tests/installer-smoke-tests.sh`). Both fail against the previous release.
+- CI now runs shell syntax, ShellCheck, the sync check, all three suites, and the mutation harness on every push and pull request.
+- A troubleshooting entry for the startup EACCES line, which was reported but undocumented.
+- GitHub issue forms for bug reports and device reports, scoped to the failure classes this repo actually sees, so a report arrives with the device, Android version, install path, and exact error instead of free text.
+- A "Related projects" section pointing to other ways to run Claude Code on Android, so a reader can pick the one that fits their device.
+- A returning-user recovery callout near the top of the README for the "it worked yesterday, now it crashes or hangs" case.
+- Path C (Android Virtualization Framework) device support in the README, kept clearly separate from the Termux paths.
+
+### Changed
+
+- CONTRIBUTING is now a full contribution guide, including the automated checks to run before opening a pull request and the byte-identical rule the two installers follow.
+- The "question or success story" link on the issue chooser now goes to Discussions. It pointed at a documentation page, which left anyone with a question nowhere to go, since blank issues are disabled.
+- The security policy is rewritten for a solo public repo, with the current nested hooks schema in the permission-guard docs.
+- The README and install guides are shorter and less dense: a single maintainer note at the top, jargon glossed in place, and Path B standardized to "proot-distro Ubuntu". The device table drops a column that repeated a date already shown in the row, which also stops it overflowing on a phone.
+- The Path A disk figure now says what a device actually uses. The stated base covered a fresh install only, while the launcher keeps the previous binary for rollback, so real use is roughly double that once the first update lands.
+- install.md's description of what the launcher does on each launch matches what it does, including the update lock and the difference between a crash and a probe that could not finish.
+- `VERSION`: 2.9.3 -> 2.9.4.
+
+### Fixed
+
+- `install.sh` and `migrate.sh` no longer exit before finishing when the launch probe reports a crash or a timeout. On a device that cannot run the current release, the install now runs to completion, writes the launcher and settings, and ends with a message saying plainly that this release will not run here, where to go instead, and not to start claude. It exits successfully, because nothing about the install failed. Previously the script stopped at the probe, left no working `claude` command at all, and then reported failure with advice that could not help on that device.
+- The startup `Cannot read directory "/": EACCES` line is gone. It was cosmetic, and the DNS fix it came from keeps working either way.
+- Launching Claude twice inside the download window no longer strands the update or reports a false "checksum mismatch".
+- A launch probe that times out no longer permanently rejects a good build. The self-heal separates a definite crash, which is recorded and rolled back, from an inconclusive result, which is retried and never recorded as bad, and falls back to the best non-crashing build rather than refusing to launch. It decides which happened by how long the probe ran rather than by an exit code, because the exit status for a killed process is not the same across the tools different Android builds ship.
+- A download interrupted part-way no longer sits on the device. The launcher clears abandoned staging files on its next update check, and both installers now remove the partial file when a download fails outright, which matters most on the nearly full devices where downloads fail in the first place.
+- `install.sh` removes the staged binary when patching fails, matching what `migrate.sh` already did. Thanks to @doomcrew328.
+- The pinned-install search recovery names the ripgrep symlink as the primary fix, scoped to pinned installs, and points at the correct upstream issue (anthropics/claude-code#13021).
+- Corrected the phantom-process comment and the install-type label in the environment check script, the source attributions in the verification harness, and the One UI 8.5 timeline and Tensor G5 core topology in the AVF guide.
+
 ## [2.9.3] - 2026-07-01
 
 A DNS reliability release. It works around a Bun bug that makes Claude Code hang on "checking connectivity" and fail with ETIMEOUT on Termux, and it makes search work out of the box on the pinned install for older devices.

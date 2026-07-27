@@ -24,7 +24,7 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/Android-8%2B-brightgreen.svg" alt="Android 8+">
-  <img src="https://img.shields.io/badge/Version-2.9.3-blue.svg" alt="Version 2.9.3">
+  <img src="https://img.shields.io/badge/Version-2.9.4-blue.svg" alt="Version 2.9.4">
   <img src="https://img.shields.io/badge/Last%20Verified-2026--07--27-lightgrey.svg" alt="Last Verified 2026-07-27">
 </p>
 

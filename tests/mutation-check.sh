@@ -3,7 +3,7 @@
 
 set -u
 
-REPO_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)"
+REPO_ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)"
 BASH_BIN="$(command -v bash)"
 WORK_ROOT="$(mktemp -d)"
 trap 'rm -rf "$WORK_ROOT"' EXIT HUP INT TERM
@@ -22,7 +22,8 @@ fresh_copy() {
 }
 
 rewrite_awk() {
-  local file="$1" program="$2" tmp="$file.rewrite"
+  local file="$1" program="$2"
+  local tmp="$file.rewrite"
   awk "$program" "$file" > "$tmp" && mv "$tmp" "$file"
 }
 
