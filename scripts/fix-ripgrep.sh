@@ -2,28 +2,27 @@
 # fix-ripgrep.sh: Recover Claude Code's Grep/Glob tools when the bundled
 #                   ripgrep is missing the arm64-android binary.
 #
-# Background: Claude Code bundles platform-specific ripgrep binaries in
-# its vendor directory but does NOT include an `arm64-android` variant.
-# This causes the Grep, Glob, and slash-command tools to fail with:
+# Background: on the v2.x / pinned 2.1.112 install, Claude Code bundles
+# platform-specific ripgrep binaries in its vendor directory but does NOT
+# include an `arm64-android` variant. This causes the Grep, Glob, and
+# slash-command tools to fail with:
 #
 #     spawn .../vendor/ripgrep/arm64-android/rg ENOENT
 #     (ENOENT = no such file or directory)
 #
-# Two ways to fix this:
+# The native Path A install (the current 2.9.x architecture) is not affected:
+# it ships vendor/ripgrep/arm64-linux/rg and reports process.platform ===
+# 'linux', so it finds its bundled rg with no symlink or env var needed.
 #
-# 1. Add `export CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1` to your ~/.bashrc.
-#    That env var tells Claude Code to use the system ripgrep instead of
-#    its bundled vendor binary. In my testing, this setting persists across
-#    Claude Code updates because ~/.bashrc is not touched by updates.
-#    I prefer this option.
+# The fix: install `ripgrep` via pkg and symlink the system binary onto the
+# exact vendored path Claude Code looks for. That is what THIS script does.
+# On 2.1.112 the CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1 env var does NOT
+# redirect the search (verified on device: with the symlink removed, Grep
+# fails with the same ENOENT whether the flag is set in ~/.bashrc, exported
+# in the shell, or set in settings.json env). The symlink is what works.
 #
-# 2. Run THIS script. It installs `ripgrep` via pkg if needed and
-#    symlinks the system binary into Claude Code's vendor directory.
-#    The symlink does not survive Claude Code updates in my testing.
-#    If you upgrade, re-run this script.
-#
-# This script is the recovery path. Option 1 above (the env var) is the
-# permanent solution. Upstream tracking: anthropics/claude-code#9435.
+# The symlink does not survive a Claude Code update; re-run this script after
+# you upgrade. Upstream tracking: anthropics/claude-code#13021 (Closed).
 #
 # Usage:
 #   bash scripts/fix-ripgrep.sh
@@ -44,8 +43,13 @@ if [ -z "$CLAUDE_BIN" ]; then
   exit 1
 fi
 
-CLAUDE_REAL="$(readlink -f "$CLAUDE_BIN")"
-VENDOR_DIR="$(dirname "$CLAUDE_REAL")/../lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep"
+# The pinned package always installs to $PREFIX/lib/node_modules, the same
+# path install-pinned.sh, install.sh, and migrate.sh use. Derive it directly;
+# readlink -f on $PREFIX/bin/claude resolves into the package (cli.js), so a
+# relative ../lib/node_modules walk from there double-nests to a path that
+# does not exist.
+CLAUDE_PKG="${PREFIX:-/data/data/com.termux/files/usr}/lib/node_modules/@anthropic-ai/claude-code"
+VENDOR_DIR="$CLAUDE_PKG/vendor/ripgrep"
 if [ ! -d "$VENDOR_DIR" ]; then
   echo "ERROR: vendor directory not found at $VENDOR_DIR" >&2
   echo "       (Claude Code may have changed its layout; check the install path.)" >&2
@@ -88,6 +92,6 @@ chmod -R a-w "$CC_DIR"
 
 echo "[ok]    Symlink created: $VENDOR_DIR/arm64-android/rg -> $RG_PATH"
 echo ""
-echo "Verify by running the Grep tool inside Claude Code. If you still"
-echo "see ENOENT errors, also add CLAUDE_CODE_USE_NATIVE_FILE_SEARCH=1 to"
-echo "your ~/.bashrc (tells Claude Code to use the system ripgrep instead)."
+echo "Verify by running the Grep tool inside Claude Code. If you still see"
+echo "ENOENT errors, check that the path in the error message matches"
+echo "$VENDOR_DIR/arm64-android/rg (the vendored layout may have changed)."

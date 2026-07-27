@@ -12,14 +12,13 @@ If this change breaks an existing user workflow, document what breaks and what m
 ## Tested on
 - **Device:**
 - **Android version:**
-- **Node.js version:**
-- **Install path:** (A: native Termux / B: proot-distro Ubuntu / C: Android Virtualization Framework, AVF)
-
-## Test scenarios
-
-List the specific scenarios you ran against the change. Include both happy path and any edge cases relevant to the area you touched (e.g., fresh install vs upgrade, Path A vs Path B, with/without ADB self-connect, with/without Termux:API).
-
+- **[Install path](../README.md#quick-install):** (A: native Termux / B: proot-distro Ubuntu / C: Android Virtualization Framework, AVF)
+- **Install method:** (install.sh / install-pinned.sh / migrate.sh / manual)
+- **Node.js version:** (Path B or pinned installs only; N/A on native Path A)
+- **Scenarios run (happy path + edges, e.g. fresh install vs upgrade, Path A vs B):**
 
 ## Checklist
-- [ ] Tested on a real Android device
-- [ ] No PII included in the change
+- [ ] Tested on a real Android device (if your change touches installation, scripts, or a documented device claim; N/A for docs-only fixes)
+- [ ] Prose follows repo style (see [CONTRIBUTING.md](CONTRIBUTING.md))
+
+The maintainer handles versioning and the CHANGELOG at release time, so you do not need to update either.

@@ -12,7 +12,7 @@
 #
 # Usage:
 #   bash tests/ssrf-guard-tests.sh examples/ssrf-guard.sh
-#   bash tests/ssrf-guard-tests.sh examples/ssrf-guard.v2.sh
+#   bash tests/ssrf-guard-tests.sh path/to/your-guard.sh
 
 HOOK="${1:-examples/ssrf-guard.sh}"
 
@@ -98,7 +98,7 @@ echo "=== Allowed: public ==="
 run_test "public example.com"              0 "$(wf 'http://example.com/')"
 run_test "public 8.8.8.8 (Google DNS - Domain Name System)" 0 "$(wf 'http://8.8.8.8/')"
 run_test "https github.com"                0 "$(wf 'https://github.com/')"
-run_test "public IPv6 2001:db8::1"         0 "$(wf 'http://[2001:db8::1]/')"
+run_test "doc-range IPv6 2001:db8::1 (non-internal)" 0 "$(wf 'http://[2001:db8::1]/')"
 run_test "public with port"                0 "$(wf 'http://example.com:8443/')"
 run_test "public with path and query"      0 "$(wf 'https://example.com/path?q=1')"
 

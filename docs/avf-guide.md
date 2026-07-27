@@ -4,9 +4,9 @@
 
 > **Android 17 status (verified 2026-05-26):** The AVF path was retested end-to-end on Pixel 6 and Pixel 10 Pro running Android 17. Several things changed between Android 16 and Android 17 and this guide has been updated for the current behaviour:
 >
-> - Memory size, Display resolution, and Keep awake are now adjusted in the Terminal app's gear-icon Settings under **Advanced**. Editing `/mnt/internal/linux/vm_config.json` is no longer the path: that location does not exist on Android 17.
-> - Keep awake replaces the older ADB (Android Debug Bridge) whitelist screen-off workaround. See the Screen-Off Stability section below.
-> - SSH (Secure Shell), avahi-daemon, and exim4 are not running by default. They are installed and can be enabled if you want them.
+> - Memory size, Display resolution, and Keep awake are adjusted in the Terminal app's gear-icon Settings under **Advanced**.
+> - Keep awake keeps the VM running when the screen turns off. See the Screen-Off Stability section below.
+> - SSH (Secure Shell) is not running by default. It is installed and can be enabled if you want it.
 > - The Recovery section of Settings exposes "Reset to initial version" and "Remove backup data".
 > - On Pixel 10 Pro, an additional **Graphics Acceleration** toggle (Software renderer or GPU-accelerated renderer) is available. Other Pixel models do not show this row.
 
@@ -16,7 +16,9 @@
 
 ## What AVF Is
 
-Android Virtualization Framework (AVF) is Google's built-in hypervisor for running Linux VMs directly on Android. Starting with Android 16, supported devices ship a Terminal app that boots a Debian VM with a real Linux kernel. Unlike proot-distro (Path B), which uses syscall translation, AVF runs an actual VM: `process.platform === "linux"`, native `/tmp`, no proot overhead.
+In plain terms: Path C runs a real Linux computer inside your phone using Android's built-in virtualization. Everything below is detail for the curious; you do not need to understand it to use this path.
+
+Android Virtualization Framework (AVF) is Google's built-in hypervisor (the software layer that runs virtual machines) for running Linux VMs directly on Android. Starting with Android 16, supported devices ship a Terminal app that boots a Debian VM with a real Linux kernel. Unlike proot-distro (Path B), which uses syscall translation, AVF runs an actual VM: `process.platform === "linux"`, native `/tmp`, no proot overhead.
 
 The VM runs on crosvm (Chrome OS's virtual machine monitor), managed by Android's VirtualizationService, with pKVM (Android's paravirtualized KVM hypervisor) providing hardware-level isolation. Device I/O uses virtio (a standard interface for virtual devices). AOSP (Android Open Source Project) architecture reference: [source.android.com/docs/core/virtualization/architecture](https://source.android.com/docs/core/virtualization/architecture).
 
@@ -33,7 +35,7 @@ The VM runs on crosvm (Chrome OS's virtual machine monitor), managed by Android'
 
 If your phone exposes Settings > System > Developer options > **Linux development environment**, your device supports this path. If that option is missing, it does not.
 
-In my testing and per public reports, Snapdragon phones are not supported on stock firmware: Qualcomm exposes only "protected" VMs at EL2, but the Terminal app requires non-protected VMs. Knox RKP (Real-time Kernel Protection, Samsung's hypervisor-backed security feature) on older Samsung devices conflicted with AVF for the same family of reasons. Samsung's One UI 8.5 (released February 2026) added Linux Terminal support on Exynos-based Galaxy S26 and S26+, per Samsung's own release notes; the Snapdragon Galaxy S26 Ultra remains unsupported per those same notes. I do not own a Samsung Exynos S26 or S26+, so I cannot confirm Samsung behaviour from first-hand testing.
+In my testing and per public reports, Snapdragon phones are not supported on stock firmware: Qualcomm exposes only "protected" VMs at EL2 (ARM Exception Level 2, the CPU privilege level a hypervisor runs at), but the Terminal app requires non-protected VMs. Knox RKP (Real-time Kernel Protection, Samsung's hypervisor-backed security feature) on older Samsung devices conflicted with AVF for the same family of reasons. Samsung support varies: Exynos-based Galaxy S26 and S26+ on One UI 8.5 are reported supported per Samsung's release notes, while the Snapdragon Galaxy S26 Ultra is not. I do not own a Samsung Exynos S26 or S26+, so I cannot confirm Samsung behaviour from first-hand testing.
 
 ---
 
@@ -76,13 +78,13 @@ Keep awake is a timer. The options are Off, 1 minute, 5 minutes, 10 minutes, 30 
 
 For short interactive sessions, leave it Off and keep the screen on. For long-running workloads, pick a value that matches how long you need the VM alive in the background.
 
-The Terminal app's Activity can still be recreated by Android in some cases (for example, when another app triggers a configuration change). Keep awake keeps the VM running but does not guarantee the terminal session UI stays continuous through every Android lifecycle event. If you need true long-running workloads, run them under `tmux` or `nohup` so they survive Activity recreation.
+The Terminal app's Activity (the on-screen window Android draws for the app) can still be recreated by Android in some cases (for example, when another app triggers a configuration change). Keep awake keeps the VM running but does not guarantee the terminal session UI stays continuous through every Android lifecycle event. If you need true long-running workloads, run them under `tmux` or `nohup` (tools that keep a process alive after its terminal window goes away) so they survive Activity recreation.
 
 ---
 
 ## VM Configuration
 
-On Android 17, VM configuration is exposed in the Terminal app's gear-icon Settings under **Advanced**. Editing files under `/mnt/internal/` is no longer the path: that directory does not exist on Android 17. The `/mnt` tree inside the VM contains `backup`, `build`, `shared`, and `ttyd` only.
+On Android 17, VM configuration is exposed in the Terminal app's gear-icon Settings under **Advanced**. The `/mnt` tree inside the VM contains `backup`, `build`, `shared`, and `ttyd` only.
 
 The Advanced screen exposes:
 
@@ -95,7 +97,7 @@ The Advanced screen exposes:
 
 To apply changes, the Terminal app may prompt to restart the VM.
 
-zram swap is configured automatically inside the VM and scales with the memory allocation. No manual setup needed.
+zram swap (compressed swap space held in RAM) is configured automatically inside the VM and scales with the memory allocation. No manual setup needed.
 
 ---
 
@@ -123,6 +125,8 @@ claude
 
 Authenticate via OAuth as normal.
 
+There is no automatic update or crash-rollback on Path C. The VM runs a real Linux kernel, so Anthropic's official installer works the same way it does on a PC. Update by re-running the installer.
+
 **Copy-paste warning:** The AVF terminal has unreliable copy-paste behavior. Long commands and multi-line commands frequently break when pasted. Type commands manually or verify pasted text character by character before running.
 
 ---
@@ -141,16 +145,16 @@ These capabilities were confirmed through direct testing on my Pixel 10 Pro. Res
 - **systemd fully functional.** Service management, timers, and journals all work. Updating systemd via apt worked without issues in my testing.
 
 ### Hardware and Performance
-- **8 CPU cores visible** (1x Cortex-X4, 2x Cortex-A725, 5x Cortex-A520 on my Tensor G5 test device). Full big.LITTLE topology exposed via `--host-cpu-topology`.
+- **8 CPU cores visible** (1x Cortex-X4, 5x Cortex-A725, 2x Cortex-A520 on my Tensor G5 test device). Full big.LITTLE topology (ARM's mix of high-performance and low-power cores) exposed via `--host-cpu-topology`.
 - **103 GB root disk.** Observed 552 MB/s sequential write and 4.2 GB/s sequential read using dd with default flags; the read figure includes page cache, so real disk throughput is lower. The original disk benchmark tool (fio) could not run due to a kernel limitation (see Known Issues).
 - **zram swap** configured by default, scales proportionally with RAM allocation. No manual setup needed.
 
 ### Audio
-- **Audio playback and recording confirmed.** PulseAudio 17.0 running as daemon, VirtIO SoundCard detected. Both playback (aplay, speaker-test) and capture (arecord) succeeded. Whether sound actually reached the phone speaker through AVF's audio routing pipeline was not conclusively verified.
+- **Audio playback and recording partially verified.** PulseAudio 17.0 running as daemon, VirtIO SoundCard detected. Both playback (aplay, speaker-test) and capture (arecord) succeeded. Whether sound actually reached the phone speaker through AVF's audio routing pipeline was not conclusively verified.
 
 ### GUI Capability
 - **Headless rendering works.** Firefox ESR (Extended Support Release) ran in headless mode and successfully rendered web pages to screenshot files.
-- **Wayland compositor available.** cage (kiosk compositor) ran with the headless backend. wayvnc can serve the output over VNC (Virtual Network Computing, a remote-desktop protocol). Full interactive Firefox in a compositor crashed due to the software renderer's limitations, but headless screenshots worked.
+- **Wayland compositor available.** (Wayland is a modern Linux display system.) cage (kiosk compositor) ran with the headless backend. wayvnc can serve the output over VNC (Virtual Network Computing, a remote-desktop protocol). Full interactive Firefox in a compositor crashed due to the software renderer's limitations, but headless screenshots worked.
 - **Mesa/OpenGL/EGL (Embedded Graphics Library, the interface between OpenGL and the display system) stack pre-installed.** GPU device at `/dev/dri/card0` via virtio-gpu. The Terminal app exposes a Graphics Acceleration toggle (Software renderer or GPU-accelerated renderer) on Pixel 10 Pro; on Pixel 6 the row is absent and the VM uses the software renderer.
 
 ### Networking and Kernel Features
@@ -339,7 +343,7 @@ The VM ships with defaults that prioritize convenience over security. In my test
 
 | Default | Detail | Suggested Hardening |
 |---------|--------|---------------------|
-| Default user password | The "droid" user (UID 1000) has a known default password set by cloud-init | Change with `sudo passwd droid` |
+| Default user password | The "droid" user (UID 1000) has a known default password set by cloud-init (the tool that does first-boot setup) | Change with `sudo passwd droid` |
 | NOPASSWD sudo | The droid user has passwordless sudo | Add a password requirement if others share the device |
 | No firewall configured | All iptables chains default to ACCEPT | Configure iptables-legacy rules (see Known Issues for nftables limitation) |
 | SSH installed but inactive | OpenSSH is in the image but not started. If you enable it with `sudo systemctl enable --now ssh`, the default `sshd_config` permits password auth | Before enabling, set `PasswordAuthentication no` and use key-based auth |
@@ -369,7 +373,7 @@ The VM is on a virtual network not directly reachable from the internet. Only th
 | | Path A (Native Termux) | Path B (Ubuntu in Termux) | Path C (AVF VM) |
 |---|---|---|---|
 | **Setup time** | 5-10 min | ~10-15 min (experienced) | ~20 min (experienced) |
-| **Disk usage** | ~350 MB | ~2 GB | ~2 GB (Debian image) |
+| **Disk usage** | ~280 MB base | ~2 GB | ~2 GB (Debian image) |
 | **Install method** | Patched linux-arm64 binary via glibc-runner; auto-updating wrapper | Official Anthropic installer | Official Anthropic installer |
 | **Linux kernel** | No (Android kernel + syscall translation) | No (proot syscall translation) | Yes (real VM kernel) |
 | **`/tmp` workaround** | Not needed | Not needed | Not needed |
@@ -380,10 +384,10 @@ The VM is on a virtual network not directly reachable from the internet. Only th
 | **ADB self-connect** | Works (127.0.0.1) | Works (127.0.0.1) | Works (via Wi-Fi IP, observed in my testing) |
 | **Device support** | Any aarch64 Android 8+ (Android 8 / 9 have OAuth caveats; see FAQ) | Any aarch64 Android 8+ (Android 8 / 9 have OAuth caveats; see FAQ) | Pixel 6+ with Android 16+ only |
 | **Stability** | Stable | Stable | Experimental (VM may be killed) |
-| **Ongoing maintenance** | Re-fix after each update | Just update normally | Just update normally (if VM survives) |
+| **Ongoing maintenance** | None (wrapper auto-updates) | Just update normally | Just update normally (if VM survives) |
 | **Audio** | Via Termux API | Via Termux API | Native (PulseAudio + VirtIO) |
 | **GUI capability** | Limited | Limited | Headless rendering confirmed; interactive compositor possible |
-| **Best for** | Experienced users, light usage | Everyone else | Experimenters with Pixel devices who want native Linux |
+| **Best for** | Most users; the default path, start here | Users who want a full Debian/Ubuntu userland | Experimenters with Pixel devices who want native Linux |
 
 ---
 
@@ -417,15 +421,13 @@ The VM is on a virtual network not directly reachable from the internet. Only th
 | [Android Authority: Memory fix](https://androidauthority.com/android-linux-terminal-memory-fix-3555799/) | zram + swap workaround for OOM (out-of-memory) kills |
 | [Android Authority: Pixel 10 GPU acceleration](https://androidauthority.com/pixel-10-linux-apps-gpu-acceleration-3608754/) | GPU support status and device coverage |
 | [Android Authority: Desktop Linux apps hands-on](https://androidauthority.com/run-desktop-linux-apps-on-android-how-to-3586539/) | Practical walkthrough of GUI apps in AVF |
-| [lfdevs/run-linux-on-android-guide](https://github.com/lfdevs/run-linux-on-android-guide) | Community setup guide (39 stars) |
-| [nixos-avf](https://github.com/nix-community/nixos-avf) | NixOS in AVF VM (288 stars, actively maintained) |
+| [lfdevs/run-linux-on-android-guide](https://github.com/lfdevs/run-linux-on-android-guide) | Community setup guide |
+| [nixos-avf](https://github.com/nix-community/nixos-avf) | NixOS in AVF VM (actively maintained) |
 | [Google Issue Tracker: AVF bugs](https://issuetracker.google.com/issues/new?component=190602&template=2068275) | File bugs (no dedicated AVF component; goes to generic Android Platform) |
 | [SSH + Tailscale workaround](https://gist.github.com/aschober/eeb316027c5037fc3af5fb0327ab44fd) | Access VM from outside localhost |
-| [gunyah-on-sd-guide](https://github.com/polygraphene/gunyah-on-sd-guide) | VMs on Snapdragon via Qualcomm's Gunyah hypervisor (111 stars, non-stock firmware) |
+| [gunyah-on-sd-guide](https://github.com/polygraphene/gunyah-on-sd-guide) | VMs on Snapdragon via Qualcomm's Gunyah hypervisor (non-stock firmware) |
 | [Google source: AVF architecture](https://source.android.com/docs/core/virtualization/architecture) | Official AVF architecture documentation |
 | [LPC 2025: "A Linux VM on Android via AVF"](https://news.ycombinator.com/item?id=46262802) | Most detailed technical presentation on AVF internals (Linux Plumbers Conference, Dec 2025) |
-
-*Star counts captured 2026-05-16; check the linked repos for current state.*
 
 ---
 
@@ -476,4 +478,4 @@ The Terminal app launches the VM via Android's VirtualizationService, which in t
 
 ---
 
-*Last updated: 2026-05-29. AVF path re-verified end to end on Pixel 6 (Android 17) and Pixel 10 Pro (Android 17) on 2026-05-26. Earlier baseline testing on Pixel 10 Pro, Android 16, dated 2026-04-01. AOSP architecture reference: [source.android.com/docs/core/virtualization](https://source.android.com/docs/core/virtualization). If you test on a different device, please [open an issue](https://github.com/ferrumclaudepilgrim/claude-code-android/issues/new?template=device_report.md) with your results.*
+*Last updated: 2026-07-01. AVF path re-verified end to end on Pixel 6 (Android 17) and Pixel 10 Pro (Android 17) on 2026-05-26. Earlier baseline testing on Pixel 10 Pro, Android 16, dated 2026-04-01. AOSP architecture reference: [source.android.com/docs/core/virtualization](https://source.android.com/docs/core/virtualization). If you test on a different device, please [open an issue](https://github.com/ferrumclaudepilgrim/claude-code-android/issues/new?template=device_report.yml) with your results.*

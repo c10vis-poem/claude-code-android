@@ -55,7 +55,7 @@ V3_WRAPPER="$PREFIX/bin/claude"
 V2_INSTALL_DIR="$PREFIX/lib/node_modules/@anthropic-ai/claude-code"
 
 if [ -d "$V3_BINARY_DIR" ] && [ -f "$V3_WRAPPER" ] && [ ! -L "$V3_WRAPPER" ]; then
-  INSTALL_TYPE=v2.9
+  INSTALL_TYPE=v2.9.0
 elif [ -d "$V2_INSTALL_DIR" ]; then
   INSTALL_TYPE=v2.x
 elif command -v claude >/dev/null 2>&1; then
@@ -78,7 +78,7 @@ else
 fi
 
 # --- 2. Wrapper integrity (v2.9 specific) ---
-if [ "$INSTALL_TYPE" = v2.9 ]; then
+if [ "$INSTALL_TYPE" = v2.9.0 ]; then
   if [ -x "$V3_WRAPPER" ]; then
     row 2 "wrapper at \$PREFIX/bin/claude" PASS "auto-updating wrapper installed"
   else
@@ -96,7 +96,7 @@ else
 fi
 
 # --- 3. Binary location (v2.9 specific) ---
-if [ "$INSTALL_TYPE" = v2.9 ]; then
+if [ "$INSTALL_TYPE" = v2.9.0 ]; then
   if [ -d "$V3_BINARY_DIR" ]; then
     LATEST_BIN=$(
       for cand in "$V3_BINARY_DIR"/*; do
@@ -117,7 +117,7 @@ fi
 
 # --- 4. settings.json autoUpdates flag (v2.9 specific) ---
 SETTINGS="$HOME/.claude/settings.json"
-if [ "$INSTALL_TYPE" = v2.9 ]; then
+if [ "$INSTALL_TYPE" = v2.9.0 ]; then
   if [ -f "$SETTINGS" ]; then
     if grep -q '"autoUpdates":[[:space:]]*false' "$SETTINGS"; then
       row 4 "autoUpdates disabled" PASS "settings.json has autoUpdates:false"
@@ -130,7 +130,7 @@ if [ "$INSTALL_TYPE" = v2.9 ]; then
 fi
 
 # --- 5. patchelf + glibc-runner (v2.9 specific) ---
-if [ "$INSTALL_TYPE" = v2.9 ]; then
+if [ "$INSTALL_TYPE" = v2.9.0 ]; then
   if [ -x "$PREFIX/glibc/bin/patchelf" ] && [ -f "$PREFIX/glibc/lib/ld-linux-aarch64.so.1" ]; then
     row 5 "glibc-runner + patchelf" PASS "both present"
   else
@@ -155,7 +155,7 @@ else
 fi
 
 # --- 8. Background process count ---
-# Phantom process killer trips around 32 processes for a single uid by default.
+# Phantom process killer trips around 32 processes across all apps by default.
 BG_COUNT="$(ps -o pid= 2>/dev/null | wc -l)"
 if [ "$BG_COUNT" -lt 25 ] 2>/dev/null; then
   row 8 "Background process count" PASS "$BG_COUNT (headroom OK)"
@@ -185,7 +185,7 @@ echo "Summary: $PASSES PASS, $WARNS WARN, $FAILS FAIL"
 if [ "$FAILS" -gt 0 ]; then
   echo ""
   echo "One or more checks FAILED. Fix recommendations:"
-  if [ "$INSTALL_TYPE" = v2.9 ]; then
+  if [ "$INSTALL_TYPE" = v2.9.0 ]; then
     echo "  - If 'claude on PATH' failed: re-run install.sh"
     echo "  - If 'patched binary present' failed: re-run install.sh"
     echo "  - If 'glibc-runner + patchelf' failed: pkg install glibc-runner patchelf-glibc"

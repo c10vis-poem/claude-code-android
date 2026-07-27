@@ -1,0 +1,104 @@
+name: Device Compatibility Report
+description: Report that Claude Code works (or doesn't) on your device
+title: "[DEVICE] "
+labels: [compatibility]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        These reports tell other users whether Claude Code runs on their device. Fill in what you can; leave blank anything that does not apply to your path.
+  - type: input
+    id: device-model
+    attributes:
+      label: Device model
+      placeholder: e.g. Pixel 9, Galaxy S25 Ultra
+    validations:
+      required: true
+  - type: input
+    id: android-version
+    attributes:
+      label: Android version
+      placeholder: e.g. Android 15, Android 16
+    validations:
+      required: true
+  - type: input
+    id: architecture
+    attributes:
+      label: Architecture
+      description: Output of `uname -m`
+      placeholder: e.g. aarch64
+    validations:
+      required: false
+  - type: checkboxes
+    id: paths-tested
+    attributes:
+      label: Which path(s) tested
+      description: "Check every path you ran on this device. The three install paths are defined in the README: https://github.com/ferrumclaudepilgrim/claude-code-android#quick-install"
+      options:
+        - label: A - native Termux (bare claude)
+        - label: B - proot-distro Ubuntu
+        - label: C - Android Virtualization Framework (AVF)
+    validations:
+      required: false
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: Install method
+      description: Which script or method did you use to install?
+      options:
+        - install.sh
+        - install-pinned.sh
+        - migrate.sh
+        - manual / other
+    validations:
+      required: false
+  - type: dropdown
+    id: termux-source
+    attributes:
+      label: Termux source (Path A/B only)
+      description: Where you installed Termux from. Leave blank on Path C (AVF does not use Termux).
+      options:
+        - F-Droid
+        - GitHub
+        - Google Play
+    validations:
+      required: false
+  - type: input
+    id: claude-version
+    attributes:
+      label: Claude Code version
+      description: Output of `claude --version`, if you can run it.
+    validations:
+      required: false
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version (Path B or pinned installs only)
+      description: Output of `node -v`. Leave blank on native Path A, which ships no Node.
+    validations:
+      required: false
+  - type: input
+    id: glibc-runner-version
+    attributes:
+      label: glibc-runner version (Path A only)
+      description: Output of `apt list --installed | grep glibc-runner`
+    validations:
+      required: false
+  - type: dropdown
+    id: status
+    attributes:
+      label: Status
+      description: How did it go overall?
+      options:
+        - Works fully
+        - Partial (some features broken)
+        - Fails to run
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: "Any relevant details. Workarounds needed, features that don't work, proot requirements, performance observations, etc."
+    validations:
+      required: false

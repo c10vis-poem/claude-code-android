@@ -90,8 +90,10 @@ if [ -f .claude/settings.json ]; then
     else
       report "settings.json" "valid JSON" FAIL "jq parse failed"
     fi
-    # Hook script existence
-    HOOKS=$(jq -r '.hooks // {} | to_entries[] | .value[]? | .hook // empty' .claude/settings.json 2>/dev/null || true)
+    # Hook command existence. In the Claude Code schema, hooks live under
+    # .hooks.<Event>[].hooks[].command (the executable field is "command",
+    # nested one level below the matcher group), so walk down to .command.
+    HOOKS=$(jq -r '.hooks // {} | to_entries[] | .value[]? | .hooks[]? | .command // empty' .claude/settings.json 2>/dev/null || true)
     while IFS= read -r hook; do
       [ -n "$hook" ] || continue
       # Resolve ~/.claude/... if present (this check is per-repo, not user-global)

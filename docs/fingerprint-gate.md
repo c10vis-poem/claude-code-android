@@ -1,6 +1,6 @@
 # Fingerprint Biometric Gate
 
-Use your phone's fingerprint sensor to approve sensitive operations before they execute. A Claude Code hook calls `termux-fingerprint`, checks the result, and blocks the action if authentication fails.
+Use your phone's fingerprint sensor to approve sensitive operations before they execute. A Claude Code hook (a script Claude Code runs automatically before a tool call) calls `termux-fingerprint`, a command from Termux (the Android terminal app this guide uses), checks the result, and blocks the action if authentication fails.
 
 ---
 
@@ -24,7 +24,7 @@ If the fingerprint check fails or is dismissed, the operation is blocked. Nothin
    pkg install termux-api
    ```
 
-2. **Termux:API companion app.** Install from F-Droid (search "Termux:API"). The package provides the CLI commands; the companion app provides the Android permissions bridge. Both are required. Without the companion app, `termux-fingerprint` fails silently.
+2. **Termux:API companion app.** Install from F-Droid (an open-source Android app store; search "Termux:API" there). The package provides the CLI commands; the companion app provides the Android permissions bridge. Both are required. Without the companion app, `termux-fingerprint` fails silently.
 
 3. **Source matching.** Termux and Termux:API must come from the same source (both F-Droid or both GitHub releases). Mixing sources causes signature mismatches and silent failures.
 
@@ -53,7 +53,7 @@ On failure (wrong finger, dismissed, timeout):
 ```json
 {
   "auth_result": "AUTH_RESULT_FAILURE",
-  "errors": "..."
+  "errors": ["ERROR_TIMEOUT"]
 }
 ```
 
@@ -70,6 +70,8 @@ The gate script is also available as [`examples/fingerprint-gate.sh`](../example
 Create a file that any hook can source. Put it wherever makes sense for your setup. `~/.claude/hooks/` is a natural choice if you keep your hooks there.
 
 **`~/.claude/hooks/fingerprint-gate.sh`**
+
+> **Dependency:** This uses `jq` to parse JSON. Install it with `pkg install jq` if you don't have it.
 
 ```sh
 #!/usr/bin/env bash
@@ -97,8 +99,6 @@ require_fingerprint() {
   fi
 }
 ```
-
-> **Dependency:** This uses `jq` to parse JSON. Install it with `pkg install jq` if you don't have it.
 
 ### Step 2: Create a hook script
 
@@ -133,7 +133,7 @@ case "$COMMAND" in
     if require_fingerprint; then
       exit 0  # Approved
     else
-      echo '{"decision": "block", "reason": "Fingerprint authentication failed. Operation blocked."}'
+      echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "Fingerprint authentication failed. Operation blocked."}}'
       exit 0
     fi
     ;;
@@ -142,6 +142,8 @@ case "$COMMAND" in
     ;;
 esac
 ```
+
+Claude Code sends the hook a JSON payload on stdin (`tool_name`, `tool_input`, and more) and reads the allow/block decision back from the JSON the hook prints on stdout, not from its exit code. That is why the script exits 0 on both approval and denial: on denial it prints a `hookSpecificOutput` object with `"permissionDecision": "deny"`, and that object is what blocks the operation. For the full payload and output schema, see the [Claude Code hooks documentation](https://docs.claude.com/en/docs/claude-code/hooks).
 
 Make it executable:
 
@@ -174,14 +176,19 @@ Add the hook to your Claude Code settings so it runs before tool use:
     "PreToolUse": [
       {
         "matcher": "Bash",
-        "hook": "~/.claude/hooks/pre-tool-use-fingerprint-gate.sh"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pre-tool-use-fingerprint-gate.sh"
+          }
+        ]
       }
     ]
   }
 }
 ```
 
-The `matcher` field controls which tool triggers the hook. Setting it to `"Bash"` means the hook only fires for shell commands. You can also use `"*"` to fire on every tool call, or name a specific tool like `"Write"`.
+Each matcher entry holds a `hooks` array. Every item in it needs `"type": "command"` and a `command` pointing at your script. The `matcher` field controls which tool triggers the hook. Setting it to `"Bash"` means the hook only fires for shell commands. You can also use `"*"` to fire on every tool call, or name a specific tool like `"Write"`.
 
 ---
 
@@ -198,19 +205,19 @@ Modify the `case` statement in the hook script to match whatever commands you co
 *"gh release"*)   # GitHub releases
 ```
 
-### Gate only public repos
+### Gate only repos on a given host
 
-Check the remote URL before requiring fingerprint:
+Check the remote URL before requiring fingerprint. Note that the host alone does not tell you whether a repo is public: private repositories are served from the same `github.com` host as public ones, and there is no reliable way to tell them apart from the remote URL. This example simply gates any repo hosted on GitHub:
 
 ```sh
 REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
 case "$REMOTE_URL" in
   *"github.com"*)
-    # Public repo. Require fingerprint.
+    # Hosted on GitHub (public or private). Require fingerprint.
     require_fingerprint || exit 1
     ;;
   *)
-    # Private or no remote. Allow.
+    # No GitHub remote. Allow.
     ;;
 esac
 ```
@@ -225,11 +232,21 @@ You can register multiple hooks for the same event. Claude Code runs them in ord
     "PreToolUse": [
       {
         "matcher": "Bash",
-        "hook": "~/.claude/hooks/pre-tool-use-fingerprint-gate.sh"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pre-tool-use-fingerprint-gate.sh"
+          }
+        ]
       },
       {
         "matcher": "Write",
-        "hook": "~/.claude/hooks/pre-tool-use-file-safety.sh"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pre-tool-use-file-safety.sh"
+          }
+        ]
       }
     ]
   }
@@ -269,10 +286,10 @@ Hooks run in a subprocess. The `termux-fingerprint` binary needs to be on PATH i
 ## Security Notes
 
 - The fingerprint check runs locally on your device. No biometric data leaves the phone.
-- `termux-fingerprint` uses Android's BiometricPrompt API, the same system used by banking apps and password managers.
+- `termux-fingerprint` uses Android's built-in BiometricPrompt API, the standard system biometric prompt.
 - The gate is only as strong as your hook configuration. If a command can bypass the hook (e.g., by not matching the `case` pattern), it won't be gated.
 - This is a speed bump for autonomous AI operations, not a security boundary. A determined attacker with device access has other vectors. Its purpose is ensuring the device owner approves consequential actions before they happen.
 
 ---
 
-*Last updated: 2026-05-29.*
+*Last updated: 2026-07-01.*

@@ -2,6 +2,18 @@
 
 This document describes what Termux:API permissions and ADB wireless debugging expose when used with Claude Code on Android. It is written for anyone considering granting these capabilities, developer or not. Read this before enabling Termux:API permissions or ADB wireless debugging.
 
+**Terms used here:**
+
+- **Termux** is a terminal app that runs a Linux command-line environment on Android.
+- **Termux:API** is a companion app that lets Termux command-line tools reach Android features such as SMS, GPS, and the camera.
+- **ADB (Android Debug Bridge)** is Android's developer tool for sending commands to a device. Wireless debugging lets it connect over WiFi instead of over a USB cable.
+- **MCP (Model Context Protocol)** is a standard that lets external servers provide extra tools and data to Claude Code.
+- **SSRF (server-side request forgery)** is an attack that tricks a tool into making network requests to internal addresses it should not reach.
+- **Hook** is a script Claude Code runs automatically at a set point, such as a PreToolUse hook that runs before a tool call.
+- **Headless** means running Claude Code from a script or a single command (`claude -p`) rather than in a live interactive session.
+
+The three install methods are called Path A, Path B, and Path C. See the [README](../README.md#quick-install) for what each one is.
+
 ---
 
 ## What Termux:API Permissions Expose
@@ -16,7 +28,7 @@ When you grant a permission to the Termux:API companion app, every process runni
 | GPS location | `termux-location` | Location permission | Real-time device coordinates available |
 | Camera | `termux-camera-photo` | Camera permission | Can take photos without the camera app open |
 | Microphone | `termux-microphone-record` | Microphone permission | Can record audio in the background |
-| Clipboard | `termux-clipboard-get`, `termux-clipboard-set` | None (pre-Android 13) | Clipboard contents readable and writable without permission on older Android versions |
+| Clipboard | `termux-clipboard-get`, `termux-clipboard-set` | None (pre-Android 13) | Clipboard contents readable and writable without a permission prompt on Android versions before 13. On Android 13 and later, the system limits background clipboard access and notifies you when the clipboard is read |
 | Notifications | `termux-notification-list` | Notification access | Can read notification content from all apps |
 | Sensors | `termux-sensor` | None | Accelerometer, gyroscope, barometer, magnetometer, and other hardware sensors accessible |
 | Fingerprint | `termux-fingerprint` | Biometrics | Triggers the biometric prompt (does not read fingerprint data) |
@@ -36,7 +48,7 @@ ADB wireless debugging runs commands as Android's `shell` user, a system-level d
 | Touch and key injection | `adb shell input tap/swipe/text` | Can tap buttons, type text, and navigate any app autonomously |
 | Launch or stop any app | `adb shell am start/force-stop` | Can open banking apps, authenticators, email, or any installed application |
 | SMS via content provider | `adb shell content query --uri content://sms` | Reads SMS messages through a different access path than Termux:API |
-| Contacts via content provider | `adb shell content query --uri content://contacts` | Reads contacts through a different access path than Termux:API |
+| Contacts via content provider | `adb shell content query --uri content://com.android.contacts/contacts` | Reads contacts through a different access path than Termux:API |
 | System settings | `adb shell settings get/put` | Can read and modify device configuration (brightness, DND, etc.) |
 | Full process list | `adb shell ps -A` | Lists every running process on the device |
 | System logs | `adb logcat` | May contain authentication tokens, URLs, and debug data from other apps |
@@ -64,7 +76,7 @@ Only with ADB connected. `adb shell screencap` captures whatever is currently on
 With ADB connected, yes. `adb shell am start` opens any app, and `adb shell input tap/swipe/text` navigates it. Combined, these can open an app, tap buttons, enter text, and interact with the UI without the user touching the screen.
 
 **Can it send data to an external server?**
-By default, Claude Code has access to `curl`, `wget`, and other network tools through the Bash tool. The SSRF guard (the optional PreToolUse hook documented in `docs/ssrf-guard.md`, which blocks WebFetch requests to internal IPs) does not intercept Bash-level network commands. There is no outbound data boundary by default.
+By default, Claude Code has access to `curl`, `wget`, and other network tools through the Bash tool. The SSRF guard (the optional PreToolUse hook documented in `docs/ssrf-guard.md`, which blocks WebFetch and WebSearch requests to internal IPs) does not intercept Bash-level network commands. There is no outbound data boundary by default.
 
 **Can a malicious MCP server access my data?**
 MCP servers receive tool responses from Claude Code. If Claude Code has access to contacts, SMS, or location data, that data can appear in tool responses sent to any connected MCP server. The SSRF guard does not intercept MCP data flow.
@@ -78,11 +90,11 @@ Prompt injection (where a file contains instructions that redirect the agent's b
 
 | Mitigation | What It Covers | What It Does Not Cover |
 |-----------|---------------|----------------------|
-| **SSRF guard** ([docs](ssrf-guard.md)) | Blocks WebFetch requests to private/reserved IP ranges and non-HTTP schemes | Does not block Bash-level `curl`/`wget`, does not intercept MCP data flow, does not prevent DNS rebinding |
+| **SSRF guard** ([docs](ssrf-guard.md)) | Blocks WebFetch and WebSearch requests to private/reserved IP ranges and non-HTTP schemes | Does not block Bash-level `curl`/`wget`, does not intercept MCP data flow, does not prevent DNS rebinding |
 | **Fingerprint gate** ([docs](fingerprint-gate.md)) | Requires biometric approval before sensitive operations (git push, destructive commands by default) | Only gates operations you configure it for. Does not block Termux:API or ADB commands by default |
 | **CLAUDE.md constitution** ([template](constitution-template.md)) | Defines behavioral rules the model follows: scope boundaries, forbidden actions, confirmation requirements | Model-enforced, not technically enforced. The model can be instructed to ignore it via prompt injection |
 | **Claude's safety training** | Anthropic's safety training makes the model resist harmful instructions | Not a technical control. Effective in most cases but not absolute |
-| **Agent permissions matrix** ([docs](agent-permissions.md)) | Documents the principle that no agent should hold both web access and write access | Advisory framework, not a runtime enforcement mechanism |
+| **Agent permissions matrix** ([docs](agent-permissions.md)) | Documents the principle that no agent should hold both web access and write access, and configures per-agent `tools`/`disallowedTools` restrictions that Claude Code enforces at runtime | The split-by-role principle is a design choice you have to apply; once configured, the per-agent tool restrictions are runtime-enforced, but nothing forces you to design the roles that way in the first place |
 
 ---
 
@@ -100,9 +112,9 @@ These gaps exist by default in the current setup:
 
 ## Recommended Setup for Minimal Risk
 
-1. **Start without ADB.** Path A and Path B work fully without ADB wireless debugging. Only enable ADB when you specifically need screenshot, input injection, or system query capabilities.
+1. **Start without ADB.** Path A, Path B, and Path C all work fully without ADB wireless debugging. Only enable ADB when you specifically need screenshot, input injection, or system query capabilities.
 2. **Deny unnecessary Termux:API permissions.** Go to Android Settings and deny SMS, Contacts, Call Log, Camera, Microphone, and Location for the Termux:API app unless your workflow requires them. Claude Code works normally without any of these.
-3. **Install the SSRF guard.** It blocks the most common SSRF vector (WebFetch to internal IPs). See [SSRF Guard](ssrf-guard.md).
+3. **Install the SSRF guard.** It blocks the most common SSRF vector (WebFetch and WebSearch to internal IPs). See [SSRF Guard](ssrf-guard.md).
 4. **Install the fingerprint gate.** Configure it to require biometric approval for operations you consider sensitive. See [Fingerprint Gate](fingerprint-gate.md).
 5. **Extend the fingerprint gate** to cover Termux:API commands (`termux-sms-*`, `termux-contact-*`, `termux-location`, `termux-camera-*`) and ADB commands (`adb shell`) if you use them.
 6. **Write a CLAUDE.md constitution.** Define explicit rules for what the agent may and may not do. See the [Constitution Template](constitution-template.md).
@@ -113,4 +125,4 @@ These gaps exist by default in the current setup:
 
 ---
 
-Last updated: 2026-05-29.
+Last updated: 2026-07-01.

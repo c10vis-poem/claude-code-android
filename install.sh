@@ -50,7 +50,7 @@ fi
 # --- Classify any prior claude state, then route or pick an install mode ---
 # One classifier covers every real prior state instead of a blunt
 # "anything-exists, refuse" gate. Outcomes:
-#   already_v29  complete v2.9.0 wrapper present        -> nothing to do
+#   already_v29  v2.9-family wrapper present            -> nothing to do
 #   pinned       npm @anthropic-ai/claude-code present  -> migrate.sh (safe npm removal)
 #   inplace      official native install, or leftover ~/.claude with no working
 #                binary                                 -> install here, preserving data
@@ -287,9 +287,11 @@ write_setdns "$CC_SETDNS"
 [ -s "$CC_SETDNS" ] && ok "DNS resolver preload installed ($CC_SETDNS)" \
   || warn "could not write $CC_SETDNS; DNS ETIMEOUT workaround inactive."
 
-# Smoke-test the freshly installed binary. Some upstream releases crash on full
-# launch under Android's seccomp filter while still passing "--version" (Android
-# 10 statx -> SIGSYS; Bun 1.4 epoll_pwait2 -> SIGSEGV). Probe with --init-only
+# Smoke-test the freshly installed binary. Some upstream releases pass
+# "--version" but crash on full launch, from one of two distinct causes:
+# Android's seccomp filter blocking a syscall (Android 10 statx or pidfd_open
+# -> SIGSYS), or a null deref in Termux's glibc-runner epoll_pwait2 shim under
+# the Bun 1.4 runtime (-> SIGSEGV), which is not a blocked syscall. Probe with --init-only
 # (it boots the full runtime and exits 0 on a healthy binary). On pass, record
 # it as verified so the wrapper's first launch skips the re-test; on fail, warn
 # with a working path forward instead of a cryptic crash on first launch.
@@ -305,8 +307,8 @@ if { [ "$ST_RC" -gt 128 ] && [ "$ST_RC" -le 159 ]; } || [ "$ST_RC" -eq 124 ] \
    || grep -qE 'Bad system call|oh no: Bun has crashed|panic\(|bun\.report' "$ST_ERR" 2>/dev/null; then
   rm -f "$ST_ERR"
   warn "Claude Code $LATEST crashes on this device. This is a known upstream"
-  warn "regression in some releases under Android's seccomp filter, not an install"
-  warn "problem. The install is complete, but this version will not launch here."
+  warn "regression in some releases, not an install problem. The install is"
+  warn "complete, but this version will not launch here."
   warn "To get a working Claude Code now:"
   warn "  - run  ./install-pinned.sh   to pin a known-good build, or"
   warn "  - run Claude Code inside proot-distro Ubuntu (see the README)."
@@ -376,8 +378,9 @@ write_setdns() {
 
 # Smoke test: returns 0 if the binary launches on this device, 1 if it crashes
 # or hangs. Why this exists: upstream has shipped binaries that pass "--version"
-# but die on full launch under Android's seccomp filter (Android 10 statx ->
-# SIGSYS; Bun 1.4 epoll_pwait2 -> SIGSEGV). We probe the full runtime with
+# but die on full launch, either from Android's seccomp filter (Android 10
+# statx or pidfd_open -> SIGSYS) or from a null deref in Termux's glibc-runner
+# epoll_pwait2 shim under Bun 1.4 (-> SIGSEGV). We probe the full runtime with
 # --init-only (it boots the HTTP thread and worker pool and exits 0 offline on
 # a healthy binary) and refuse to promote or run anything that dies. If a
 # future release drops --init-only, the probe returns a benign non-zero (no
@@ -538,7 +541,7 @@ if VER="$(claude --version 2>&1)"; then
   ok "claude --version: $VER"
 elif [ "${REFRESH:-0}" = 1 ]; then
   warn "the refreshed launcher could not find a working Claude Code version on this device."
-  warn "run  ./install-pinned.sh  to pin a known-good build, or use proot-Ubuntu (see the README)."
+  warn "run  ./install-pinned.sh  to pin a known-good build, or use proot-distro Ubuntu (see the README)."
 else
   fail "claude --version failed: $VER"
 fi

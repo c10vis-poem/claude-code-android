@@ -95,7 +95,7 @@ print_header
 
 # ──────────────────────────────────────────────────────────────
 # CLAIM 1: Claude Code's vendor dir has no native arm64-android ripgrep binary
-# Source: docs/troubleshooting.md, install.sh comments
+# Source: docs/troubleshooting.md
 # ──────────────────────────────────────────────────────────────
 print_claim 1 "Claude Code does not bundle a native arm64-android ripgrep binary"
 echo "  Test:  Inspect vendor/ripgrep/arm64-android/rg, should be missing or a user-created symlink"
@@ -148,10 +148,10 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
-# CLAIM 3: install.sh locks the Claude Code install directory read-only
-# Source: install.sh, docs/install.md
+# CLAIM 3: the v2.x pinned install locks the Claude Code install directory read-only
+# Source: install-pinned.sh, docs/install.md
 # ──────────────────────────────────────────────────────────────
-print_claim 3 "[v2.x architecture] install.sh locks the Claude Code install directory read-only (auto-updater protection)"
+print_claim 3 "[v2.x architecture] the pinned install locks the Claude Code install directory read-only (auto-updater protection)"
 echo "  Test:  Inspect permissions on the install dir; expect dr-x------ (no write bit)"
 
 CC_INSTALL_DIR="$PREFIX/lib/node_modules/@anthropic-ai/claude-code"
@@ -164,7 +164,7 @@ else
         echo "  Result: v2.x install dir is read-only; auto-updater cannot overwrite the pinned install"
         verdict_pass
     else
-        verdict_fail "install dir is writable ($PERMS); auto-updater can clobber the pin; re-run install.sh"
+        verdict_fail "install dir is writable ($PERMS); auto-updater can clobber the pin; re-run install-pinned.sh"
     fi
 fi
 
@@ -217,7 +217,7 @@ fi
 
 # ──────────────────────────────────────────────────────────────
 # CLAIM 6: termux-sensor enumerates device sensors
-# Source: docs/sensors.md
+# Source: docs/adb-wireless.md, docs/security-model.md
 # ──────────────────────────────────────────────────────────────
 print_claim 6 "termux-sensor lists device sensors when Termux:API is functional"
 echo "  Test:  Run 'termux-sensor -l' with 5s timeout; expect JSON output"
@@ -265,7 +265,7 @@ fi
 
 # ──────────────────────────────────────────────────────────────
 # CLAIM 9: Termux:API returns valid JSON for battery status
-# Source: docs/install.md, README
+# Source: docs/adb-wireless.md, docs/constitution-template.md
 # ──────────────────────────────────────────────────────────────
 print_claim 9 "termux-battery-status returns valid JSON (Termux:API companion working)"
 echo "  Test:  Run termux-battery-status with 8s timeout; expect JSON with 'percentage'"
@@ -285,7 +285,8 @@ fi
 
 # ──────────────────────────────────────────────────────────────
 # CLAIM 10: xdg-open is a symlink to termux-open
-# Source: docs/troubleshooting.md (OAuth section)
+# Source: termux-tools package (provides the xdg-open shim); browser-launch
+#         context in docs/troubleshooting.md (OAuth section)
 # ──────────────────────────────────────────────────────────────
 print_claim 10 "xdg-open is a symlink to termux-open (OAuth/browser-launch compatibility)"
 XDG="$PREFIX/bin/xdg-open"

@@ -1,10 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+(No unreleased changes yet.)
+
 ## [2.9.3] - 2026-07-01
 
 A DNS reliability release. It works around a Bun bug that makes Claude Code hang on "checking connectivity" and fail with ETIMEOUT on Termux, and it makes search work out of the box on the pinned install for older devices.
 
-Why the DNS fix is needed: Claude Code is a Bun binary, and on Linux Bun's DNS resolver defaults to c-ares, which reads `/etc/resolv.conf`. Termux has no `/etc/resolv.conf`, so c-ares falls back to a resolver at `127.0.0.1:53` where nothing is listening, and lookups fail. Because the binary is the linux-arm64 build, Bun treats the environment as Linux and takes that c-ares path rather than Android's system resolver. glibc's own `getaddrinfo` reads the resolver config Termux provides and works, which is why the failure is intermittent and shows up under load. Upstream: the c-ares behavior is oven-sh/bun#24970 (open); the proposed fix to default to `getaddrinfo` on Linux, oven-sh/bun#29231, was closed unmerged after CI regressions; the slow-fail that turns it into a hang and an ETIMEOUT is oven-sh/bun#32165 (open).
+Why the DNS fix is needed: Claude Code is a Bun binary, and on Linux Bun's DNS resolver defaults to c-ares, which reads `/etc/resolv.conf`. Termux has no `/etc/resolv.conf`, so c-ares falls back to a resolver at `127.0.0.1:53` where nothing is listening, and lookups fail. Because the binary is the linux-arm64 build, Bun treats the environment as Linux and takes that c-ares path rather than Android's system resolver. glibc's own `getaddrinfo` reads the resolver config Termux provides and works, which is why the failure is intermittent and shows up under load. Upstream: the c-ares behavior is oven-sh/bun#24970 (open); the proposed fix to default to `getaddrinfo` on Linux, oven-sh/bun#29231, was closed unmerged when its Zig implementation was dropped in Bun's move to Rust; the slow-fail to ETIMEOUT is tracked in the fix PR oven-sh/bun#32165 (open).
 
 Verified on 2026-07-01 across four devices. On the Pixel 10 Pro and Pixel 6 (Android 17, native 2.1.197 with the preload), name resolution no longer touches the dead `127.0.0.1:53` loopback and a real authenticated turn reaches the server; search works. On the Moto G7 Power (Android 10) and Galaxy S7 (Android 8), the pinned 2.1.112 install runs and search works through the ripgrep symlink. The self-healing launcher from 2.9.2 was re-confirmed on both native devices: a planted crashing version is smoke-tested, recorded as bad, and rolled back with no user action.
 
@@ -130,10 +134,6 @@ Verified end-to-end on Pixel 10 Pro (Android 17) on 2026-05-28. v2.9.0 retests o
 - `scripts/fix-ripgrep.sh` is left in the repo for users on a v2.x install who still need it. It is no longer referenced from user-facing docs and is not exercised by the v2.9.0 install path.
 - `scripts/check-termux-env.sh` updated to auto-detect v2.9.0 vs v2.x install layouts via filesystem signals (presence of `~/.local/share/claude/versions/` plus a non-symlink wrapper at `$PREFIX/bin/claude` indicates v2.9.0; presence of `$PREFIX/lib/node_modules/@anthropic-ai/claude-code/` indicates v2.x). Replaces the previous grep-based detection that searched the wrapper for a marker string the install.sh wrapper never writes.
 - AOSP source for the Terminal app's memory default (`ConfigJson.kt`, `memory_mib: Int = 1024`) is cited in the avf-guide. The Pixel 10 Pro on this hardware ships an OEM overlay that adds the Graphics Acceleration toggle but does not change the memory default.
-
-## [Unreleased]
-
-(No unreleased changes yet. The v2.9.0 release rolled up all prior Unreleased work.)
 
 ## [2.8.1] - 2026-05-17
 

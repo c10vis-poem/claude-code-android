@@ -4,13 +4,13 @@
 
 ## Skills (`.claude/skills/`)
 
-Skills are loaded by Claude Code when you place them under `~/.claude/skills/` (or the `.claude/skills/` of a project root). They appear as slash commands and can be invoked by the model when context matches the skill's description.
+A skill is a small instruction file that teaches Claude Code how to handle a specific task. Place one under `~/.claude/skills/` (or the `.claude/skills/` of a project root) and Claude Code loads it. You use a skill by typing `/name` in Claude Code, or Claude runs it on its own when your request matches what the skill is for.
 
 ### Android / Termux
 
 | Skill | What It Does |
 |-------|-------------|
-| `termux-safe` | Termux constraints: no sudo, no systemd, paths under `$PREFIX`, phantom-process-killer ceiling, and a note that if Node.js is installed separately, v25+ avoids the historical v24 startup hang (Node is not required by the install path itself). |
+| `termux-safe` | Keeps Claude from suggesting commands that fail on Android. It knows Termux has no `sudo` and no `systemd`, that files live under `$PREFIX` (the folder Termux installs into, in place of the usual system directories), that Android limits how many background processes an app may keep, and that if you install Node.js separately, v25 or later avoids a startup hang seen on v24 (Node is not required by the install path itself). |
 
 ### Workflow (general-purpose, not Android-specific)
 
@@ -21,12 +21,12 @@ Skills are loaded by Claude Code when you place them under `~/.claude/skills/` (
 
 ## Scripts (`scripts/`)
 
-Scripts are deterministic checks and recoveries. They are bash scripts you run directly, not skills the model invokes. The previous `/doctor`, `/fix-ripgrep`, and `/config-validator` skills were deterministic in shape (no LLM judgment required); they live here as scripts you can run from any shell.
+Scripts are fixed checks and recoveries with one right answer, so they need no judgment from Claude. They are bash scripts you run directly from any shell, not skills the model invokes.
 
 | Script | What It Does |
 |--------|-------------|
-| [`scripts/check-termux-env.sh`](../scripts/check-termux-env.sh) | Run environment checks: Termux:API, file-descriptor limit, process headroom, storage. Reports PASS/WARN/FAIL with fix recommendations. Renamed from the `doctor` skill to avoid collision with the upstream `claude doctor` command. Auto-detects v2.9.0 vs v2.x install layouts via filesystem signals and runs the appropriate set of checks. |
-| [`scripts/config-validator.sh`](../scripts/config-validator.sh) | Audit a `.claude/` directory: frontmatter fidelity, file/dir naming, settings.json JSON validity, hook script existence, agent → skill cross-references. Useful after adding new agents, skills, or hooks. |
+| [`scripts/check-termux-env.sh`](../scripts/check-termux-env.sh) | Checks your setup and tells you what to fix: Termux:API, file-descriptor limit, process headroom, and storage. Reports PASS/WARN/FAIL for each. It detects which install you have and runs the checks that fit it. |
+| [`scripts/config-validator.sh`](../scripts/config-validator.sh) | For people writing their own skills, agents, or hooks: audits a `.claude/` directory and flags problems, such as invalid `settings.json`, a hook that points at a missing script, or an agent that references a skill that is not there. |
 
 Usage:
 
@@ -36,7 +36,7 @@ bash scripts/config-validator.sh        # against current working dir
 bash scripts/config-validator.sh /path/to/some-repo
 ```
 
-`scripts/fix-ripgrep.sh` is retained in the repo for users still on a v2.x install; it is not needed under v2.9.0 and is not referenced from user-facing instructions.
+`scripts/fix-ripgrep.sh` repairs the search tool Claude Code uses to scan your files (ripgrep). Most installs never need it: on the default install Claude Code finds its bundled ripgrep on the first try. It exists as a recovery for the older and pinned installs where search can fail, and both `docs/troubleshooting.md` and `install-pinned.sh` point to it in that case.
 
 ## Installing Skills Globally
 
@@ -47,11 +47,11 @@ git clone https://github.com/ferrumclaudepilgrim/claude-code-android.git
 mkdir -p ~/.claude/skills
 cp -r claude-code-android/.claude/skills/* ~/.claude/skills/
 ls ~/.claude/skills/
-rm -rf claude-code-android   # clean up; phone storage is finite
+rm -rf claude-code-android   # removes only the cloned copy you just downloaded
 ```
 
 The scripts under `scripts/` are independent of skill installation; just run them directly from a checkout of the repo.
 
 ---
 
-*Last updated: 2026-05-29.*
+*Last updated: 2026-07-01.*

@@ -1,0 +1,133 @@
+name: Bug Report
+description: Something isn't working when you run Claude Code on your phone
+title: "[BUG] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing this. The more of the environment fields you can fill in, the faster I can work out what is going on. If a field does not apply to your install path, leave it blank. If you are not sure which install path you used, see the [Quick Install](https://github.com/ferrumclaudepilgrim/claude-code-android/blob/main/README.md#quick-install) section.
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      placeholder: e.g. Pixel 9, Galaxy S25
+    validations:
+      required: true
+  - type: input
+    id: android-version
+    attributes:
+      label: Android version
+      placeholder: e.g. Android 16
+    validations:
+      required: true
+  - type: input
+    id: architecture
+    attributes:
+      label: Architecture
+      description: Output of `uname -m`
+      placeholder: e.g. aarch64
+    validations:
+      required: false
+  - type: dropdown
+    id: install-path
+    attributes:
+      label: Install path
+      description: Which of the three paths were you running when it broke? The paths are defined in the README [Quick Install](https://github.com/ferrumclaudepilgrim/claude-code-android/blob/main/README.md#quick-install) section. Pick "I'm not sure" if you do not know.
+      options:
+        - A - native Termux
+        - B - proot-distro Ubuntu
+        - C - Android Virtualization Framework (AVF)
+        - I'm not sure
+    validations:
+      required: false
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: Install method
+      description: Which script or method did you use to install?
+      options:
+        - install.sh
+        - install-pinned.sh
+        - migrate.sh
+        - manual / other
+    validations:
+      required: false
+  - type: dropdown
+    id: termux-source
+    attributes:
+      label: Termux source (Path A/B only)
+      description: Where you installed Termux from. Leave blank on Path C (AVF does not use Termux).
+      options:
+        - F-Droid
+        - GitHub
+        - Google Play
+    validations:
+      required: false
+  - type: input
+    id: launch-command
+    attributes:
+      label: Launch command used
+      placeholder: e.g. `claude`, or a custom wrapper if you set one up
+    validations:
+      required: false
+  - type: input
+    id: claude-version
+    attributes:
+      label: Claude Code version
+      description: Output of `claude --version`, if you can run it. Leave blank if it will not launch.
+    validations:
+      required: false
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version (Path B or pinned installs only)
+      description: Output of `node -v`. Leave blank on native Path A, which ships no Node.
+    validations:
+      required: false
+  - type: input
+    id: glibc-runner-version
+    attributes:
+      label: glibc-runner version (Path A only)
+      description: Output of `apt list --installed | grep glibc-runner`
+    validations:
+      required: false
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: false
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen.
+    validations:
+      required: false
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened.
+    validations:
+      required: false
+  - type: textarea
+    id: error-output
+    attributes:
+      label: Error output
+      description: If any error text appeared, paste the messages, logs, or terminal output here.
+      render: shell
+    validations:
+      required: false
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Any other details that might help diagnose the issue (shell config, custom env vars, etc.).
+    validations:
+      required: false

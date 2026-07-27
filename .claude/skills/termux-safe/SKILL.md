@@ -30,7 +30,7 @@ If the runtime signals indicate the in-Termux case, the constraints below produc
 - **Node.js is not required by this repo's `install.sh`.** The patched linux-arm64 claude binary is self-contained. If Node is installed separately on native Termux, prefer v25+: v24 had a documented startup hang on ARM64 that was resolved in v25.
 - **File descriptor limits vary by device.** Check with `ulimit -n`. Avoid spawning many concurrent processes.
 - **Android phantom process killer** limits background processes to ~32 across all apps. If "Disable child process restrictions" is enabled in Developer Options, this limit is lifted; 6 concurrent subagents have been observed stable in testing. Otherwise limit to 2-3.
-- **`process.platform` reporting varies by install path.** On Path A v2.9.0 (the linux-arm64 binary patched via glibc-runner), Node.js reports `process.platform === "linux"` even though you are inside Termux. On older Path A v2.x (the JS-bundle npm install) it reports `"android"`. On Path B (proot-Ubuntu) and Path C (AVF), it reports `"linux"` and you are not in Termux. The reliable cross-path signal that you are still in Termux is `$PREFIX === "/data/data/com.termux/files/usr"`.
+- **`process.platform` reporting varies by install path.** On Path A v2.9.0 (the linux-arm64 binary patched via glibc-runner), Node.js reports `process.platform === "linux"` even though you are inside Termux. On older Path A v2.x (the JS-bundle npm install) it reports `"android"`. On Path B (proot-distro Ubuntu) and Path C (AVF), it reports `"linux"` and you are not in Termux. The reliable cross-path signal that you are still in Termux is `$PREFIX === "/data/data/com.termux/files/usr"`.
 
 ## Package Installation
 

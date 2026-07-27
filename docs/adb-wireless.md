@@ -1,6 +1,6 @@
 # ADB Wireless Self-Connect on Android
 
-Connect your phone to itself over ADB. No computer. No USB cable. One device, and it unlocks most of what SELinux blocks from Termux.
+Connect your phone to itself over ADB (Android Debug Bridge, the standard tool for sending commands to an Android device). No computer. No USB cable. One device, and it unlocks most of what SELinux (Android's mandatory access-control layer, which stops apps from running system commands) blocks from Termux.
 
 ---
 
@@ -19,11 +19,13 @@ ADB wireless debugging bypasses this. The phone connects to itself via `127.0.0.
 
 **Requires:** WiFi (Android checks for a WiFi association, not internet access). Does not require root.
 
-> ADB wireless self-connect has been verified on Android 16. The pairing workflow should work on any device with Developer Options and wireless debugging support, but results may vary. Device-specific results welcome via the device_report issue template.
+> This is the standard Android wireless-debugging pairing workflow. It should work on any device with Developer Options and wireless debugging support, though results vary by device and Android version.
 
 ---
 
 ## Before and After
+
+### Capabilities that require ADB
 
 | Capability | Termux (no ADB) | With ADB | Risk/Exposure |
 |------------|-----------------|----------|---------------|
@@ -36,22 +38,27 @@ ADB wireless debugging bypasses this. The phone connects to itself via `127.0.0.
 | Full process list | Termux processes only | `adb shell ps -A` (all system processes) | All running processes visible |
 | Activity manager | Partial | `adb shell am start/force-stop` (full) | Can launch or kill any app |
 | Device properties | Blocked | `adb shell getprop` | Hardware and build identifiers |
-| Battery % (basic) | `termux-battery-status` | Both work | |
-| Camera capture | `termux-camera-photo` | Both work | |
-| TTS | `termux-tts-speak` | Both work | |
-| Clipboard | `termux-clipboard-get/set` | Both work | |
-| GPS location | `termux-location` | Both work | |
-| SMS | `termux-sms-list/send` | Both work | |
-| Notifications | `termux-notification-list` | Both work | |
-| Background scheduling | `crond` / job-scheduler | Both work | |
-| Volume control | `termux-volume` | Both work | |
-| Vibration | `termux-vibrate` | Both work | |
-| Wifi info | `termux-wifi-connectioninfo` | Both work | |
-| Sensors | `termux-sensor` | Both work | |
 
-The bottom 12 rows work without ADB via Termux API. The top 9 require ADB.
+### Capabilities that work without ADB (Termux API)
 
-> **Note:** The Termux API rows require the **Termux:API companion app** installed from the same source as Termux (both from F-Droid or both from GitHub). Mixing sources causes signature mismatches and silent failures.
+| Capability | Termux (no ADB) | With ADB |
+|------------|-----------------|----------|
+| Battery % (basic) | `termux-battery-status` | Both work |
+| Camera capture | `termux-camera-photo` | Both work |
+| TTS | `termux-tts-speak` | Both work |
+| Clipboard | `termux-clipboard-get/set` | Both work |
+| GPS location | `termux-location` | Both work |
+| SMS | `termux-sms-list/send` | Both work |
+| Notifications | `termux-notification-list` | Both work |
+| Background scheduling | `crond` (a background task scheduler) / job-scheduler | Both work |
+| Volume control | `termux-volume` | Both work |
+| Vibration | `termux-vibrate` | Both work |
+| Wifi info | `termux-wifi-connectioninfo` | Both work |
+| Sensors | `termux-sensor` | Both work |
+
+The first group needs ADB. The second group works through the Termux API without ADB.
+
+> **Note:** The Termux API rows require the **Termux:API companion app** installed from the same source as Termux (both from F-Droid, the open-source Android app store, or both from GitHub). Mixing sources causes signature mismatches and silent failures.
 
 ---
 
@@ -79,7 +86,7 @@ Inside Wireless debugging, tap **Pair device with pairing code**. A dialog appea
 - A 6-digit pairing code
 - A pairing port (labeled something like "Wi-Fi pairing code port: 37000")
 
-The pairing port and connection port are different numbers. Note both.
+This pairing port is used only to pair. A separate connection port, shown later in Step 5, is what you connect to afterward. For now, note the pairing code and the pairing port.
 
 **The dialog closes if you switch away from Settings.** To work around this:
 
@@ -199,14 +206,13 @@ The ADB connection drops on screen lock, app switch, and reboot. The pairing, ho
 2. Note the new connection port (it changes on each enable).
 3. Run `adb connect 127.0.0.1:<new-port>`.
 
-To automate reconnection, check the current port programmatically:
+There is a catch when you try to automate this. Reading the port with `adb shell` requires ADB to already be connected, so it cannot bootstrap the first connection of a session. After a reboot you still read the new port from the Wireless debugging screen by hand. Once you are connected, this command confirms the active port:
 
 ```sh
-# This gets the connection port from the device (requires ADB already connected, or manual check)
 adb shell settings get global adb_wifi_port
 ```
 
-A boot script can attempt to reconnect, but the port is only stable within a session. If your automation needs ADB, check the connection at the start of each run.
+The port is only stable within a session. If your automation needs ADB, check the connection at the start of each run.
 
 ---
 
@@ -214,28 +220,13 @@ A boot script can attempt to reconnect, but the port is only stable within a ses
 
 ADB wireless debugging requires WiFi association. Android checks whether the wifi radio is connected to an access point, not whether the internet is reachable. A router with no internet connection works.
 
-**What works without WiFi (Termux API, no ADB required):**
-
-- Battery status: `termux-battery-status`
-- Camera capture: `termux-camera-photo`
-- TTS: `termux-tts-speak`
-- Clipboard: `termux-clipboard-get` / `termux-clipboard-set`
-- GPS location: `termux-location`
-- SMS (read/send): `termux-sms-list` / `termux-sms-send`
-- Notifications: `termux-notification-list`
-- Background scheduling: `crond` or `termux-job-scheduler`
-- Volume: `termux-volume`
-- Vibration: `termux-vibrate`
-- WiFi info: `termux-wifi-connectioninfo`
-- Sensors: `termux-sensor`
+**What works without WiFi (Termux API, no ADB required):** all the Termux API capabilities listed in the "Capabilities that work without ADB" table above. None of them need a network connection.
 
 **Approaches for ADB without a router:**
 
-1. **Phone hotspot:** enable your phone's mobile hotspot. The AP interface typically gets a static IP (often `192.168.43.1`). `adbd` binds to all interfaces. After enabling hotspot, pair and connect using that IP rather than `127.0.0.1`. Untested across all devices; your AP interface IP may differ.
+1. **Phone hotspot:** enable your phone's mobile hotspot. The AP interface typically gets a static IP (often `192.168.43.1`). `adbd` (the on-device ADB daemon) binds to all interfaces. After enabling hotspot, pair and connect using that IP rather than `127.0.0.1`. Untested across all devices; your AP interface IP may differ.
 
 2. **Session persistence after WiFi drop:** some users report that an established ADB connection survives a WiFi drop in the same session (the radio goes down but the TCP connection stays alive briefly). Not reliable across reboots or long gaps.
-
-3. **`adb tcpip` mode:** if you have a computer nearby, you can set `adb tcpip 5555` once over USB, then disconnect and connect wirelessly on port 5555. Doesn't help in a WiFi-free scenario, but keeps the connection available without re-pairing each session.
 
 ---
 
@@ -257,13 +248,13 @@ Wireless debugging enabled means your device is listening for ADB connections on
 
 ### Practical security posture
 
-For personal use on a home network: acceptable risk. The pairing code requirement means passive attack is not possible.
+For personal use on a home network: acceptable risk, in my own judgment, not a guarantee. The pairing-code requirement blocks pairing by an attacker who cannot see your screen.
 
 For public WiFi: disable Wireless debugging. Re-enable when you're back on a trusted network.
 
 ### What ADB shell can access
 
-`adb shell` runs as Android's `shell` user. This is more privileged than Termux's app sandbox but less privileged than root. It can read most of the filesystem, inject input, query system settings, and access content providers. It cannot install system-signed packages, modify `/system/`, or bypass the keystore.
+`adb shell` runs as Android's `shell` user. This is more privileged than Termux's app sandbox but less privileged than root. It can read most of the filesystem, inject input, query system settings, and access content providers (the Android interface apps use to share structured data such as calendar entries and contacts). On a stock, non-rooted device it cannot install system-signed packages, modify `/system/`, or bypass the keystore.
 
 ---
 
@@ -321,4 +312,4 @@ ADB wireless self-connect gives Termux-based tools access to Android system APIs
 
 ---
 
-*Last updated: 2026-05-29.*
+*Last updated: 2026-07-01.*

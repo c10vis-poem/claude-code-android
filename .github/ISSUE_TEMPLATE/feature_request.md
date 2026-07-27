@@ -14,11 +14,10 @@ This is a small, one-person project. I read every request, but I cannot promise 
 ## Why is this useful?
 
 
-## Your environment
+## Your environment (optional)
 - **Device:**
 - **Android version:**
-- **[Install path](https://github.com/ferrumclaudepilgrim/claude-code-android/blob/main/README.md#quick-install):** (A: native Termux / B: proot-distro Ubuntu / C: Android Virtualization Framework, AVF)
+- **[Install path](https://github.com/ferrumclaudepilgrim/claude-code-android/blob/main/README.md#quick-install):** (A: native Termux / B: proot-distro Ubuntu / C: Android Virtualization Framework, AVF) (skip if not relevant to your request)
 
 ## Have you checked existing resources?
 - [ ] Searched [existing issues](https://github.com/ferrumclaudepilgrim/claude-code-android/issues)
-- [ ] Checked [TROUBLESHOOTING.md](https://github.com/ferrumclaudepilgrim/claude-code-android/blob/main/docs/troubleshooting.md)

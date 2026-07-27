@@ -2,8 +2,6 @@
 
 A complete, reproducible guide to installing Claude Code (Anthropic's AI coding assistant) on Android. Three install paths: pick one. Path A is the smallest install and auto-updates on launch. Path B gives you a full Ubuntu environment. Path C runs a real Linux kernel via AVF (Android Virtualization Framework, the built-in hypervisor that ships with Android 16 on supported devices) and requires Pixel 6+ on Android 16+.
 
-Path A was rewritten in v2.9.0 to install the official linux-arm64 claude binary with an auto-updating wrapper. The earlier install pinned a specific npm package version (npm is Anthropic's chosen distribution channel for Claude Code). That pin is no longer needed for current claude, though it remains available as an opt-in for a minimal install: [`install-pinned.sh`](../install-pinned.sh) pins `2.1.112` with no binary patching and no auto-updating wrapper. See [Why v2.9.0](#why-v290) at the bottom of this file for the history.
-
 ---
 
 ## Prerequisites
@@ -12,10 +10,10 @@ Before you begin, confirm you have the following:
 
 | Component | Requirement |
 |-----------|-------------|
-| **Architecture** | aarch64 (64-bit ARM); run `uname -m` to verify. If it returns `armv7l` or `armv8l`, Claude Code will not work on your device |
+| **Architecture** | aarch64 (64-bit ARM); once you have installed the terminal (see the Terminal row below), run `uname -m` in it to verify. If it returns `armv7l` or `armv8l`, Claude Code will not work on your device |
 | **Device** | aarch64 Android device (ARM64) |
 | **OS** | Android 8+ (Android 8 / 9 have OAuth caveats; OAuth is the browser-based login flow Claude Code uses to authenticate with Anthropic; see FAQ) |
-| **Kernel** | Varies by Android version and OEM; use `uname -r` to check. Kernel versions observed on the test devices in this repo: Galaxy S7 / Android 8: 3.18.x, Moto G7 Power / Android 10: 4.9.x, Pixel 6 / Android 13: 5.10.x, Pixel 10 Pro / Android 17: 6.6.x. Your device may differ. |
+| **Kernel** | Varies by Android version and OEM; use `uname -r` to check. Kernel versions observed on the test devices in this repo: Galaxy S7 / Android 8: 3.18.x, Moto G7 Power / Android 10: 4.9.x, Pixel 6: 5.10.x (measured when that device was on Android 13), Pixel 10 Pro / Android 17: 6.6.x. Your device may differ. |
 | **Terminal** | [Termux from F-Droid](https://f-droid.org/en/packages/com.termux/) or the [GitHub releases](https://github.com/termux/termux-app/releases). F-Droid is an open-source Android app store you install as an APK. The Google Play build is an experimental branch; as of the upstream Termux README it has missing functionality and bugs, and the upstream project recommends against it for most users. |
 | **Subscription** | Claude Pro, Max, Team, Enterprise, or Console account (provides the API access Claude Code requires) |
 | **Network** | Active internet connection (Claude Code streams from Anthropic's API) |
@@ -26,6 +24,8 @@ Before you begin, confirm you have the following:
 > **Termux:API source-matching:** The `termux-api` package (installed via `pkg install termux-api`) and the Termux:API companion app **must come from the same source** (both F-Droid or both GitHub releases). Mixing sources causes silent permission failures that are difficult to diagnose. Without both the package and the app, Termux:API calls fail silently.
 
 > **Warning:** As of the upstream Termux project README, the Google Play build is an experimental branch with missing functionality and known bugs; the upstream project recommends against it for most users. Use F-Droid or install the `.apk` directly from the [Termux GitHub releases](https://github.com/termux/termux-app/releases).
+
+> **Path C (AVF) note:** The prerequisites above (Termux, Android 8+) are for Path A and Path B, which both run in Termux. Path C (AVF) does not use Termux. It needs a Pixel 6 or later on Android 16 or later with Developer options on. See [Choose Your Path](#choose-your-path) and [Path C](#path-c-avf-linux-vm-experimental).
 
 ---
 
@@ -39,10 +39,12 @@ This guide covers three installation paths. Pick one before you start.
 | **Setup time** | 5-10 min | ~10-15 min | ~20 min |
 | **Disk usage** | ~280 MB base install; about 200 MB more if you accept recommended packages | ~2 GB | ~2 GB |
 | **Ongoing maintenance** | None (wrapper auto-updates) | Just update normally | Just update normally |
-| **Install method** | Patched linux-arm64 binary via glibc-runner (a Termux package that provides a glibc-compatible dynamic linker for running glibc binaries in Termux's Bionic-based environment) | Anthropic installer inside Ubuntu | Anthropic installer inside the VM |
+| **Install method** | Patched linux-arm64 binary via glibc-runner | Anthropic installer inside Ubuntu | Anthropic installer inside the VM |
 | **Node.js required** | No | No | No |
 | **Device support** | Any aarch64 Android 8+ (Android 8 / 9 have OAuth caveats; see FAQ) | Any aarch64 Android 8+ (Android 8 / 9 have OAuth caveats; see FAQ) | Pixel 6+ Android 16+ |
 | **Stability** | Stable | Stable | Experimental |
+
+**glibc-runner** is a Termux package that provides a glibc-compatible dynamic linker so glibc binaries run in Termux's Bionic-based environment (Bionic is Android's C library, the counterpart to glibc on desktop Linux). Path A uses it to run the linux-arm64 claude binary.
 
 **Tradeoffs:** Path A has the smallest footprint (~280 MB base, or ~480 MB with recommended packages) and auto-updates on launch. Path B gives you a full Ubuntu environment with apt, standard `/tmp`, `/etc`, and glibc natively in place, at ~2 GB on disk. Path C runs a real Linux kernel via Android's hypervisor but requires Pixel 6+ on Android 16+ and is experimental.
 
@@ -69,9 +71,11 @@ There is no root access. There is no systemd. The filesystem paths are deeply ne
 
 ## Path A: Native Termux
 
-The Path A install runs Anthropic's official linux-arm64 claude binary on Android by patching the binary's ELF interpreter (the field in an ELF binary that names the dynamic linker to use) to point at Termux's glibc-runner. A wrapper at `$PREFIX/bin/claude` checks once per day on launch for a newer version and updates without requiring any action from you.
+The Path A install runs Anthropic's official linux-arm64 claude binary on Android by patching the binary's ELF interpreter (ELF, Executable and Linkable Format, is the binary format Linux programs use; the interpreter is the field in that binary that names the dynamic linker to use) to point at Termux's glibc-runner. A wrapper at `$PREFIX/bin/claude` checks once per day on launch for a newer version and updates without requiring any action from you.
 
 ### Step 1: Run install.sh
+
+> **Older devices, read first:** If your device runs Android 8, 9, or 10, the native binary may not launch, because it can trip Android's seccomp system-call filter (this repo has seen it fail on the Android 8 and Android 10 test devices). On those devices, run [`install-pinned.sh`](../install-pinned.sh) instead of `install.sh`; it installs the pinned `2.1.112` release, which does run there. See [Tested On](#tested-on) below.
 
 Open Termux and run:
 
@@ -85,7 +89,7 @@ The installer asks two yes/no questions, then runs unattended:
 - **Q1: Is this a fresh Termux install?** If yes, `pkg upgrade` (`pkg` is Termux's package manager, a wrapper around apt with mirror selection) takes the new defaults for any system config files. If no, your existing config files are preserved.
 - **Q2: Install recommended packages?** If yes, installs git, gh, wget, jq, python, openssh, tree, proot, termux-api, proot-distro, make, clang, file, xxd, htop, bat, fzf. Roughly 200 MB of additional disk. Skip this if you prefer to install packages manually as needed.
 
-After the questions, the installer:
+You do not need to read the following to use Claude Code; skip to Step 2 to launch. For the curious, after the questions the installer:
 
 1. Brings Termux base packages up to date
 2. Installs `curl`, `jq`
@@ -95,9 +99,10 @@ After the questions, the installer:
 6. Downloads the linux-arm64 claude binary from `https://downloads.claude.ai/claude-code-releases/<version>/linux-arm64/claude` (~233 MB)
 7. Verifies the binary's sha256 checksum (sha256 is a cryptographic hash function; comparing the hash of the downloaded file against the published value confirms the file arrived intact and unmodified) against the published manifest (a `manifest.json` Anthropic publishes alongside each release, containing per-platform checksums)
 8. Patches the binary's ELF interpreter to point at glibc-runner's `ld.so`
-9. Writes `~/.claude/settings.json` with `"autoUpdates": false` so claude's in-process updater stays off (the wrapper handles updates). It does not set `env.LD_PRELOAD`, and removes any stale one a prior install left, because that preload leaked into claude's subprocesses and broke its bundled grep, rg, and ugrep. If a `settings.json` already exists, it is merged in place, keeping your other keys.
-10. Drops the auto-updating wrapper at `$PREFIX/bin/claude`
-11. If you answered yes to Q2, installs the recommended packages
+9. Writes a small DNS resolver preload at `~/.local/share/claude/setdns.js` (it points Node's resolver at `8.8.8.8` / `8.8.4.4`). The wrapper preloads it via `BUN_OPTIONS --preload` on every launch, which works around a connectivity hang some devices hit where a message stalls on "Checking connectivity" and fails with ETIMEOUT.
+10. Writes `~/.claude/settings.json` with `"autoUpdates": false` so claude's in-process updater stays off (the wrapper handles updates). It does not set `env.LD_PRELOAD`, and removes any stale one a prior install left, because that preload leaked into claude's subprocesses and broke its bundled grep, rg, and ugrep. If a `settings.json` already exists, it is merged in place, keeping your other keys.
+11. Drops the auto-updating wrapper at `$PREFIX/bin/claude`
+12. If you answered yes to Q2, installs the recommended packages
 
 Total install time: 5-10 minutes depending on connection speed.
 
@@ -111,17 +116,18 @@ claude
 
 On first launch, claude opens its welcome wizard (theme selection, project trust prompt), then walks you through OAuth. Authentication may fail to open a browser on Android 8 / 9; if so, copy the URL from the terminal and open it manually. [FAQ entry](faq.md#claude-prints-a-url-but-my-browser-doesnt-open).
 
-### What the wrapper does on every launch
+### What the wrapper does on every launch (optional reading)
 
 The short version: each launch makes sure the installed version actually runs on your phone, checks for an update at most once a day, and on its own falls back to the last working version if an update turns out to be broken. The first time it runs a new version it may pause a few seconds to test it; that is normal, not a freeze. Step by step:
 
 On each `claude` invocation, the wrapper:
 
 1. Checks for updates, at most once every 24 hours (using a stamp file at `~/.local/share/claude/versions/.last-update-check`). If due, it queries the npm registry for the latest version. If a newer version is published, it downloads the binary, verifies the checksum, patches the ELF interpreter, and launch-tests it (item 2) before adopting it. A version that passes is moved into `~/.local/share/claude/versions/`; one that crashes on this device is discarded and recorded so it is not downloaded again. The previous working version is kept for rollback; older ones are removed.
-2. Launch-tests the version it is about to run. Some upstream releases pass `--version` but crash on full launch under Android's seccomp filter (for example Android 10's blocked `statx`, or an `epoll_pwait2` regression in the Bun runtime claude is built on). The wrapper boots the binary once with `--init-only` in a throwaway, isolated HOME, so your real `~/.claude`, login, and hooks are never touched. A version that crashes is added to a blocklist and skipped, and the wrapper falls back to the highest version that still works, so a bad auto-update rolls back on its own with no action from you. The version confirmed good is cached so the next launch skips the test.
+2. Launch-tests the version it is about to run. Some upstream releases pass `--version` but crash on full launch, and there are two separate causes. On older Android, the seccomp filter blocks a low-level system call the binary issues (an Android 10 build has died on `statx`, a newer native build on `pidfd_open`). On newer phones the crash is a null pointer inside Termux's `glibc-runner` shim for `epoll_pwait2`, which the Bun runtime claude is built on calls at startup; that one is not a blocked system call. The wrapper boots the binary once with `--init-only` in a throwaway, isolated HOME, so your real `~/.claude`, login, and hooks are never touched. A version that crashes is added to a blocklist and skipped, and the wrapper falls back to the highest version that still works, so a bad auto-update rolls back on its own with no action from you. The version confirmed good is cached so the next launch skips the test.
 3. Self-heals the ELF interpreter: if the binary's interpreter is wrong (because something replaced the binary outside the wrapper's knowledge), re-patches it before launch.
-4. Unsets `LD_PRELOAD`. Termux's syscall shim must not be loaded when the glibc binary starts, or it crashes on an unversioned libc.so dependency.
-5. Execs the binary. The wrapper passes claude's output through unchanged. claude itself may print a cosmetic "Native installation" startup notice if `~/.local/bin` is not yet on your PATH; it is harmless.
+4. Preloads the DNS resolver fix. It makes sure `~/.local/share/claude/setdns.js` exists and exports `BUN_OPTIONS --preload` so the binary starts with it, which keeps the "Checking connectivity" / ETIMEOUT hang from biting on devices where the default resolver misbehaves.
+5. Unsets `LD_PRELOAD`. Termux's syscall shim must not be loaded when the glibc binary starts, or it crashes on an unversioned libc.so dependency.
+6. Execs the binary. The wrapper passes claude's output through unchanged. claude itself may print a cosmetic "Native installation" startup notice if `~/.local/bin` is not yet on your PATH; it is harmless.
 
 Force an immediate update check at any time:
 
@@ -129,13 +135,13 @@ Force an immediate update check at any time:
 claude --update-now
 ```
 
-If any update step fails (network down, checksum mismatch, patchelf error), the wrapper prints a one-line warning to stderr and falls through to launch the cached binary. Your session never breaks because of an update issue.
+If any update step fails (network down, checksum mismatch, patchelf error), the wrapper prints a one-line warning to stderr and falls through to launch the cached binary, so a failed update should not interrupt your session.
 
 ### What the wrapper keeps on disk, and how to reset it
 
 The wrapper stores its state alongside the binaries, in `~/.local/share/claude/versions/`:
 
-- The current binary and the previous one, kept so a bad update can roll back without re-downloading. At about 233 MB each, these two binaries are the bulk of Path A's disk use.
+- The current binary and the previous one, kept so a bad update can roll back without re-downloading. Each runs a few hundred megabytes (recent builds have been roughly 230 to 260 MB, and the size drifts release to release), so these two binaries are the bulk of Path A's disk use.
 - `.verified`: the version last confirmed to launch on this device, so the launch test is skipped next time.
 - `.blocklist`: versions that crashed on this device. A blocklisted version is never run or downloaded again.
 
@@ -242,20 +248,20 @@ git clone https://github.com/ferrumclaudepilgrim/claude-code-android.git
 bash claude-code-android/tests/verify-claims.sh
 ```
 
-Results are written to `tests/results/<your-device>-android<version>.txt`. The current claim set targets the older v2.x install architecture, so several claims will SKIP on a v2.9.0 install; a v2.9.0-shaped claim set is a follow-up item. The script is read-only and safe to re-run.
+Results are written to `tests/results/<your-device>-android<version>.txt`. Some checks are specific to the older v2.x install and will report SKIP on a v2.9.0 install; this is expected. The script is read-only and safe to re-run.
 
 ---
 
 ## Tested On
 
-The canonical device compatibility matrix lives in the **[main README](../README.md#device-compatibility)**. For v2.9.0 I have verified, end to end:
+The canonical device compatibility matrix lives in the **[main README](../README.md#device-compatibility)**. As of the 2026-07-01 run I have verified Path A end to end on four devices:
 
-- A fresh Path A install (`install.sh`) on a Google Pixel 10 Pro (Android 17), 2026-05-28.
-- The pinned-install migration (`migrate.sh`) on a Samsung Galaxy S26 Ultra, 2026-05-29.
+- Google Pixel 10 Pro and Google Pixel 6, both Android 17, running the native linux-arm64 binary through the auto-updating wrapper.
+- Motorola Moto G7 Power (Android 10) and Samsung Galaxy S7 (Android 8), which cannot run the native binary (it trips Android's seccomp filter on launch) and so stay on the pinned `2.1.112` install (`install-pinned.sh`). The Galaxy S7 needs the manual OAuth URL paste.
 
-Older devices have not yet been re-verified on the v2.9.0 Path A. Path B and Path C are independent of the Path A architecture change.
+The pinned-install migration (`migrate.sh`) was verified on a Samsung Galaxy S26 Ultra (Android 16) on 2026-05-29. Path B and Path C are independent of the Path A architecture change. See the README for the full matrix and per-device notes.
 
-[Submit a device report](https://github.com/ferrumclaudepilgrim/claude-code-android/issues/new?template=device_report.md) if you have tested on hardware not listed above.
+[Submit a device report](https://github.com/ferrumclaudepilgrim/claude-code-android/issues/new?template=device_report.yml) if you have tested on hardware not listed above.
 
 ---
 
@@ -271,7 +277,7 @@ A full Ubuntu Linux environment inside Termux. Inside the Ubuntu guest, the Node
 
 ### Setup: Every Step, Verified
 
-Tested on Pixel 10 Pro (Android 17) and Samsung Galaxy S26 Ultra (Android 16). The Pixel 10 Pro run was verified 2026-05-16 and has a test artifact at `tests/results/pixel-10-pro-android17.txt`. The S26 Ultra was tested at the same time but predates the current `verify-claims.sh` artifact regime, so the result is doc-only (no on-disk test artifact). Every command is the exact sequence that worked in my testing.
+Tested on Pixel 10 Pro (Android 17) and Samsung Galaxy S26 Ultra (Android 16), verified 2026-05-16. Every command below is the exact sequence that worked in my testing, verified by hand on those devices.
 
 **Step 1: Update Termux:**
 
@@ -383,7 +389,7 @@ See [FAQ: Claude prints a URL but my browser doesn't open](faq.md#claude-prints-
 
 ---
 
-*Last verified: 2026-05-16*
+*Path B last verified: 2026-05-16*
 
 ---
 
@@ -391,7 +397,7 @@ See [FAQ: Claude prints a URL but my browser doesn't open](faq.md#claude-prints-
 
 Path C uses the Android Virtualization Framework that ships in Android 16 and later on supported devices. It boots a Debian VM with a real Linux kernel; the Claude Code install inside the VM uses Anthropic's official installer the same way Path B does.
 
-Prerequisites for Path C: a Pixel 6 or later (other devices vary; check Settings > System > Developer options for the **Linux development environment** toggle), Android 16 or later.
+Prerequisites for Path C: a Pixel 6 or later (support on other devices varies; once you have enabled Developer options in the steps below, you can confirm support by looking for the **Linux development environment** toggle there), Android 16 or later.
 
 Outline:
 
@@ -468,9 +474,9 @@ Inside a running session, use `/compact` to compress the conversation context. T
 
 The earlier Path A install (v2.x) pinned `@anthropic-ai/claude-code@2.1.112`, the last upstream version that shipped a bundled JavaScript entry point. Versions 2.1.113+ switched to a platform-native binary distribution that excludes android-arm64; on native Termux those versions installed but `claude` exited immediately with `Error: claude native binary not installed`. The pin was defended with `chmod -R a-w` on the install directory plus `DISABLE_AUTOUPDATER=1` in shell env and `~/.claude/settings.json`. Tracked upstream at [anthropics/claude-code#50270](https://github.com/anthropics/claude-code/issues/50270).
 
-The v2.9.0 Path A install drops the pin and runs the same linux-arm64 native binary that PC users run, by patching the binary's ELF interpreter via Termux's `glibc-runner` and `patchelf-glibc`. The approach was originally described in [a comment on the upstream issue](https://github.com/anthropics/claude-code/issues/50270#issuecomment-4467292215). This repo's `install.sh` adapts it with empirical verification, an auto-updating wrapper, and the interactive prompts.
+The v2.9.0 Path A install drops the pin and runs the same linux-arm64 native binary that PC users run, by patching the binary's ELF interpreter via Termux's `glibc-runner` and `patchelf-glibc`. The approach was originally described in [a comment on the upstream issue](https://github.com/anthropics/claude-code/issues/50270#issuecomment-4467292215). This repo's `install.sh` adapts it with empirical verification, an auto-updating wrapper, and the interactive prompts. The earlier pinned approach remains available as an opt-in for a minimal install or for older devices that cannot run the native binary: [`install-pinned.sh`](../install-pinned.sh) installs `2.1.112` with no binary patching and no auto-updating wrapper.
 
-That patching is a compatibility shim, not native support. Anthropic ships no Android build, so Path A runs only because the linux-arm64 binary is made to load through Termux's glibc-runner. Anthropic has said they may add Android support, which would need either a `bun` `android-arm64` target or a static musl build; until that ships, Path A relies on the patching step.
+That patching is a compatibility shim, not native support. Anthropic ships no Android build, so Path A runs only because the linux-arm64 binary is made to load through Termux's glibc-runner. The real fix is upstream: adding an official Android build would need either a `bun` `android-arm64` target or a static musl build. Until that ships, Path A relies on the patching step.
 
 Path B and Path C were unchanged by the v2.9.0 work; both already install the latest claude via Anthropic's official installer inside their respective Linux environments.
 </content>

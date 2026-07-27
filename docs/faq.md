@@ -1,6 +1,10 @@
 # FAQ
 
-Common questions and gotchas for Claude Code on Android.
+Claude Code is Anthropic's terminal-based coding assistant: you run it from a command line and it reads, edits, and runs code in your project for you. This page covers common questions and gotchas for running it on Android.
+
+This repo offers three install methods, referred to throughout as Path A, Path B, and Path C. See [Choosing a path](#choosing-a-path) below for what each one is.
+
+Two different version numbers come up here. This repo has its own version (currently 2.9.x); Claude Code, the tool it installs, has its own separate version (currently 2.1.x). They are unrelated numbering schemes.
 
 ---
 
@@ -49,7 +53,7 @@ What the letters mean:
 - **D**: show the diff between your version and the new one
 - **Z**: drop to a shell so you can investigate before deciding
 
-Two letters per choice are historical: `Y/N` is the common convention; `I/O` ("Install" / "Old") was the older dpkg convention. Both still work.
+You only need one letter. (Optional detail: there are two letters per choice because `Y/N` is the common convention and `I/O`, for "Install" / "Old", is the older dpkg convention. Both still work.)
 
 To handle this non-interactively and keep all local config files unchanged:
 
@@ -59,7 +63,35 @@ DEBIAN_FRONTEND=noninteractive pkg upgrade -y -o Dpkg::Options::="--force-confol
 
 ### Which packages should I install after `install.sh`?
 
-`install.sh` installs what is needed to run claude itself: `curl`, `jq`, `glibc-repo`, `glibc-runner`, `patchelf-glibc`, and the patched linux-arm64 claude binary. It does NOT install `nodejs`; the binary is self-contained. If you answer yes to Q2 (the recommended-packages prompt), it also installs git, gh, wget, jq, python, openssh, tree, proot, termux-api, proot-distro, make, clang, file, xxd, htop, bat, and fzf. If you say no to Q2, vanilla Termux still gives you `rg`, `curl`, `unzip`, `tar`, `gzip`, `less`, and `nano`, but Claude Code typically reaches for the Q2 set as well. See **[Recommended Common Packages](install.md#recommended-common-packages)** in install.md for the canonical list.
+`install.sh` installs what is needed to run claude itself: `curl`, `jq`, `glibc-repo`, `glibc-runner`, `patchelf-glibc`, and the patched linux-arm64 claude binary. It does NOT install `nodejs`; the binary is self-contained. If you answer yes to the recommended-packages prompt, it also installs git, gh, wget, jq, python, openssh, tree, proot, termux-api, proot-distro, make, clang, file, xxd, htop, bat, and fzf. If you say no to that prompt, vanilla Termux still gives you `unzip`, `tar`, `gzip`, `less`, and `nano` from its bootstrap, but Claude Code typically reaches for the recommended-packages set as well. See **[Recommended Common Packages](install.md#recommended-common-packages)** in install.md for the canonical list.
+
+---
+
+## Choosing a path
+
+### Which path should I use?
+
+| If you want | Pick |
+|---|---|
+| The smallest install, latest claude, auto-updates | Path A (native Termux) |
+| A full Ubuntu environment alongside Claude Code | Path B (proot-distro Ubuntu, ~2 GB rootfs) |
+| A real Linux kernel via Android's hypervisor (Pixel 6+ on Android 16+) | Path C (AVF, Android Virtualization Framework) |
+
+All three paths install the latest claude. Path A's wrapper auto-checks once per 24 hours on launch (`claude --update-now` forces immediate). Paths B and C use Anthropic's official installer inside their Linux environments and update through that mechanism.
+
+### Can I run Path C (AVF) on my Samsung, OnePlus, or Snapdragon phone?
+
+Probably not on stock firmware. Path C needs Android's Virtualization Framework exposed as a non-protected VM, and Snapdragon devices on stock firmware only expose protected VMs at EL2, so the Terminal app cannot use them. The quick test: look for Settings > System > Developer options > **Linux development environment**. If that toggle is there, your device supports Path C; if it is missing, it does not.
+
+Samsung's One UI 8.5 added Linux Terminal support on the Exynos Galaxy S26 and S26+, per Samsung's release notes. I do not own one, so I have not lab-verified it. The Snapdragon Galaxy S26 Ultra stays unsupported. See [avf-guide.md](avf-guide.md#device-requirements) for the full device picture.
+
+### Why does Path A need patchelf and glibc-runner?
+
+You do not need to understand any of this to use Path A; the installer does it all for you. The detail is here for the curious.
+
+Anthropic distributes Claude Code as a glibc-linked Linux binary (as of v2.1.113; the upstream tracking issue is linked below). Termux runs on Android's Bionic C library, not glibc, so the binary cannot run as-is. Path A installs Termux's `glibc-runner` package (a Termux package that provides a glibc-compatible dynamic linker, `ld.so`, for running glibc binaries in Bionic-based environments) and uses `patchelf-glibc` (a Termux-packaged patchelf utility for modifying ELF (Executable and Linkable Format) binary metadata) to rewrite the binary's ELF interpreter (the field in the binary that names which dynamic linker to use) to point at that `ld.so`. The kernel can then exec the binary normally. Path B sidesteps this by running claude inside a proot-distro Ubuntu environment where glibc is already standard.
+
+Tracked upstream at [anthropics/claude-code#50270](https://github.com/anthropics/claude-code/issues/50270). The patched-binary approach was originally described in [a comment on the upstream issue](https://github.com/anthropics/claude-code/issues/50270#issuecomment-4467292215). This repo's install.sh adapts it with empirical verification, an auto-updating wrapper, and the two interactive prompts.
 
 ### I set up Path A with an older version of this repo. How do I move to v2.9.0?
 
@@ -74,41 +106,16 @@ Close any running `claude` sessions before you start; the script refuses to run 
 
 ---
 
-## Choosing a path
-
-### Which path should I use?
-
-| If you want | Pick |
-|---|---|
-| The smallest install, latest claude, auto-updates | Path A (native Termux, v2.9.0) |
-| A full Ubuntu environment alongside Claude Code | Path B (proot-distro Ubuntu, ~2 GB rootfs) |
-| A real Linux kernel via Android's hypervisor (Pixel 6+ on Android 16+) | Path C (AVF, Android Virtualization Framework) |
-
-All three paths install the latest claude. Path A's wrapper auto-checks once per 24 hours on launch (`claude --update-now` forces immediate). Paths B and C use Anthropic's official installer inside their Linux environments and update through that mechanism.
-
-### Why does Path A need patchelf and glibc-runner?
-
-Anthropic distributes Claude Code as a glibc-linked Linux binary (as of v2.1.113; the upstream tracking issue is linked below). Termux runs on Android's Bionic C library, not glibc, so the binary cannot run as-is. Path A installs Termux's `glibc-runner` package (a Termux package that provides a glibc-compatible dynamic linker, `ld.so`, for running glibc binaries in Bionic-based environments) and uses `patchelf-glibc` (a Termux-packaged patchelf utility for modifying ELF (Executable and Linkable Format) binary metadata) to rewrite the binary's ELF interpreter (the field in the binary that names which dynamic linker to use) to point at that `ld.so`. The kernel can then exec the binary normally. Path B sidesteps this by running claude inside a proot-distro Ubuntu environment where glibc is already standard.
-
-Tracked upstream at [anthropics/claude-code#50270](https://github.com/anthropics/claude-code/issues/50270). The patched-binary approach was originally described in [a comment on the upstream issue](https://github.com/anthropics/claude-code/issues/50270#issuecomment-4467292215). This repo's install.sh adapts it with empirical verification, an auto-updating wrapper, and the two interactive prompts.
-
----
-
 ## OAuth and browsers
 
 OAuth is the browser-based login flow Claude Code uses to authenticate with Anthropic.
 
 ### Claude prints a URL but my browser doesn't open
 
-On Android 8 (and possibly 9), claude cannot auto-open a browser when triggering OAuth, regardless of whether you are on Path A (native Termux) or Path B (proot-distro Ubuntu). The URL is printed to the terminal; copy it and paste it into your phone's browser manually.
+On Android 8 (and possibly 9), copy the URL from the terminal and open it in your phone's browser (Chrome or Samsung Internet) manually. Sign in there; claude in the terminal picks up the auth state once you complete the flow. This happens whether you are on Path A (native Termux) or Path B (proot-distro Ubuntu).
 
-This is a host-Android intent-resolution limitation, not a claude bug. Verified empirically on 2026-05-16:
-
-- Android 17 (Pixel 10 Pro), Android 13 (Pixel 6), Android 10 (Moto G7 Power): browser auto-opens to Chrome (the default browser on my test devices)
-- Android 8 (Galaxy S7): browser does NOT auto-open
-
-If you're on Android 8 or 9, copy the URL from the terminal output and open it in Chrome or Samsung Internet manually. Sign in there; claude in the terminal will pick up the auth state once you complete the flow.
+This is a host-Android intent-resolution limitation, not a claude bug. In my testing, the browser auto-opened on Android 10, 13, and 17 devices but not on Android 8, so the manual paste is only needed on the older versions.
 
 ---
 
-*Last updated: 2026-05-29.*
+*Last updated: 2026-07-01.*

@@ -1,11 +1,11 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# claude-code-android migration: pinned v2.x  ->  v2.9.0
+# claude-code-android migration: pinned v2.x  ->  current auto-updating architecture
 #
 # For existing users on the old pinned Path A install (npm package
 # @anthropic-ai/claude-code, typically 2.1.112, locked read-only with the
-# in-process auto-updater disabled). This moves you to the v2.9.0 architecture
-# (patched native linux-arm64 binary + auto-updating wrapper) WITHOUT losing
-# your work.
+# in-process auto-updater disabled). This moves you to the current auto-updating
+# architecture (patched native linux-arm64 binary + auto-updating wrapper)
+# WITHOUT losing your work.
 #
 # Preserved untouched: your chats/sessions, OAuth login, settings.json,
 # and any custom agents/hooks/skills/CLAUDE.md under ~/.claude.
@@ -19,9 +19,9 @@
 #
 # Fresh installs should use install.sh instead, not this script.
 #
-# SYNC NOTE: the npm-version resolve, download, checksum, patchelf, and the
-# emitted wrapper below are kept byte-identical to install.sh. If you change
-# one, change both.
+# SYNC NOTE: the npm-version resolve, download, checksum, and patchelf steps are
+# kept in sync with install.sh, and the emitted wrapper below is byte-identical
+# to the one install.sh writes. If you change one, change both.
 #
 # Tracking the upstream issue this works around:
 #   https://github.com/anthropics/claude-code/issues/50270
@@ -87,8 +87,8 @@ fi
 
 cat <<'BANNER'
 
-  claude-code-android migration  (pinned v2.x  ->  v2.9.0)
-  =======================================================
+  claude-code-android migration  (pinned v2.x  ->  current architecture)
+  ======================================================================
 
 BANNER
 
@@ -198,7 +198,7 @@ if [ -e "$HOME/.bashrc" ]; then cp -a "$HOME/.bashrc" "$BACKUP_DIR/"; fi
 
 cat > "$BACKUP_DIR/restore.sh" <<'RESTORE'
 #!/data/data/com.termux/files/usr/bin/bash
-# Restore the data captured before the v2.9.0 migration.
+# Restore the data captured before this migration.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 echo "Restoring ~/.claude, ~/.claude.json, ~/.bashrc from $here ..."
@@ -293,12 +293,13 @@ write_setdns "$CC_SETDNS"
   || warn "could not write $CC_SETDNS; DNS ETIMEOUT workaround inactive."
 
 # Smoke-test the new binary BEFORE removing the working install. If the latest
-# Claude Code crashes on this device (a known upstream regression under Android's
-# seccomp filter: Android 10 statx, or Bun 1.4 epoll_pwait2), abort and leave the
-# current install untouched rather than migrating onto a binary that will not
-# launch. The probe is --init-only, which boots the full runtime and exits 0 on
-# a healthy binary; it passes --version yet crashes on full launch, so --version
-# alone would not catch this.
+# Claude Code crashes on this device (a known upstream regression: Android 10's
+# blocked statx raising SIGSYS from the seccomp filter, or the Bun 1.4
+# epoll_pwait2 SIGSEGV, which is a NULL deref in Termux's glibc-runner shim, not
+# a blocked syscall), abort and leave the current install untouched rather than
+# migrating onto a binary that will not launch. The probe is --init-only, which
+# boots the full runtime and exits 0 on a healthy binary; it passes --version yet
+# crashes on full launch, so --version alone would not catch this.
 info "smoke-testing the new binary"
 ST_ERR="$VERSIONS_DIR/.smoke-stderr"
 ST_HOME="$VERSIONS_DIR/.smoke-home"
@@ -311,7 +312,7 @@ if [ ! -s "$BINARY" ] || { [ "$ST_RC" -gt 128 ] && [ "$ST_RC" -le 159 ]; } \
    || grep -qE 'Bad system call|oh no: Bun has crashed|panic\(|bun\.report' "$ST_ERR" 2>/dev/null; then
   rm -f "$ST_ERR" "$BINARY"
   warn "Claude Code $LATEST crashes on this device. This is a known upstream"
-  warn "regression under Android's seccomp filter, not a problem with your setup."
+  warn "regression, not a problem with your setup."
   warn "Your current install has NOT been changed. To get a working Claude Code:"
   warn "  - keep using your current install, or"
   warn "  - run  ./install-pinned.sh   to pin a known-good build, or"
@@ -360,8 +361,9 @@ write_setdns() {
 
 # Smoke test: returns 0 if the binary launches on this device, 1 if it crashes
 # or hangs. Why this exists: upstream has shipped binaries that pass "--version"
-# but die on full launch under Android's seccomp filter (Android 10 statx ->
-# SIGSYS; Bun 1.4 epoll_pwait2 -> SIGSEGV). We probe the full runtime with
+# but die on full launch, either from Android's seccomp filter (Android 10
+# statx or pidfd_open -> SIGSYS) or from a null deref in Termux's glibc-runner
+# epoll_pwait2 shim under Bun 1.4 (-> SIGSEGV). We probe the full runtime with
 # --init-only (it boots the HTTP thread and worker pool and exits 0 offline on
 # a healthy binary) and refuse to promote or run anything that dies. If a
 # future release drops --init-only, the probe returns a benign non-zero (no
@@ -591,7 +593,7 @@ DONE
 if [ -n "$STALE" ]; then
   cat <<NOTE
 Optional cleanup: these old v2.x lines in ~/.bashrc are now harmless under
-v2.9.0 and can be removed by hand if you like (leave anything else alone):
+the current architecture and can be removed by hand if you like (leave anything else alone):
 $STALE
 
 NOTE
