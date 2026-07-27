@@ -37,6 +37,7 @@ trap 'rm -rf "$ROOT"' EXIT
 BASH_BIN="$(command -v bash)"
 FAKE_BIN_SRC="$ROOT/fake-claude"
 printf '#!%s\n[ -n "${PRELOAD_CAPTURE:-}" ] && printf "%%s\\n" "${BUN_OPTIONS:-}" > "$PRELOAD_CAPTURE"\necho "9.9.9 (fake claude)"\nexit 0\n' "$BASH_BIN" > "$FAKE_BIN_SRC"
+chmod +x "$FAKE_BIN_SRC"
 FAKE_SHA="$(sha256sum "$FAKE_BIN_SRC" | cut -d' ' -f1)"
 TEST_GLIBC_LD="/fake/ld-linux.so"
 REAL_REALPATH="$(command -v realpath)"
