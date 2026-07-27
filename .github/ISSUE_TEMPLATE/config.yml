@@ -4,5 +4,5 @@ contact_links:
     url: https://github.com/ferrumclaudepilgrim/claude-code-android/security/advisories/new
     about: Report security issues privately through GitHub's advisory system
   - name: Question or success story (ask anything, or tell me it worked)
-    url: https://github.com/ferrumclaudepilgrim/claude-code-android/blob/main/docs/faq.md
-    about: For questions or to share that it worked, start with the FAQ and troubleshooting guide.
+    url: https://github.com/ferrumclaudepilgrim/claude-code-android/discussions
+    about: Ask in Discussions, or share that it worked. The FAQ and troubleshooting guide cover the common ones first.

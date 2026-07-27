@@ -110,6 +110,16 @@ These gaps exist by default in the current setup:
 
 ---
 
+## Path A Forces Google DNS for Claude Code's Own Lookups
+
+On Path A (native Termux), the launcher writes a small preload at `~/.local/share/claude/setdns.js` and loads it on every launch via `BUN_OPTIONS --preload`. It calls `dns.setServers(["8.8.8.8", "8.8.4.4"])`, pointing Claude Code's own DNS lookups at Google's public resolvers. This works around a startup hang where Claude Code's bundled resolver falls back to a dead loopback address and times out (see [Troubleshooting](troubleshooting.md#claude-hangs-on-checking-connectivity--etimeout--api-error-on-every-message)).
+
+What this means for you: while Claude Code is running, its name lookups go to `8.8.8.8` / `8.8.4.4` rather than to a VPN, split-tunnel, or Pi-hole resolver you may have configured. For Claude Code's own queries, this overrides that resolver. The rest of your phone keeps using its normal DNS; only Claude Code's lookups are affected, and only on Path A. Paths B and C do not use this preload.
+
+To send Claude Code's lookups to your own nameserver instead, edit the `setServers([...])` list in `~/.local/share/claude/setdns.js`.
+
+---
+
 ## Recommended Setup for Minimal Risk
 
 1. **Start without ADB.** Path A, Path B, and Path C all work fully without ADB wireless debugging. Only enable ADB when you specifically need screenshot, input injection, or system query capabilities.

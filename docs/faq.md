@@ -65,6 +65,22 @@ DEBIAN_FRONTEND=noninteractive pkg upgrade -y -o Dpkg::Options::="--force-confol
 
 `install.sh` installs what is needed to run claude itself: `curl`, `jq`, `glibc-repo`, `glibc-runner`, `patchelf-glibc`, and the patched linux-arm64 claude binary. It does NOT install `nodejs`; the binary is self-contained. If you answer yes to the recommended-packages prompt, it also installs git, gh, wget, jq, python, openssh, tree, proot, termux-api, proot-distro, make, clang, file, xxd, htop, bat, and fzf. If you say no to that prompt, vanilla Termux still gives you `unzip`, `tar`, `gzip`, `less`, and `nano` from its bootstrap, but Claude Code typically reaches for the recommended-packages set as well. See **[Recommended Common Packages](install.md#recommended-common-packages)** in install.md for the canonical list.
 
+### Which install do I have: pinned or the native v2.9.x setup?
+
+`claude --version` will not tell you: it reports Claude Code's own version (the 2.1.x number), which is the same on both. Check what is on disk instead:
+
+```bash
+if [ -d "$PREFIX/lib/node_modules/@anthropic-ai/claude-code" ]; then
+  echo "pinned install (Claude Code 2.1.112 via npm)"
+elif ls "$HOME/.local/share/claude/versions/"*.*.* >/dev/null 2>&1; then
+  echo "native Path A install (the v2.9.x auto-updating wrapper)"
+else
+  echo "no recognized claude install found here"
+fi
+```
+
+If you are on the pinned install and want current claude, see [I set up Path A with an older version of this repo](#i-set-up-path-a-with-an-older-version-of-this-repo-how-do-i-move-to-v290).
+
 ---
 
 ## Choosing a path

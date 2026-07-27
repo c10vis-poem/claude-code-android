@@ -4,13 +4,16 @@ This guide covers problems specific to running Claude Code on **aarch64/ARM64 An
 
 If you haven't installed yet, see [install.md](install.md) first.
 
-**Which version do I have?** Some entries below are labelled by version, for example "(v2.x install)" or "(v2.9.1+)". Those refer to *this repo's* install (currently 2.9.x), which is a different number from Claude Code's own version (currently 2.1.x). Run `claude --version` to see Claude Code's version. If you installed with this repo's current `install.sh`, you are on the v2.9.x setup and can skip the "(v2.x install)" entries.
+**Which version do I have?** Some entries below are labelled by version, for example "(v2.x install)" or "(v2.9.1+)". Those refer to *this repo's* install (currently 2.9.x), which is a different number from Claude Code's own version (currently 2.1.x). Note that `claude --version` reports Claude Code's number (2.1.x), not this repo's, so it does not tell you which setup you have. For a one-command check that does, see [Which setup am I on?](#which-setup-am-i-on) below.
 
 ---
 
 ## Table of Contents
 
+- [Which setup am I on?](#which-setup-am-i-on)
 - [Claude crashes immediately on launch](#claude-crashes-immediately-on-launch)
+- [Update says "checksum mismatch" or stays on an older version](#update-says-checksum-mismatch-or-stays-on-an-older-version)
+- [EACCES error printed at startup](#eacces-error-printed-at-startup)
 - [Claude hangs on "Checking connectivity" / ETIMEOUT / 'API error' on every message](#claude-hangs-on-checking-connectivity--etimeout--api-error-on-every-message)
 - [Unsupported architecture: armhf](#unsupported-architecture-armhf)
 - [Claude Code won't start, no error](#claude-code-wont-start-no-error-v2x-install)
@@ -36,6 +39,24 @@ If you haven't installed yet, see [install.md](install.md) first.
 
 ---
 
+### Which setup am I on?
+
+This repo's own version (currently 2.9.x) is a different number from Claude Code's own version (currently 2.1.x); the two are unrelated. `claude --version` reports Claude Code's number (2.1.x) on every setup, so it does not tell you which of this repo's installs you have. To find that out deterministically, check what is on disk:
+
+```bash
+if [ -d "$PREFIX/lib/node_modules/@anthropic-ai/claude-code" ]; then
+  echo "pinned install (Claude Code 2.1.112 via npm; treat as a v2.x setup)"
+elif ls "$HOME/.local/share/claude/versions/"*.*.* >/dev/null 2>&1; then
+  echo "native Path A install (the v2.9.x auto-updating wrapper)"
+else
+  echo "no recognized claude install found here"
+fi
+```
+
+If it prints **pinned install**, follow the entries labelled "(v2.x install)" and the [pinned upgrade path](install.md#upgrading-from-a-pinned-v2x-install). If it prints **native Path A install**, you are on the v2.9.x setup and can skip the "(v2.x install)" entries.
+
+---
+
 ### Claude crashes immediately on launch
 
 **Applies to Path A (native Termux).**
@@ -56,7 +77,18 @@ or a `Segmentation fault` message that links to `bun.report`. Tellingly, `claude
 
 **What happened:** Claude Code auto-updated itself to a release that does not run on Android. Claude Code is a single native program, and a recent build of it asks Android for something Android does not allow, so it stops the moment it starts. This is a bug in that release, not in your phone, and not anything you did.
 
-**Fix it:** re-run this repo's installer (below). However you first installed, on a phone that already has this setup it refreshes the launcher in place, without the large re-download, updating it to a version that checks each Claude Code update before running it and, on its own, falls back to the last one that worked. Your login and settings are kept.
+**Fix it:**
+
+**On Android 8, 9, or 10:** the native binary cannot run on your device at all (tripping Android's seccomp filter is what caused the crash), so re-running `install.sh` will not help; it would just reinstall the same native binary. Install the pinned version instead, an older Claude Code that runs on these devices:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ferrumclaudepilgrim/claude-code-android/main/install-pinned.sh -o install-pinned.sh
+bash install-pinned.sh
+```
+
+Your login and settings are kept. (Not sure which Android version you are on? Settings > About phone > Android version.)
+
+**On Android 11 or newer:** re-run this repo's installer. However you first installed, on a phone that already has this setup it refreshes the launcher in place, without the large re-download, updating it to a version that checks each Claude Code update before running it and, on its own, falls back to the last one that worked. Your login and settings are kept.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ferrumclaudepilgrim/claude-code-android/main/install.sh -o install.sh
@@ -67,12 +99,7 @@ Then start Claude Code the normal way. The refreshed launcher checks the install
 
 If you are still on the older pinned install (Claude Code `2.1.112` with the auto-updater off), `install.sh` will point you to `migrate.sh` instead. Run that: it upgrades you to the current self-healing setup.
 
-**If you then see `no working claude binary found`:** your phone has no good version saved to fall back to. Install the pinned version, an older Claude Code that does not have this problem:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/ferrumclaudepilgrim/claude-code-android/main/install-pinned.sh -o install-pinned.sh
-bash install-pinned.sh
-```
+**If you then see `no working claude binary found`:** your phone has no good version saved to fall back to. Install the pinned version with the `install-pinned.sh` command shown above, an older Claude Code that does not have this problem.
 
 The pinned version is a safety net, not a one-way street: once a working Claude Code release is out, re-run `install.sh` to move back to the current, self-healing setup.
 
@@ -84,6 +111,65 @@ Running Claude Code inside proot-distro Ubuntu (Path B) is another way around it
 Two different failures produce these messages. `Bad system call` is Android's seccomp filter (a kernel feature that blocks a program from making system calls it is not allowed to) doing its job: the native binary issues a low-level system call the filter does not allow, and Android stops it. Which call trips it is version specific (an Android 10 build has died on `statx`, a newer native build on `pidfd_open`). `Segmentation fault` or `oh no: Bun has crashed` on newer phones is a different problem: it is a null pointer crash inside Termux's `glibc-runner` shim for `epoll_pwait2`, which the Bun 1.4 runtime calls at startup, not a blocked system call. In both cases `claude --version` survives because it exits before it reaches the crash; a real launch does not. The launcher in v2.9.2 and later tests each version this way and rolls back when one fails. The Bun side is fixed upstream in oven-sh/bun#32490 (the runtime issues a raw system call to skip the shim).
 
 </details>
+
+---
+
+### Update says "checksum mismatch" or stays on an older version
+
+**Applies to Path A (native Termux).**
+
+**You see:** running `claude` prints an update line to stderr and keeps running the version you already had, for example:
+
+```
+sha256sum: .../versions/2.1.203.tmp: No such file or directory
+[claude] update: checksum mismatch on 2.1.203, using cached
+```
+
+or `[claude] update: download incomplete, using cached`. Claude still starts on the cached version; it just does not move up to the new release.
+
+**What happened:** a transient hiccup in the once-a-day update check, most often two `claude` launches within the same few-minute download window on a launcher from before 2.9.4. The published release itself is fine (its checksum is valid); the download on this device did not finish cleanly that time. The launcher then records the daily check as done, so it does not retry until the next day.
+
+**Fix it:** force one clean update, in a single terminal with no other `claude` running:
+
+```bash
+claude --update-now
+```
+
+That downloads the current release, verifies it, and swaps it in. If it still reports a problem, refresh the launcher itself, which also delivers the 2.9.4 launcher that takes a lock so two launches can no longer collide:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ferrumclaudepilgrim/claude-code-android/main/install.sh -o install.sh
+bash install.sh
+```
+
+Your login and settings are kept. A one-off `checksum mismatch` is not a corrupted file you need to clean up by hand: the launcher already discards the partial download.
+
+---
+
+### EACCES error printed at startup
+
+**Applies to Path A (native Termux).**
+
+**You see:** an error line on startup mentioning `Cannot read directory`, while Claude Code itself works normally:
+
+```
+$ claude --version
+2.1.207 (Claude Code)
+error: Cannot read directory "/": EACCES
+```
+
+It shows up on `claude`, `claude --version`, and `claude mcp list`, but not on `claude --help`. Claude runs fine, sessions work, and the exit code is `0`.
+
+**What happened:** the launcher loads a small DNS helper at startup. While resolving where that file lives, the runtime walks up the folders above it, one at a time, until it reaches the top of the filesystem. Android does not let an app read that top-level folder, so the runtime reports the refusal and carries on. It is noise, not a failure: nothing is broken and nothing is skipped.
+
+**Fix it:** this is fixed in 2.9.4, which loads the helper by a path relative to where you are, so the walk never happens. Refresh the launcher:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ferrumclaudepilgrim/claude-code-android/main/install.sh -o install.sh
+bash install.sh
+```
+
+Your login and settings are kept. If the line still appears afterwards, it is still harmless, and the DNS fix keeps working either way; the launcher falls back to the absolute path when it cannot work out a relative one.
 
 ---
 

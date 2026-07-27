@@ -56,6 +56,17 @@ bash tests/verify-claims.sh
 
 It checks documented claims against your actual device and writes a file to `tests/results/`. Include that output with your PR so I can see what your hardware reported. Claims here are grounded on real devices, not on what should work in theory. If you cannot test a path, say so in the PR rather than guessing, and I will test it or hold the change until it can be verified.
 
+If your change touches `install.sh`, `migrate.sh`, or the launcher they write, also run the automated checks. These run on every pull request, so running them first saves you a round trip:
+
+```bash
+bash scripts/check-sync.sh           # the two installers must stay identical
+bash tests/wrapper-update-tests.sh   # launcher update, rollback, and preload behavior
+bash tests/installer-smoke-tests.sh  # install-time launch-probe classification
+bash tests/mutation-check.sh         # proves the tests fail when the code is broken
+```
+
+One thing that catches people out: `install.sh` and `migrate.sh` contain two sections that must stay byte-identical, marked with `SYNC:BEGIN` and `SYNC:END`. If you change one, make the same change in the other, or `check-sync.sh` fails the build.
+
 ## Contributing skills
 
 Skills live under `.claude/skills/<name>/` with a `SKILL.md` carrying YAML frontmatter (this repo uses the Claude Code fields `user-invocable`, `disable-model-invocation`, and `argument-hint`; see the [skills docs](https://code.claude.com/docs/en/skills)). To add one:
@@ -68,7 +79,9 @@ Use `.claude/skills/scope-framing/` as a model for a well-formed skill. If what 
 
 ## AI-assisted contributions
 
-Since the whole repo is about an AI coding tool, I will be straight about it rather than pretend. If you drafted a change with an AI tool, that is fine, but review it and fully understand it before you submit, and be ready to answer questions about it and revise it yourself. Write your PR description and your replies to me in your own words. Using AI to help with grammar or spelling is fine. AI-generated claims you have not verified on a device are not; those are exactly what the testing gate above exists to catch.
+This whole repo is about an AI coding tool, so I am not going to be weird about people using one. If AI helped you put a change together, that is fine by me. It is a big part of why more people can jump in and help at all, and I would rather have the help.
+
+The one thing I do ask is this: if your change says something works, run it on a real device first. That is the piece I cannot check for you from here. Everything else we can sort out together in the pull request.
 
 ## PR conventions
 
