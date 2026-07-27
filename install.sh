@@ -263,7 +263,7 @@ DL_BASE="https://downloads.claude.ai/claude-code-releases/$LATEST"
 
 info "downloading $LATEST linux-arm64 binary (~233 MB)"
 curl -fsSL --max-time 300 "$DL_BASE/linux-arm64/claude" -o "$BINARY.tmp" \
-  || fail "binary download failed"
+  || { rm -f "$BINARY.tmp"; fail "binary download failed"; }
 
 info "verifying checksum against published manifest"
 EXP="$(curl -fsSL --max-time 10 "$DL_BASE/manifest.json" 2>/dev/null | jq -er '.platforms["linux-arm64"].checksum' 2>/dev/null || true)"
@@ -300,15 +300,19 @@ write_setdns "$CC_SETDNS"
 info "smoke-testing the installed binary"
 ST_ERR="$VERSIONS_DIR/.smoke-stderr"
 ST_HOME="$VERSIONS_DIR/.smoke-home"
+ST_CRASHED=0
+ST_LIMIT="${CC_SMOKE_TIMEOUT:-45}"
 rm -rf "$ST_HOME"; mkdir -p "$ST_HOME/.claude"
-if HOME="$ST_HOME" LD_PRELOAD='' timeout -s KILL 45 "$BINARY" --init-only </dev/null >/dev/null 2>"$ST_ERR"; then
+ST_STARTED="$(date +%s)"
+if HOME="$ST_HOME" LD_PRELOAD='' timeout -s KILL "$ST_LIMIT" "$BINARY" --init-only </dev/null >/dev/null 2>"$ST_ERR"; then
   ST_RC=0
 else
   ST_RC=$?
 fi
+ST_ELAPSED=$(( $(date +%s) - ST_STARTED ))
 rm -rf "$ST_HOME"
-if { [ "$ST_RC" -gt 128 ] && [ "$ST_RC" -le 159 ]; } \
-   || grep -qE 'Bad system call|oh no: Bun has crashed|panic\(|bun\.report' "$ST_ERR" 2>/dev/null; then
+if grep -qE 'Bad system call|oh no: Bun has crashed|panic\(|bun\.report' "$ST_ERR" 2>/dev/null; then
+  ST_CRASHED=1
   rm -f "$ST_ERR"
   warn "Claude Code $LATEST crashes on this device. This is a known upstream"
   warn "regression in some releases, not an install problem. The install is"
@@ -316,12 +320,21 @@ if { [ "$ST_RC" -gt 128 ] && [ "$ST_RC" -le 159 ]; } \
   warn "To get a working Claude Code now:"
   warn "  - run  ./install-pinned.sh   to pin a known-good build, or"
   warn "  - run Claude Code inside proot-distro Ubuntu (see the README)."
-elif [ "$ST_RC" -eq 124 ] || [ "$ST_RC" -eq 126 ] || [ "$ST_RC" -eq 127 ]; then
+elif [ "$ST_ELAPSED" -ge "$ST_LIMIT" ]; then
   rm -f "$ST_ERR"
   warn "Could not fully verify Claude Code $LATEST on this device: the launch"
   warn "probe timed out, which can happen on a slow or loaded device. The"
   warn "install is complete; the launcher re-checks on first run and will use"
   warn "this build if it starts."
+elif { [ "$ST_RC" -gt 128 ] && [ "$ST_RC" -le 159 ]; }; then
+  ST_CRASHED=1
+  rm -f "$ST_ERR"
+  warn "Claude Code $LATEST crashes on this device. This is a known upstream"
+  warn "regression in some releases, not an install problem. The install is"
+  warn "complete, but this version will not launch here."
+  warn "To get a working Claude Code now:"
+  warn "  - run  ./install-pinned.sh   to pin a known-good build, or"
+  warn "  - run Claude Code inside proot-distro Ubuntu (see the README)."
 else
   rm -f "$ST_ERR"
   printf '%s\n' "$LATEST" > "$VERSIONS_DIR/.verified"
@@ -416,19 +429,20 @@ smoke_test() {
   # fires SessionStart/SessionEnd), never depend on login, and never write to
   # the real ~/.claude. The crash we detect is a syscall, independent of config.
   rm -rf "\$st_home"; mkdir -p "\$st_home/.claude"
-  HOME="\$st_home" LD_PRELOAD= timeout -s KILL 45 "\$1" --init-only </dev/null >/dev/null 2>"\$st_err"
+  st_limit="\${CC_SMOKE_TIMEOUT:-45}"
+  st_started=\$(date +%s)
+  HOME="\$st_home" LD_PRELOAD= timeout -s KILL "\$st_limit" "\$1" --init-only </dev/null >/dev/null 2>"\$st_err"
   st_rc=\$?
+  st_elapsed=\$(( \$(date +%s) - st_started ))
   rm -rf "\$st_home"
-  # A fatal signal (129-159) or a known crash banner means the binary is broken
-  # on this device: blocklist it (return 1).
-  if [ "\$st_rc" -gt 128 ] && [ "\$st_rc" -le 159 ]; then rm -f "\$st_err"; return 1; fi
+  # A known crash banner is authoritative even if it appeared near the timeout.
   if grep -qE 'Bad system call|oh no: Bun has crashed|panic\(|bun\.report' "\$st_err" 2>/dev/null; then
     rm -f "\$st_err"; return 1
   fi
-  # Timed out (124) or could not exec (126/127): inconclusive, not a proven
-  # crash. Never blocklist these (return 2) so a slow or thermally throttled
-  # device does not permanently reject a good build.
-  if [ "\$st_rc" -eq 124 ] || [ "\$st_rc" -eq 126 ] || [ "\$st_rc" -eq 127 ]; then rm -f "\$st_err"; return 2; fi
+  # timeout exit conventions vary. Elapsed time is the portable signal.
+  if [ "\$st_elapsed" -ge "\$st_limit" ]; then rm -f "\$st_err"; return 2; fi
+  if [ "\$st_rc" -gt 128 ] && [ "\$st_rc" -le 159 ]; then rm -f "\$st_err"; return 1; fi
+  if [ "\$st_rc" -eq 126 ] || [ "\$st_rc" -eq 127 ]; then rm -f "\$st_err"; return 2; fi
   rm -f "\$st_err"
   return 0
 }
@@ -631,6 +645,73 @@ if VER="$(claude --version 2>&1)"; then
 elif [ "${REFRESH:-0}" = 1 ]; then
   warn "the refreshed launcher could not find a working Claude Code version on this device."
   warn "run  ./install-pinned.sh  to pin a known-good build, or use proot-distro Ubuntu (see the README)."
+elif [ "${ST_CRASHED:-0}" = 1 ]; then
+  cat <<DONE
+
+Install complete, but this Claude Code release cannot run on this device.
+
+  Wrapper:   $WRAPPER
+  Binary:    $BINARY
+  Settings:  $HOME/.claude/settings.json
+
+The installer finished successfully, but the native Claude Code binary crashes
+on this Android version. Do not start claude; it will not work here.
+
+To get a working Claude Code:
+
+  On this Android version you need pinned Claude Code 2.1.112, the last
+  release that runs here.
+
+  Upstream cause and status:
+  https://github.com/anthropics/claude-code/issues/50270
+
+  Full explanation and other options:
+  https://github.com/ferrumclaudepilgrim/claude-code-android
+
+DONE
+  PINNED_URL="https://raw.githubusercontent.com/ferrumclaudepilgrim/claude-code-android/main/install-pinned.sh"
+  print_pinned_command() {
+    printf '\nTo install the working pinned release manually:\n\n'
+    printf '  curl -fsSL %s -o install-pinned.sh\n' "$PINNED_URL"
+    printf '  bash install-pinned.sh\n\n'
+  }
+  if [ -t 0 ]; then
+    printf 'Install pinned Claude Code 2.1.112 now? [Y/n] '
+    if read -r PIN_REPLY; then
+      PIN_REPLY="${PIN_REPLY:-Y}"
+    else
+      PIN_REPLY=n
+    fi
+    case "${PIN_REPLY,,}" in
+      y|yes)
+        if PIN_SCRIPT="$(mktemp "${TMPDIR:-$PREFIX/tmp}/install-pinned.XXXXXX")"; then
+          if curl -fsSL "$PINNED_URL" -o "$PIN_SCRIPT"; then
+            if bash "$PIN_SCRIPT"; then
+              ok "pinned Claude Code 2.1.112 installed"
+            else
+              warn "the optional pinned install failed; the native install is still complete."
+              print_pinned_command
+            fi
+          else
+            warn "could not download install-pinned.sh; the native install is still complete."
+            print_pinned_command
+          fi
+          rm -f "$PIN_SCRIPT"
+        else
+          warn "could not create a temporary file for install-pinned.sh."
+          print_pinned_command
+        fi
+        ;;
+      *)
+        info "pinned install declined; the native install is still complete."
+        print_pinned_command
+        ;;
+    esac
+  else
+    info "stdin is not interactive, so the optional pinned install was not started."
+    print_pinned_command
+  fi
+  exit 0
 else
   fail "claude --version failed: $VER"
 fi

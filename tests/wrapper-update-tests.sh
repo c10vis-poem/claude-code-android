@@ -40,7 +40,8 @@ printf '#!%s\n[ -n "${PRELOAD_CAPTURE:-}" ] && printf "%%s\\n" "${BUN_OPTIONS:-}
 FAKE_SHA="$(sha256sum "$FAKE_BIN_SRC" | cut -d' ' -f1)"
 TEST_GLIBC_LD="/fake/ld-linux.so"
 REAL_REALPATH="$(command -v realpath)"
-export FAKE_BIN_SRC FAKE_SHA TEST_GLIBC_LD REAL_REALPATH
+REAL_TIMEOUT="$(command -v timeout)"
+export FAKE_BIN_SRC FAKE_SHA TEST_GLIBC_LD REAL_REALPATH REAL_TIMEOUT BASH_BIN
 
 # --- stubs: only the network/device calls are faked; coreutils stay real ---
 BIN="$ROOT/stub-bin"; mkdir -p "$BIN"
@@ -74,11 +75,10 @@ exit 0
 PE
 printf '#!%s\n' "$BASH_BIN" > "$BIN/timeout"
 cat >> "$BIN/timeout" <<'TO'
-# Drives smoke_test's exit code by the SMOKE env var, ignoring the real args.
 case "${SMOKE:-healthy}" in
   healthy) exit 0 ;;
-  crash)   echo "Bad system call" >&2; exit 139 ;;
-  timeout) exit 124 ;;
+  crash)   echo "Bad system call" >&2; exit 159 ;;
+  timeout) exec "$REAL_TIMEOUT" -s KILL "${CC_SMOKE_TIMEOUT:-1}" "$BASH_BIN" -c 'sleep 60' ;;
   *)       exit 0 ;;
 esac
 TO
@@ -200,7 +200,10 @@ echo "=== Scenario 4: an inconclusive (timed-out) probe is NOT blocklisted ==="
 newcase s4
 cp "$FAKE_BIN_SRC" "$V/1.0.0"; echo "1.0.0" > "$V/.verified"
 W="$(gen_wrapper "$V")"
-SMOKE=timeout run_wrapper "$W" "$ROOT/s4.err" --update-now
+# Pin the probe window for both the launcher and the stub timeout, so the stub
+# really does run until the launcher's own limit expires. Without this they use
+# different defaults and the probe looks like a fast crash rather than a timeout.
+SMOKE=timeout CC_SMOKE_TIMEOUT=1 run_wrapper "$W" "$ROOT/s4.err" --update-now
 if grep -qxF "9.9.9" "$V/.blocklist" 2>/dev/null; then no "s4: timeout wrongly blocklisted a good build"; else ok "s4: timeout not blocklisted"; fi
 
 echo

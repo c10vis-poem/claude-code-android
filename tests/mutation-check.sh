@@ -92,7 +92,7 @@ probe_guard_to_bare() {
 }
 
 timeout_as_crash() {
-  sed '/st_rc.*-eq 124.*return 2/s/return 2/return 1/' \
+  sed '/st_elapsed.*-ge.*st_limit.*return 2/s/return 2/return 1/' \
     "$1/install.sh" > "$1/install.sh.rewrite" &&
     mv "$1/install.sh.rewrite" "$1/install.sh"
 }
@@ -109,6 +109,14 @@ install_only_edit() {
   rewrite_awk "$1/install.sh" '
     { print }
     /# SYNC:BEGIN wrapper-heredoc/ { print "# mutation: install-only launcher edit" }
+  '
+}
+
+remove_crash_aware_final_verification() {
+  rewrite_awk "$1/install.sh" '
+    /elif \[ "\$\{ST_CRASHED:-0\}" = 1 \]; then/ { skipping=1; next }
+    skipping && /^else$/ { skipping=0 }
+    !skipping { print }
   '
 }
 
@@ -172,6 +180,7 @@ run_mutation "installer probe guard made bare" "install.sh+migrate.sh" "installe
 run_mutation "timed-out probe classified as crash" "install.sh" "wrapper fails" timeout_as_crash run_wrapper_check
 run_mutation "stale staging sweep removed" "install.sh" "wrapper fails" remove_stale_sweep run_wrapper_check
 run_mutation "launcher edit applied to install only" "install.sh" "check-sync fails" install_only_edit run_sync_check
+run_mutation "crash-aware final verification removed" "install.sh" "installer fails" remove_crash_aware_final_verification run_installer_check
 
 printf '%-48s | %-15s | %-15s | %s\n' "MUTATION (FILE)" "EXPECTED" "ACTUAL" "VERDICT"
 printf '%s\n' "----------------------------------------------------------------------------------------------------------------"
